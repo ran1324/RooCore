@@ -6,9 +6,9 @@ RooCore uses a direct TCP connection to our server. It does not need an MQTT bro
 
 [First recording](docs/first-session-he.md) · [Wiring](docs/wiring.md) · [Wiring quick guide](docs/wiring-he.md) · [LiDAR plan](docs/lidar-plan-he.md)
 
-![RooCore wiring](docs/diagrams/wiring.svg)
+![RooCore wiring](docs/diagrams/wiring-simple.svg)
 
-[English SVG](docs/diagrams/wiring.svg) · [Alternate SVG](docs/diagrams/wiring-he.svg)
+[Colored wiring SVG](docs/diagrams/wiring-simple.svg) · [PNG](docs/diagrams/wiring-simple.png) · [Detailed diagram](docs/diagrams/wiring.svg)
 
 ## What works in software
 

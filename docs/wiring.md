@@ -2,14 +2,14 @@
 
 ![RooCore wiring](diagrams/wiring.svg)
 
-[SVG](diagrams/wiring.svg) · [PNG](diagrams/wiring.png) · [Wiring quick guide](wiring-he.md)
+[Colored pin-to-pin SVG](diagrams/wiring-simple.svg) · [SVG](diagrams/wiring.svg) · [PNG](diagrams/wiring.png) · [Wiring quick guide](wiring-he.md)
 
 Use the 2N3906 PNP from the BOJACK kit, the ESP-01S and a buck converter set to 3.3V.
 The battery/buck/PNP arrangement comes from thehookup. GPIO2-to-BRC comes from its 600-series sketch.
 
 | From | To |
 |---|---|
-| Roomba OI pin 1 (Vpwr) | Switch, then buck IN+ |
+| Roomba OI pin 1 (Vpwr) | Buck IN+ (permanent connection) |
 | Roomba OI pin 6 or 7 | Buck IN-/OUT-, ESP GND and Q1 collector (C) |
 | Buck OUT+ at 3.3V | ESP VCC and EN |
 | Roomba OI pin 4 (TXD) | Q1 base (B) |
@@ -24,7 +24,9 @@ Keep GPIO0, EN and RST high at startup. The ESP-01S may already have pull-ups fi
 
 ## PNP pin names
 
-Q1 is a functional block in the diagram. Its left/right positions do not show the physical leg order.
+The colored diagram shows a TO-92 front view, with the flat face toward you and the leads pointing down: E (1), B (2), C (3), from left to right, following the onsemi drawing. This pin order has not been verified on the BOJACK part.
+
+Q1 in the original monochrome diagram is a functional block. Its left/right positions do not show the physical leg order.
 Connect by E, B and C. The cited onsemi 2N3906 drawing numbers E=1, B=2, C=3; the BOJACK part's marking/orientation must correspond before using that numbering.
 
 The upstream Fritzing component is generic `PNP-CBE`, not a named 2N3906.
@@ -44,7 +46,7 @@ Set the output before inserting the ESP. Battery voltage must never reach ESP VC
 
 The OI specification limits pins 1 and 2 together to 200mA continuous and 500mA peak on the battery side.
 Connecting both pins does not double that allowance. Include startup capacitor charging when checking the load.
-Turn the added circuit off at its switch after use. BRC keeps the robot awake; this prototype has no automatic low-battery cutoff.
+The circuit stays connected to the battery. BRC keeps the robot awake; this prototype has no automatic low-battery cutoff.
 
 ## Connector and programming
 

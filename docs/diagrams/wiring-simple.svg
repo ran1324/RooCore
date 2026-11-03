@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="940" viewBox="0 0 1440 940" role="img" aria-labelledby="title desc">
+<title id="title">RooCore pin-to-pin wiring</title>
+<desc id="desc">Roomba pin 1 directly to buck IN+. Buck OUT+ at 3.3V to ESP VCC and EN. Roomba pin 4 TXD to transistor B, transistor E to ESP GPIO3 RX. ESP GPIO1 TX to Roomba pin 3 RXD. ESP GPIO2 to Roomba pin 5 BRC. Roomba pin 6 or 7, buck IN- and OUT-, transistor C and ESP GND share ground. No external RX resistor.</desc>
+<rect width="1440" height="940" fill="white"/>
+<style>text{font-family:Arial,Helvetica,sans-serif;fill:#20252b} .pin{font-family:Consolas,Menlo,monospace}</style>
+<text x="50" y="55" font-size="32" font-weight="700" text-anchor="start" class="">RooCore wiring</text>
+<text x="50" y="87" font-size="18" font-weight="400" text-anchor="start" class="">Follow the pin labels. Wire colors identify each connection.</text>
+<rect x="50" y="135" width="270" height="600" rx="4" fill="#fafafa" stroke="#72777e" stroke-width="1.5"/>
+<text x="75" y="174" font-size="25" font-weight="700" text-anchor="start" class="">Roomba OI port</text>
+<rect x="1080" y="135" width="310" height="600" rx="4" fill="#fafafa" stroke="#72777e" stroke-width="1.5"/>
+<text x="1105" y="174" font-size="25" font-weight="700" text-anchor="start" class="">ESP-01S</text>
+<rect x="570" y="135" width="280" height="180" rx="4" fill="#fafafa" stroke="#72777e" stroke-width="1.5"/>
+<text x="710" y="172" font-size="24" font-weight="700" text-anchor="middle" class="">Buck converter</text>
+<text x="710" y="252" font-size="18" font-weight="400" text-anchor="middle" class="">Set output to 3.3V</text>
+<path d="M650 445 V390 Q650 365 675 365 H745 Q770 365 770 390 V445 Z" fill="#303030" stroke="#141414" stroke-width="2"/>
+<path d="M656 440 V390 Q656 372 675 372 H745 Q764 372 764 390 V440 Z" fill="#252525"/>
+<text x="710" y="405" text-anchor="middle" font-family="Arial,sans-serif" font-size="22" style="fill:white">2N3906</text>
+<text x="710" y="430" text-anchor="middle" font-family="Arial,sans-serif" font-size="16" style="fill:white">PNP</text>
+<path d="M670 445 V505" stroke="#90959b" stroke-width="7"/>
+<path d="M710 445 V505" stroke="#90959b" stroke-width="7"/>
+<path d="M750 445 V505" stroke="#90959b" stroke-width="7"/>
+<text x="793" y="392" font-size="16" font-weight="400" text-anchor="start" class="">TO-92 · front view</text>
+<text x="793" y="418" font-size="15" font-weight="400" text-anchor="start" class="">Flat face toward you</text>
+<path d="M320 680 H1080" fill="none" stroke="white" stroke-width="11" stroke-linejoin="round"/>
+<path d="M320 680 H1080" fill="none" stroke="#353b43" stroke-width="4" stroke-linejoin="round"/>
+<path d="M610 315 V340 H520 V680" fill="none" stroke="white" stroke-width="11" stroke-linejoin="round"/>
+<path d="M610 315 V340 H520 V680" fill="none" stroke="#353b43" stroke-width="4" stroke-linejoin="round"/>
+<path d="M800 315 V340 H980 V680" fill="none" stroke="white" stroke-width="11" stroke-linejoin="round"/>
+<path d="M800 315 V340 H980 V680" fill="none" stroke="#353b43" stroke-width="4" stroke-linejoin="round"/>
+<path d="M750 505 V680" fill="none" stroke="white" stroke-width="11" stroke-linejoin="round"/>
+<path d="M750 505 V680" fill="none" stroke="#353b43" stroke-width="4" stroke-linejoin="round"/>
+<path d="M320 215 H570" fill="none" stroke="white" stroke-width="11" stroke-linejoin="round"/>
+<path d="M320 215 H570" fill="none" stroke="#b85b05" stroke-width="4" stroke-linejoin="round"/>
+<path d="M850 215 H1025 V275 H1080" fill="none" stroke="white" stroke-width="11" stroke-linejoin="round"/>
+<path d="M850 215 H1025 V275 H1080" fill="none" stroke="#ca3030" stroke-width="4" stroke-linejoin="round"/>
+<path d="M1025 215 H1080" fill="none" stroke="white" stroke-width="11" stroke-linejoin="round"/>
+<path d="M1025 215 H1080" fill="none" stroke="#ca3030" stroke-width="4" stroke-linejoin="round"/>
+<circle cx="1025" cy="215" r="6" fill="#ca3030" stroke="#ca3030" stroke-width="3"/>
+<text x="928" y="195" font-size="18" font-weight="700" text-anchor="middle" class="">3.3V</text>
+<path d="M320 450 H590 V525 H710 V505" fill="none" stroke="white" stroke-width="11" stroke-linejoin="round"/>
+<path d="M320 450 H590 V525 H710 V505" fill="none" stroke="#168047" stroke-width="4" stroke-linejoin="round"/>
+<path d="M670 505 H630 V355 H950 V450 H1080" fill="none" stroke="white" stroke-width="11" stroke-linejoin="round"/>
+<path d="M670 505 H630 V355 H950 V450 H1080" fill="none" stroke="#168047" stroke-width="4" stroke-linejoin="round"/>
+<path d="M320 555 H1080" fill="none" stroke="white" stroke-width="11" stroke-linejoin="round"/>
+<path d="M320 555 H1080" fill="none" stroke="#2466c5" stroke-width="4" stroke-linejoin="round"/>
+<path d="M320 610 H1080" fill="none" stroke="white" stroke-width="11" stroke-linejoin="round"/>
+<path d="M320 610 H1080" fill="none" stroke="#8549b4" stroke-width="4" stroke-linejoin="round"/>
+<text x="450" y="433" font-size="16" font-weight="400" text-anchor="middle" class="">Roomba → ESP</text>
+<text x="865" y="540" font-size="16" font-weight="400" text-anchor="middle" class="">ESP → Roomba</text>
+<text x="865" y="595" font-size="16" font-weight="400" text-anchor="middle" class="">BRC / wake</text>
+<text x="75" y="222" font-size="21" font-weight="400" text-anchor="start" class="pin">1  BATTERY</text>
+<circle cx="320" cy="215" r="5" fill="white" stroke="#b85b05" stroke-width="3"/>
+<text x="75" y="457" font-size="21" font-weight="400" text-anchor="start" class="pin">4  TXD</text>
+<circle cx="320" cy="450" r="5" fill="white" stroke="#168047" stroke-width="3"/>
+<text x="75" y="562" font-size="21" font-weight="400" text-anchor="start" class="pin">3  RXD</text>
+<circle cx="320" cy="555" r="5" fill="white" stroke="#2466c5" stroke-width="3"/>
+<text x="75" y="617" font-size="21" font-weight="400" text-anchor="start" class="pin">5  BRC</text>
+<circle cx="320" cy="610" r="5" fill="white" stroke="#8549b4" stroke-width="3"/>
+<text x="75" y="687" font-size="21" font-weight="400" text-anchor="start" class="pin">6 or 7  GND</text>
+<circle cx="320" cy="680" r="5" fill="white" stroke="#353b43" stroke-width="3"/>
+<text x="1105" y="222" font-size="21" font-weight="400" text-anchor="start" class="pin">VCC</text>
+<circle cx="1080" cy="215" r="5" fill="white" stroke="#ca3030" stroke-width="3"/>
+<text x="1105" y="282" font-size="21" font-weight="400" text-anchor="start" class="pin">EN</text>
+<circle cx="1080" cy="275" r="5" fill="white" stroke="#ca3030" stroke-width="3"/>
+<text x="1105" y="457" font-size="21" font-weight="400" text-anchor="start" class="pin">RX / GPIO3</text>
+<circle cx="1080" cy="450" r="5" fill="white" stroke="#168047" stroke-width="3"/>
+<text x="1105" y="562" font-size="21" font-weight="400" text-anchor="start" class="pin">TX / GPIO1</text>
+<circle cx="1080" cy="555" r="5" fill="white" stroke="#2466c5" stroke-width="3"/>
+<text x="1105" y="617" font-size="21" font-weight="400" text-anchor="start" class="pin">GPIO2</text>
+<circle cx="1080" cy="610" r="5" fill="white" stroke="#8549b4" stroke-width="3"/>
+<text x="1105" y="687" font-size="21" font-weight="400" text-anchor="start" class="pin">GND</text>
+<circle cx="1080" cy="680" r="5" fill="white" stroke="#353b43" stroke-width="3"/>
+<text x="75" y="717" font-size="16" font-weight="400" text-anchor="start" class="">Pin 2: leave disconnected</text>
+<text x="592" y="222" font-size="20" font-weight="700" text-anchor="start" class="">IN+</text>
+<circle cx="570" cy="215" r="5" fill="white" stroke="#b85b05" stroke-width="3"/>
+<text x="828" y="222" font-size="20" font-weight="700" text-anchor="end" class="">OUT+</text>
+<circle cx="850" cy="215" r="5" fill="white" stroke="#ca3030" stroke-width="3"/>
+<text x="610" y="298" font-size="19" font-weight="400" text-anchor="middle" class="">IN−</text>
+<circle cx="610" cy="315" r="5" fill="white" stroke="#353b43" stroke-width="3"/>
+<text x="800" y="298" font-size="19" font-weight="400" text-anchor="middle" class="">OUT−</text>
+<circle cx="800" cy="315" r="5" fill="white" stroke="#353b43" stroke-width="3"/>
+<text x="670" y="485" font-size="16" font-weight="700" text-anchor="middle" class="">1 E</text>
+<circle cx="670" cy="505" r="5" fill="white" stroke="#168047" stroke-width="3"/>
+<text x="710" y="485" font-size="16" font-weight="700" text-anchor="middle" class="">2 B</text>
+<circle cx="710" cy="505" r="5" fill="white" stroke="#168047" stroke-width="3"/>
+<text x="750" y="485" font-size="16" font-weight="700" text-anchor="middle" class="">3 C</text>
+<circle cx="750" cy="505" r="5" fill="white" stroke="#353b43" stroke-width="3"/>
+<circle cx="520" cy="680" r="6" fill="#353b43" stroke="#353b43" stroke-width="3"/>
+<circle cx="750" cy="680" r="6" fill="#353b43" stroke="#353b43" stroke-width="3"/>
+<circle cx="980" cy="680" r="6" fill="#353b43" stroke="#353b43" stroke-width="3"/>
+<text x="710" y="711" font-size="17" font-weight="400" text-anchor="middle" class="">Common ground</text>
+<path d="M50 770 H1390" stroke="#ddd"/>
+<text x="50" y="805" font-size="18" font-weight="400" text-anchor="start" class="">Dots mark connections. Crossings without dots are not connected.</text>
+<text x="50" y="839" font-size="18" font-weight="400" text-anchor="start" class="">Roomba and ESP pins are arranged for clarity. Transistor: onsemi 2N3906 pin order; verify your BOJACK part.</text>
+<text x="50" y="873" font-size="17" font-weight="400" text-anchor="start" class="">RX uses the internal pull-up. Keep GPIO0 and RST high at boot. Disconnect the programmer before use.</text>
+<text x="50" y="911" font-size="16" font-weight="400" text-anchor="start" class="">Use the wiring guide for connector orientation and power details. Hardware validation is pending.</text>
+</svg>

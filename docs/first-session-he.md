@@ -30,7 +30,7 @@ This does not flash the Roomba's firmware. Remove the programmer before connecti
 3. Check that the sample count increases. Start with a 30-second test using `--profile basic --seconds 30` if needed.
 4. For a full run, start the server without a time limit and press CLEAN on the Roomba.
 5. Leave the server running throughout cleaning. Note or film wall contacts, turns and stalls so you can compare them with the data.
-6. Once cleaning finishes, press Ctrl-C to stop recording and turn off the added circuit at its switch.
+6. Once cleaning finishes, press Ctrl-C to stop recording. The added circuit remains powered.
 
 Stopping the recording does not stop cleaning. The server does not automatically detect the end of a cleaning cycle.
 After a disconnect, recording resumes in the same run folder. The missing interval is marked as lost data; the module has no local storage to recover it later. BRC pulses continue while the server is disconnected.

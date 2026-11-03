@@ -21,7 +21,7 @@ def draw(he=False):
     text(45, 80, 'thehookup hardware baseline + our sensor recorder')
     text(45, 118, 'Power from the robot', 21, True)
     box(45,140,300,80);text(60, 170, 'Roomba OI pin 1', 20, True)
-    text(60,199,'Vpwr → switch → buck IN+',17,mono=True)
+    text(60,199,'Vpwr → buck IN+',17,mono=True)
     box(500,140,350,80);text(515, 170, 'Buck converter → 3.3V', 20, True)
     text(515, 199, 'Input rating: 24V or higher', 17)
     line(345,180,500,180,True);text(390,163,'Vpwr',17)

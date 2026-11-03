@@ -9,7 +9,7 @@ The setup follows thehookup's project and draws power from the Roomba battery. T
 
 | From | To |
 |---|---|
-| Roomba pin 1, battery power | Switch, then buck IN+ |
+| Roomba pin 1, battery power | Buck IN+ (permanent connection) |
 | Roomba pin 6 or 7 | Common ground: buck IN-/OUT-, module GND and transistor C |
 | Buck OUT+ at 3.3V | Module VCC and EN |
 | Roomba pin 4, TXD | Transistor B |
@@ -39,7 +39,7 @@ TX and BRC retain the upstream project's direct connections. The normal TX pin a
 Choose a non-isolated buck converter whose input range covers the battery voltage during charging. An input rating of at least 24V is a starting requirement.
 It needs an output capacity of at least 500mA at 3.3V; a 1A rating gives some margin. Set and measure the output before connecting the module.
 The Roomba socket allows 200mA continuously and up to 500mA peak on the battery side, including startup current.
-Turn the added circuit off at its switch after use. BRC pulses keep the robot awake, and this design has no automatic low-battery cutoff.
+The circuit stays connected to the battery. BRC pulses keep the robot awake, and this design has no automatic low-battery cutoff.
 
 The socket numbering in the diagram is viewed into the holes on the robot. The solder side of the plug may be mirrored.
 To flash the ESP, remove it from the robot circuit and insert it into the CH340 programmer. Do not connect both at once.
