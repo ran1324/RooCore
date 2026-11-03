@@ -4,11 +4,11 @@ Roomba 620 sensor recording with an ESP-01S and our own server.
 The hardware starts from [thehookup/MQTT-Roomba-ESP01](https://github.com/thehookup/MQTT-Roomba-ESP01): battery power, a 3.3V buck converter, a PNP receive interface and GPIO2 connected to BRC.
 RooCore uses a direct TCP connection to our server. It does not need an MQTT broker or a separate Arduino board.
 
-[First recording (Hebrew)](docs/first-session-he.md) · [Wiring](docs/wiring.md) · [חיווט בעברית](docs/wiring-he.md) · [LiDAR plan](docs/lidar-plan-he.md)
+[First recording](docs/first-session-he.md) · [Wiring](docs/wiring.md) · [Wiring quick guide](docs/wiring-he.md) · [LiDAR plan](docs/lidar-plan-he.md)
 
 ![RooCore wiring](docs/diagrams/wiring.svg)
 
-[English SVG](docs/diagrams/wiring.svg) · [Hebrew SVG](docs/diagrams/wiring-he.svg)
+[English SVG](docs/diagrams/wiring.svg) · [Alternate SVG](docs/diagrams/wiring-he.svg)
 
 ## What works in software
 

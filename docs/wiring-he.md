@@ -1,49 +1,48 @@
-# חיבור הרומבה למודול
+# Connecting the Roomba to the module
 
-![חיבורי RooCore](diagrams/wiring-he.svg)
+![RooCore wiring](diagrams/wiring-he.svg)
 
-[פתיחת SVG](diagrams/wiring-he.svg) · [פתיחת PNG](diagrams/wiring-he.png) · [English](wiring.md)
+[Open SVG](diagrams/wiring-he.svg) · [Open PNG](diagrams/wiring-he.png) · [Detailed wiring guide](wiring.md)
 
-משתמשים ב־2N3906 מסוג PNP מתוך ערכת BOJACK שכבר קנית, במודול ESP-01S ובממיר Buck שמכוון ל־3.3V.
-הבסיס הוא פרויקט thehookup, כולל הזנה מסוללת הרומבה. את חיבור BRC ל־GPIO2 לוקחים מהקוד שלו לסדרת 600.
+Use the 2N3906 PNP transistor from the BOJACK kit, an ESP-01S and a buck converter set to 3.3V.
+The setup follows thehookup's project and draws power from the Roomba battery. The GPIO2 connection to BRC comes from its 600-series code.
 
-| מקור | יעד |
+| From | To |
 |---|---|
-| פין 1 ברומבה, מתח סוללה | מפסק ואז Buck IN+ |
-| פין 6 או 7 ברומבה | אדמה משותפת: Buck IN-/OUT-, המודול ו־C בטרנזיסטור |
-| Buck OUT+ במתח 3.3V | VCC ו־EN במודול |
-| פין 4 ברומבה, TXD | רגל B בטרנזיסטור |
-| רגל E בטרנזיסטור | RX / GPIO3 במודול |
-| נקודת RX במודול | נגד 10kΩ אל 3.3V |
-| TX / GPIO1 במודול | פין 3 ברומבה, RXD |
-| GPIO2 במודול | פין 5 ברומבה, BRC |
-| פין 2 ברומבה | נשאר מנותק ומבודד |
+| Roomba pin 1, battery power | Switch, then buck IN+ |
+| Roomba pin 6 or 7 | Common ground: buck IN-/OUT-, module GND and transistor C |
+| Buck OUT+ at 3.3V | Module VCC and EN |
+| Roomba pin 4, TXD | Transistor B |
+| Transistor E | Module RX / GPIO3 |
+| Module RX node | 10kΩ resistor to 3.3V |
+| Module TX / GPIO1 | Roomba pin 3, RXD |
+| Module GPIO2 | Roomba pin 5, BRC |
+| Roomba pin 2 | Leave disconnected and insulated |
 
-יש ממיר מתח אחד. אין צורך במסילת 5V או בשני ממירי האות שהופיעו בתרשים הקודם.
-סמוך למודול מחברים קבלי 100nF ו־100µF בין VCC לאדמה, בנוסף לקבלים הנדרשים לפי יצרן הממיר.
-GPIO0, EN ו־RST צריכים להיות גבוהים באתחול. חלק מנגדי המשיכה כבר קיימים ב־ESP-01S.
-GPIO2 מתחיל גבוה ואחר כך מפעיל את BRC; אין לקבע אותו ישירות ל־VCC.
+Use one buck converter. The 5V rail and two signal converters from the earlier diagram are no longer needed.
+Place 100nF and 100µF capacitors between VCC and ground near the module, in addition to any capacitors required by the buck manufacturer.
+GPIO0, EN and RST must be high at startup. Some pull-up resistors are already fitted on the ESP-01S.
+GPIO2 starts high, then drives BRC. Do not connect it directly to VCC.
 
-## רגלי הטרנזיסטור
+## Transistor pins
 
-התרשים מציג את תפקידי הרגליים, לא את המיקום הפיזי שלהן. מחברים לפי E/B/C.
-במפרט onsemi של 2N3906: רגל 1 היא E, רגל 2 היא B ורגל 3 היא C. את הכיוון הפיזי בודקים מול הסימון על הרכיב שקנית.
+The diagram shows pin functions, not their physical positions. Connect by E/B/C.
+The onsemi 2N3906 datasheet assigns pin 1 to E, pin 2 to B and pin 3 to C. Check the physical orientation against the marking on the part you bought.
 
-בקובץ Fritzing המקורי יש רכיב PNP כללי. לפי הגדרת הרכיב הנוכחית שם, נקודת הקליטה מחוברת ל־C והאדמה ל־E.
-אצלנו הגדרתי במפורש **E אל RX, B אל TX של הרומבה ו־C לאדמה**, כדי להשתמש ב־2N3906 בכיוון העבודה הרגיל שלו.
-זהו שינוי נקודתי ביחס לחיבורי הסמל המקורי. נגד ה־10kΩ מגדיר גם את המשיכה של RX ל־3.3V.
+The original Fritzing file uses a generic PNP component. Its current part definition places the receive node on C and ground on E.
+For the 2N3906, RooCore connects E to RX, B to the Roomba's TX and C to ground, using the transistor in its normal operating orientation.
+This changes the connections shown by the original symbol. The 10kΩ resistor pulls RX up to 3.3V.
 
-TX ו־BRC נשארים בחיבור הישיר של פרויקט המקור. פין TX הרגיל משדר גם הודעות ROM בעת אתחול ה־ESP;
-בניגוד לגרסה הקודמת, אין כאן ניתוב שלהן לפין אחר. התוכנה שלנו לא מדפיסה הודעות דיבוג לקו הזה.
+TX and BRC retain the upstream project's direct connections. The normal TX pin also carries ROM messages when the ESP boots. Those messages are no longer routed to another pin as in the previous version. Our firmware does not print debug messages to this line.
 
-## הזנה וצריבה
+## Power and programming
 
-בוחרים Buck לא מבודד שטווח הכניסה שלו מכסה את מתח הסוללה גם בטעינה. דירוג כניסה של 24V לפחות הוא נקודת פתיחה.
-נדרשת יכולת יציאה של לפחות 500mA ב־3.3V; דירוג 1A נותן מרווח. מכוונים ומודדים את היציאה לפני חיבור המודול.
-מגבלת שקע הרומבה היא 200mA רציפים ועד 500mA בשיא, בצד הסוללה, כולל זרם ההתנעה.
-בסיום מכבים את התוספת במפסק. פעימות BRC מונעות שינה ואין בתכנון ניתוק אוטומטי בסוללה חלשה.
+Choose a non-isolated buck converter whose input range covers the battery voltage during charging. An input rating of at least 24V is a starting requirement.
+It needs an output capacity of at least 500mA at 3.3V; a 1A rating gives some margin. Set and measure the output before connecting the module.
+The Roomba socket allows 200mA continuously and up to 500mA peak on the battery side, including startup current.
+Turn the added circuit off at its switch after use. BRC pulses keep the robot awake, and this design has no automatic low-battery cutoff.
 
-מספור השקע בתרשים הוא במבט אל החורים ברובוט. צד ההלחמה של התקע עלול להיות הפוך.
-בצריבה מוציאים את המודול ממעגל הרובוט ומכניסים אותו לצורב CH340; לא מחברים את שניהם במקביל.
+The socket numbering in the diagram is viewed into the holes on the robot. The solder side of the plug may be mirrored.
+To flash the ESP, remove it from the robot circuit and insert it into the CH340 programmer. Do not connect both at once.
 
-[מקורות והשוואה לפרויקט המקורי](wiring.md#sources). הקוד נבנה ונבדק בתוכנה; לא בוצע כאן ניסוי בחומרה.
+See the [sources and upstream comparison](wiring.md#sources). The software has been built and tested; the hardware has not been tested here.

@@ -2,7 +2,7 @@
 
 ![RooCore wiring](diagrams/wiring.svg)
 
-[SVG](diagrams/wiring.svg) · [PNG](diagrams/wiring.png) · [עברית](wiring-he.md)
+[SVG](diagrams/wiring.svg) · [PNG](diagrams/wiring.png) · [Wiring quick guide](wiring-he.md)
 
 Use the 2N3906 PNP from the BOJACK kit, the ESP-01S and a buck converter set to 3.3V.
 The battery/buck/PNP arrangement comes from thehookup. GPIO2-to-BRC comes from its 600-series sketch.

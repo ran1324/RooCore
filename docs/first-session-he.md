@@ -1,51 +1,49 @@
-# הקלטת ניקיון ראשונה
+# First cleaning recording
 
-המודול מחובר לרומבה לפי [התרשים המעודכן](wiring-he.md): ממיר אחד ל־3.3V, טרנזיסטור 2N3906, TX רגיל ו־GPIO2 ל־BRC.
-השרת שלנו שומר את הנתונים בזמן שהרומבה מנקה עם התוכנית המקורית שלה.
+Connect the module using the [wiring guide](wiring-he.md): one 3.3V buck converter, a 2N3906 transistor, normal TX and GPIO2 for BRC.
+Our server records sensor data while the Roomba runs its original cleaning program.
 
-## הכנה
+## Setup
 
-במחשב שבו נמצאים קובצי הפרויקט:
+On the computer holding the project files, run:
 
 ```sh
 python3 tools/configure.py --ssid YOUR_WIFI --server 192.168.1.10
 ```
 
-מחליפים את שם הרשת ואת הכתובת בנתונים של הרשת והשרת שלנו. הכלי מבקש את סיסמת הרשת ושומר אותה מקומית.
-כדאי לקבע את כתובת השרת בנתב. המודול והשרת צריכים להיות באותה רשת נגישה.
-הקבצים `network_config.h` ו־`.roocore-token` פרטיים ואינם מיועדים ל־GitHub.
+Replace the network name and address with your Wi-Fi name and server address. The tool prompts for the Wi-Fi password and saves it locally.
+Reserve the server's address in the router. The module and server need access to the same network.
+Keep `network_config.h` and `.roocore-token` private; do not upload them to GitHub.
 
-בונים וצורבים את ה־ESP כשהוא מנותק מהרומבה, לפי [הוראות הבנייה](../README.md#configure-and-build).
-לא צורבים קושחה לרומבה. לאחר מכן מחברים את ה־ESP למעגל הרובוט ומוציאים את הצורב.
+Build and flash the ESP while it is disconnected from the Roomba, following the [build instructions](../README.md#configure-and-build).
+This does not flash the Roomba's firmware. Remove the programmer before connecting the ESP to the robot circuit.
 
-## הקלטה
+## Recording
 
-1. מפעילים את השרת:
+1. Start the server:
 
    ```sh
    python3 server/recorder.py --token-file .roocore-token
    ```
 
-2. מפעילים את התוספת ומעירים את הרומבה. המודול מתחבר לרשת ולשרת אוטומטית.
-3. מוודאים שמספר הדגימות עולה. אפשר להתחיל בניסוי של 30 שניות עם `--profile basic --seconds 30`.
-4. להרצה מלאה מפעילים את השרת בלי מגבלת זמן ולוחצים CLEAN ברומבה.
-5. משאירים את השרת פעיל לאורך כל הניקיון. רושמים או מצלמים מגע בקיר, סיבובים והיתקעות כדי להשוות לנתונים.
-6. אחרי סיום הניקיון מפסיקים את ההקלטה עם Ctrl-C ומכבים את התוספת במפסק שלה.
+2. Power on the added circuit and wake the Roomba. The module connects to Wi-Fi and the server automatically.
+3. Check that the sample count increases. Start with a 30-second test using `--profile basic --seconds 30` if needed.
+4. For a full run, start the server without a time limit and press CLEAN on the Roomba.
+5. Leave the server running throughout cleaning. Note or film wall contacts, turns and stalls so you can compare them with the data.
+6. Once cleaning finishes, press Ctrl-C to stop recording and turn off the added circuit at its switch.
 
-עצירת ההקלטה אינה עוצרת את הניקיון. השרת אינו מסיק בעצמו שהרובוט סיים את המחזור.
-אם הקשר נופל, ההתחברות הבאה ממשיכה באותה תיקיית ריצה. הזמן החסר מסומן כאובדן נתונים;
-אין במודול אחסון מקומי שמשלים אותו בדיעבד. פעימות BRC נמשכות גם כשהשרת מנותק.
+Stopping the recording does not stop cleaning. The server does not automatically detect the end of a cleaning cycle.
+After a disconnect, recording resumes in the same run folder. The missing interval is marked as lost data; the module has no local storage to recover it later. BRC pulses continue while the server is disconnected.
 
-## קבצים וניתוח
+## Files and analysis
 
-בתיקיית הריצה נשמרים `sensors.csv`, `transport.jsonl`, `events.jsonl` ו־`session.json`.
-שומרים את כולם יחד. לניתוח ראשוני:
+Each run folder contains `sensors.csv`, `transport.jsonl`, `events.jsonl` and `session.json`. Keep them together.
+For an initial summary, run:
 
 ```sh
 python3 tools/analyze.py recordings/RUN_FOLDER/sensors.csv
 ```
 
-הדוח מסכם נגיעות בפגוש, דגימות שבהן חיישן נפילה פעיל ומוני גלגלים גולמיים.
-הוא לא מתייחס למוני גלגלים כאל מרחק מכויל או מפה של החדר.
-השלב הבא הוא להשוות בין ההקלטה להתנהגות שראינו, ואז לפתח את לוגיקת הניקיון שלנו.
-[תכנון ה־LiDAR והמיפוי](lidar-plan-he.md) נשמר בנפרד.
+The report summarizes bumper contacts, samples with active cliff sensors and raw wheel counts. Those counts are not calibrated distances or a room map.
+Next, compare the recording with the behavior you observed, then use it to develop our cleaning logic.
+The [LiDAR and mapping plan](lidar-plan-he.md) covers the later mapping work.

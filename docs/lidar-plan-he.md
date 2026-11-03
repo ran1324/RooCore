@@ -1,12 +1,12 @@
-# תכנון שילוב ליידר ב־RooCore
+# LiDAR and home mapping plan
 
-סטטוס: תכנון להמשך, 4 בנובמבר 2026. עדיין לא נבחר או נרכש ליידר, ולא מומשו מיפוי או ניווט עצמאי.
+Status: planned, November 4, 2026. We have not selected or bought a LiDAR sensor. Mapping and autonomous navigation are not implemented yet.
 
-## המטרה
+## Goal
 
-לבנות מפה של הבית, לדעת היכן הרומבה נמצאת בתוכה, ובהמשך לתכנן ניקיון שיטתי ולמדוד אילו אזורים כוסו. בשלב הראשון הרומבה תמשיך לנקות בעצמה ואנחנו נקליט את ההתנהגות שלה. בהמשך נצרף להקלטה גם סריקות ליידר, לפני שנעבור לשליטה שלנו בתנועה.
+Build a map of the house, locate the Roomba within it, and eventually plan systematic cleaning and measure coverage. We will start by recording the robot's original cleaning behavior. LiDAR scans will join those recordings before we take over motion control.
 
-## המבנה המתוכנן
+## Planned setup
 
 ```text
 Roomba OI → ESP-01 → Wi-Fi → RooCore server
@@ -20,43 +20,43 @@ LiDAR → companion computer/bridge ─┘
                     future cleaning planner
 ```
 
-ה־ESP-01 הקיים ימשיך לשמש לתקשורת עם הרומבה. החיבור הטורי שלו כבר משמש את OI, ולכן לא נניח שאפשר לחבר אליו גם ליידר. עבור הליידר נתכנן מחשב קטן או גשר נפרד, בהתאם לממשק ולדרישות של הדגם שנבחר. השרת שלנו יקבל את שני מקורות המידע ויבצע את העיבוד. מיקום העיבוד הסופי ייקבע לפי השהיית התקשורת והבדיקות בפועל.
+The ESP-01 will keep handling the Roomba connection. Its serial port is already used by OI, so we cannot assume it can also handle a LiDAR sensor. We will use a separate small computer or bridge, chosen around the sensor's interface and requirements. Our server will receive both data streams and process them. Tests of communication latency and performance will determine where that processing should run in the final setup.
 
-## מה נשמור בהקלטה
+## Recording format
 
-- סריקות מקוריות: מספר סריקה, זמני התחלה וסיום, זוויות, מרחקים במטרים וסימון מדידות לא תקינות. אם החיישן מספק זמן לכל מדידה, נשמור גם אותו.
-- תנועת גלגלים: מוני אנקודרים מקוריים, זמן מדידה, גלישת מונים ופערים בהקלטה. התמיכה במונים ברומבה שלנו עדיין דורשת בדיקה פיזית.
-- חיישני הרומבה: פגוש, מצוקים ושאר המידע הזמין, יחד עם ההקלטה הקיימת.
-- כיול: קוטר גלגל אפקטיבי, מרחק בין הגלגלים, ומיקום וכיוון הליידר ביחס למרכז הרובוט — x, y וזווית סיבוב.
-- תוצאות עיבוד: מיקום משוער, כיוון, איכות ההערכה וגרסת המפה. הנתונים המקוריים יישמרו כדי שנוכל להריץ אלגוריתם חדש על אותה הקלטה.
+- Raw scans: scan number, start and end times, angles, distances in meters, and flags for invalid readings. Keep per-measurement timestamps if the sensor provides them.
+- Wheel movement: raw encoder counts, measurement times, counter rollover and recording gaps. Encoder support on our Roomba still needs a physical test.
+- Roomba sensors: bumper, cliff and other available readings, alongside the existing recording.
+- Calibration: effective wheel diameter, wheel spacing, and the LiDAR's position and orientation relative to the robot's center: x, y and yaw.
+- Processing results: estimated position, heading, estimate quality and map version. Keep the raw data so we can try new algorithms on the same recording.
 
-לכל מקור יהיו מזהה מכשיר, מזהה אתחול, מספר רצף וזמן מקומי מונוטוני. נמדוד את ההפרש בין השעונים ואת אי־הוודאות שלו; זמן הגעת הודעת Wi-Fi לבדו אינו זמן המדידה. ניתוקים ופערים יסומנו במפורש ולא יושלמו כאילו נמדדו.
+Each source will have a device ID, boot ID, sequence number and local monotonic timestamp. We will measure clock offsets and their uncertainty. The arrival time of a Wi-Fi message alone does not tell us when the measurement happened. Disconnects and missing data will remain explicit gaps.
 
-## מיפוי ומיקום
+## Mapping and localization
 
-נחשב תנועה משוערת מהגלגלים ונשלב אותה עם התאמה בין סריקות. תהליך SLAM יפיק מפה ויעריך את מיקום הרובוט; זיהוי חזרה למקום שכבר נסרק אמור לעזור לתקן הצטברות שגיאה. מפה שמורה תאפשר בהמשך להתחיל סשן חדש ולמקם את הרובוט בתוכה.
+We will estimate movement from the wheels and combine it with scan matching. SLAM will build a map and estimate the robot's position. Recognizing a previously scanned location should help correct accumulated drift. A saved map should later let the robot locate itself at the start of a new session.
 
-המפה תבדיל בין שטח פנוי, מכשולים ושטח שטרם נצפה. מעליה נשמור שכבת כיסוי ניקיון נפרדת: מקום שהליידר ראה אינו בהכרח מקום שהמברשות ניקו. תכנון מסלולים יתחשב במידות הרובוט, ברוחב הניקיון ובמרווח ממכשולים. רהיטים זזים, זכוכית ושטחים מחוץ לגובה הסריקה דורשים טיפול נוסף; חיישני הפגוש והמצוקים יישארו חלק מהמערכת.
+The map will distinguish free space, obstacles and areas that have not been observed. A separate layer will track cleaning coverage: the LiDAR can see places the brushes have not cleaned. Route planning will account for the robot's dimensions, cleaning width and clearance from obstacles. Moving furniture, glass and objects outside the scan height need additional handling. Bumper and cliff sensors will remain part of the system.
 
-## חיבור ומתח
+## Hardware and power
 
-נבחר ליידר רק לאחר בדיקת הממשק, קצב הסריקה, הטווח, שדה הראייה, דרישות המתח והזרם, ותמיכת תוכנה שאפשר להפעיל אצלנו. ההתקנה צריכה לאפשר ראייה סביב הרובוט בלי לפגוע בפגוש, בתנועה או בכניסה מתחת לרהיטים.
+Before choosing a sensor, check its interface, scan rate, range, field of view, voltage and current requirements, and software support we can run. The mount must give it a view around the robot without interfering with the bumper, movement or clearance under furniture.
 
-כל המערכת מתוכננת לקבל מתח מסוללת הרומבה, ללא סוללת גיבוי חיצונית. עם זאת, מסילת 3.3V של ה־ESP וחיבור המתח הנוכחי של OI אינם תקציב מתח פנוי לליידר. מגבלת הזרם הרציף המתועדת של OI היא 200mA בסך הכול. לפני הרחבה נחשב את צריכת כל הרכיבים, כולל התנעה, ונבחר פתרון הזנה והגנה מתאים. אם נדרש חיבור אחר לסוללת הרומבה, הוא יקבל תכנון חשמלי נפרד; אין במסמך הזה הוראות לבצע אותו.
+The whole system is intended to run from the Roomba battery, without an external backup battery. The existing ESP 3.3V rail and OI supply cannot be assumed to have spare capacity for LiDAR. OI has a documented total continuous current limit of 200mA. Before adding hardware, calculate the load of all components, including startup current, and choose suitable power conversion and protection. Any different connection to the Roomba battery will need its own electrical design. This plan does not provide instructions for that connection.
 
-## שלבי העבודה
+## Work stages
 
-1. **הקלטת בסיס:** לתעד מחזורי ניקיון מקוריים ולוודא שהחיישנים ומוני הגלגלים נקלטים ברציפות.
-2. **כיול תנועה:** להשוות מרחקים וסיבובים שנמדדו בפועל לחישוב מהגלגלים, ולכמת החלקה ושגיאה.
-3. **בדיקת ליידר בנפרד:** לקלוט סריקות, לבדוק זמנים, טווחים וניתוקים, ולשמור קובץ שניתן לנגן מחדש.
-4. **מיפוי בזמן ניקיון מקורי:** לשלב סריקות וגלגלים בלי להחליף את החלטות הניקיון של הרומבה.
-5. **מפה חוזרת:** לבדוק שהרובוט מזהה את מיקומו במפה שמורה גם בתחילת ריצה חדשה וששינויים בבית אינם משבשים הכול.
-6. **ניקיון שלנו:** להוסיף תכנון מסלולים, כיסוי חדרים וטיפול במכשולים, ורק אז לחבר אותו לפקודות תנועה.
+1. Record original cleaning cycles and check that sensor readings and wheel counts arrive continuously.
+2. Compare measured travel and turns with wheel-based estimates. Quantify slip and error, then calibrate the movement model.
+3. Test the LiDAR separately. Check scan timing, range and disconnect handling, and save recordings that can be replayed.
+4. Combine scans and wheel data while the robot runs its original cleaning program.
+5. Check localization against a saved map at the start of another run, including after changes to the room.
+6. Add route planning, room coverage and obstacle handling before connecting the planner to motion commands.
 
-השרת הנוכחי מיועד להקלטה ואינו מממש את שלב השליטה. לפני שנפעיל תנועה שלנו, נצטרך מנגנון עצירה מקומי במקרה של אובדן קשר, מגבלות מהירות וטיפול בחיישני בטיחות. לא נסתמך על הגעת פקודת עצירה דרך Wi-Fi בלבד.
+The current server records data; motion control is a future stage. Before enabling our own movement commands, we need a local stop mechanism for lost connections, speed limits and handling for safety sensors. A stop command sent over Wi-Fi alone is insufficient.
 
-## איך נבדוק התקדמות
+## Measuring progress
 
-נשתמש באותו חדר ובמספר ריצות חוזרות. נשווה מידות מפה למידות ידועות, שגיאת חזרה לנקודת התחלה, זמן ניקיון, שיעור שטח מכוסה וחזרתיות על אזורים שכבר נוקו. נבדוק גם ניתוק רשת, אובדן סריקות ושינוי מיקום של רהיט. מפה שנראית יפה אינה לבדה הוכחה למיקום או לכיסוי מדויקים.
+Repeat runs in the same room. Compare map dimensions with known measurements, return-to-start position error, cleaning time, covered area and repeated passes over cleaned areas. Test network outages, missing scans and moved furniture too. A convincing map image alone does not establish accurate localization or coverage.
 
-היעד הראשון הוא הקלטה משולבת שאפשר לשחזר ולנתח. בחירת דגם הליידר ומימוש המיפוי הם שלבים הבאים, ולא תנאי להפעלת המקליט הקיים.
+Our first target is a combined recording we can replay and analyze. Sensor selection and mapping implementation can follow; the existing recorder can run before either is ready.
