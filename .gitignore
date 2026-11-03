@@ -1,0 +1,10 @@
+.pio/
+__pycache__/
+.venv/
+recordings/
+firmware/include/secrets.h
+.DS_Store
+
+.playwright-cli/
+firmware/include/network_config.h
+.roocore-token

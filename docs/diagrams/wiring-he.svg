@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1330" viewBox="0 0 1400 1330" role="img" aria-labelledby="title desc">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#222"/></marker></defs>
+<rect width="1400" height="1330" fill="white"/>
+<style>text{font-family:Arial,Helvetica,sans-serif;fill:#222}.mono{font-family:Menlo,Consolas,monospace}</style>
+<title id="title">חיבורי RooCore עם טרנזיסטור PNP</title><desc id="desc">ESP-01S, Roomba battery, 3.3V buck, 2N3906, GPIO1 TX, GPIO3 RX and GPIO2 BRC. Based on thehookup, with RooCore recording.</desc>
+<text x="1355" y="48" font-size="30" font-weight="700" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">חיבורי ⁦RooCore⁩</text>
+<text x="1355" y="80" font-size="18" font-weight="400" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">החומרה של ⁦thehookup⁩ עם הקלטת החיישנים שלנו</text>
+<text x="1355" y="118" font-size="21" font-weight="700" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">אספקה מסוללת הרומבה</text>
+<rect x="45" y="140" width="300" height="80" fill="white" stroke="#333" stroke-width="1.5"/>
+<text x="330" y="170" font-size="20" font-weight="700" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">פין 1 בשקע הרומבה</text>
+<text x="60" y="199" font-size="17" font-weight="400" class="mono">Vpwr → switch → buck IN+</text>
+<rect x="500" y="140" width="350" height="80" fill="white" stroke="#333" stroke-width="1.5"/>
+<text x="835" y="170" font-size="20" font-weight="700" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">ממיר מוריד מתח ל־⁦3.3V⁩</text>
+<text x="835" y="199" font-size="17" font-weight="400" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">דירוג כניסה: ⁦24V⁩ ומעלה</text>
+<path d="M345 180 L500 180" fill="none" stroke="#333" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="390" y="163" font-size="17" font-weight="400" class="">Vpwr</text>
+<path d="M850 180 L1045 180" fill="none" stroke="#333" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="910" y="163" font-size="17" font-weight="400" class="">3.3V</text>
+<rect x="1045" y="140" width="310" height="80" fill="white" stroke="#333" stroke-width="1.5"/>
+<text x="1060" y="173" font-size="20" font-weight="700" class="">ESP VCC / EN</text>
+<text x="1060" y="200" font-size="16" font-weight="400" class="">100nF + 100µF to GND</text>
+<text x="1355" y="252" font-size="18" font-weight="400" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">אדמה משותפת: פין 6 או 7, כניסת ויציאת הממיר, המודול והקולקטור של הטרנזיסטור.</text>
+<text x="1355" y="280" font-size="18" font-weight="700" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">מגבלת השקע: ⁦200mA⁩ רציף; פחות מ־⁦500mA⁩ בשיא, כולל ההפעלה.</text>
+<text x="1355" y="323" font-size="21" font-weight="700" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">חיבור התקשורת</text>
+<text x="45" y="354" font-size="17" font-weight="400" class="">115200 baud · 8N1 · Passive</text>
+<rect x="45" y="380" width="300" height="430" fill="white" stroke="#333" stroke-width="1.5"/>
+<text x="65" y="417" font-size="23" font-weight="700" class="">ESP-01S</text>
+<rect x="1045" y="380" width="310" height="430" fill="white" stroke="#333" stroke-width="1.5"/>
+<text x="1335" y="417" font-size="23" font-weight="700" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">שקע הרומבה</text>
+<text x="65" y="473" font-size="20" font-weight="400" class="mono">RX / GPIO3</text>
+<text x="1065" y="473" font-size="20" font-weight="400" class="mono">4 · TXD</text>
+<rect x="515" y="430" width="360" height="120" fill="white" stroke="#333" stroke-width="1.5"/>
+<text x="550" y="456" font-size="19" font-weight="700" class="">Q1 · 2N3906 · PNP</text>
+<text x="530" y="491" font-size="21" font-weight="700" class="">E</text>
+<text x="843" y="491" font-size="21" font-weight="700" class="">B</text>
+<text x="688" y="533" font-size="21" font-weight="700" class="">C</text>
+<path d="M1045 485 L875 485" fill="none" stroke="#333" stroke-width="1.8" marker-end="url(#arrow)"/>
+<path d="M515 485 L345 485" fill="none" stroke="#333" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="1030" y="459" font-size="16" font-weight="400" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">נתוני חיישנים</text>
+<path d="M695 550 L695 565" fill="none" stroke="#333" stroke-width="1.8"/>
+<path d="M680 565 L710 565" fill="none" stroke="#333" stroke-width="1.8"/>
+<path d="M685 571 L705 571" fill="none" stroke="#333" stroke-width="1.8"/>
+<path d="M690 577 L700 577" fill="none" stroke="#333" stroke-width="1.8"/>
+<text x="724" y="577" font-size="15" font-weight="400" class="">GND</text>
+<path d="M415 485 L415 439" fill="none" stroke="#333" stroke-width="1.8"/>
+<circle cx="415" cy="485" r="4" fill="#222"/>
+<rect x="408" y="405" width="14" height="34" fill="white" stroke="#333" stroke-width="1.5"/>
+<path d="M415 405 L415 380" fill="none" stroke="#333" stroke-width="1.8"/>
+<text x="385" y="370" font-size="16" font-weight="400" class="">3.3V</text>
+<text x="436" y="425" font-size="16" font-weight="400" class="">R1</text>
+<text x="436" y="448" font-size="16" font-weight="400" class="">10kΩ</text>
+<text x="65" y="624" font-size="20" font-weight="400" class="mono">TX / GPIO1</text>
+<text x="1065" y="624" font-size="20" font-weight="400" class="mono">3 · RXD</text>
+<path d="M345 636 L1045 636" fill="none" stroke="#333" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="890" y="620" font-size="17" font-weight="400" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">בקשות לנתוני חיישנים</text>
+<text x="65" y="732" font-size="20" font-weight="400" class="mono">GPIO2</text>
+<text x="1065" y="732" font-size="20" font-weight="400" class="mono">5 · BRC</text>
+<path d="M345 744 L1045 744" fill="none" stroke="#333" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="990" y="726" font-size="17" font-weight="400" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">פעימה נמוכה של שנייה אחת בכל דקה</text>
+<text x="65" y="788" font-size="17" font-weight="400" class="mono">GND</text>
+<text x="1065" y="788" font-size="17" font-weight="400" class="mono">6 / 7 · GND</text>
+<path d="M195 810 L195 837" fill="none" stroke="#333" stroke-width="1.8"/>
+<path d="M1195 810 L1195 837" fill="none" stroke="#333" stroke-width="1.8"/>
+<path d="M195 837 L1195 837" fill="none" stroke="#333" stroke-width="1.8"/>
+<circle cx="195" cy="837" r="4" fill="#222"/>
+<circle cx="1195" cy="837" r="4" fill="#222"/>
+<text x="1355" y="875" font-size="18" font-weight="400" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">המודול מתחבר לשרת שלנו דרך ⁦Wi-Fi / TCP⁩. אין צורך בשרת ⁦MQTT⁩.</text>
+<path d="M45 898 L1355 898" fill="none" stroke="#333" stroke-width="1.8"/>
+<text x="460" y="932" font-size="20" font-weight="700" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">שקע הרובוט, מבט אל החורים</text>
+<circle cx="160" cy="1047" r="85" fill="white" stroke="#333" stroke-width="1.5"/>
+<rect x="150" y="957" width="20" height="12" fill="white"/>
+<rect x="134" y="1037" width="52" height="24" fill="white" stroke="#333" stroke-width="1.5"/>
+<circle cx="117" cy="1008" r="16" fill="white" stroke="#333"/>
+<text x="112" y="1014" font-size="17" font-weight="400" class="">7</text>
+<circle cx="160" cy="1008" r="16" fill="white" stroke="#333"/>
+<text x="155" y="1014" font-size="17" font-weight="400" class="">6</text>
+<circle cx="203" cy="1008" r="16" fill="white" stroke="#333"/>
+<text x="198" y="1014" font-size="17" font-weight="400" class="">5</text>
+<circle cx="95" cy="1050" r="16" fill="white" stroke="#333"/>
+<text x="90" y="1056" font-size="17" font-weight="400" class="">4</text>
+<circle cx="225" cy="1050" r="16" fill="white" stroke="#333"/>
+<text x="220" y="1056" font-size="17" font-weight="400" class="">3</text>
+<circle cx="137" cy="1096" r="16" fill="white" stroke="#333"/>
+<text x="132" y="1102" font-size="17" font-weight="400" class="">2</text>
+<circle cx="183" cy="1096" r="16" fill="white" stroke="#333"/>
+<text x="178" y="1102" font-size="17" font-weight="400" class="">1</text>
+<text x="460" y="1007" font-size="17" font-weight="400" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">פין 1: ⁦buck IN+⁩</text>
+<text x="460" y="1040" font-size="17" font-weight="400" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">פין 2: לא מחובר</text>
+<text x="460" y="1073" font-size="17" font-weight="400" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">פין 5: ⁦GPIO2⁩</text>
+<text x="460" y="1167" font-size="17" font-weight="400" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">החריץ פונה להיקף החיצוני של הרובוט.</text>
+<text x="925" y="932" font-size="20" font-weight="700" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">טרנזיסטור מהערכה שקנית</text>
+<text x="500" y="972" font-size="22" font-weight="700" class="">2N3906</text>
+<text x="500" y="1012" font-size="18" font-weight="400" class="mono">E → ESP RX / GPIO3</text>
+<text x="500" y="1048" font-size="18" font-weight="400" class="mono">B → Roomba TXD / pin 4</text>
+<text x="500" y="1084" font-size="18" font-weight="400" class="mono">C → GND</text>
+<text x="925" y="1126" font-size="16" font-weight="400" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">מחברים לפי ⁦E/B/C⁩, ולא לפי מיקום הרגל בתמונה.</text>
+<text x="925" y="1167" font-size="16" font-weight="400" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">נגד ⁦R1⁩ מחבר את נקודת הקליטה ל־⁦3.3V⁩.</text>
+<text x="1355" y="932" font-size="20" font-weight="700" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">מצב עבודה</text>
+<text x="975" y="972" font-size="18" font-weight="400" class="mono">GPIO0 · EN · RST</text>
+<text x="1355" y="1005" font-size="17" font-weight="400" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">צריכים להיות גבוהים בזמן האתחול.</text>
+<text x="1355" y="1042" font-size="16" font-weight="400" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">פין ⁦GPIO2⁩ מתחיל גבוה ואז מפעיל את ⁦BRC⁩.</text>
+<text x="1355" y="1080" font-size="16" font-weight="400" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">מכוונים את הממיר לפני חיבור המודול.</text>
+<text x="1355" y="1117" font-size="17" font-weight="700" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">רק ⁦3.3V⁩ מחובר ל־⁦ESP VCC⁩.</text>
+<text x="1355" y="1167" font-size="17" font-weight="400" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">יש להשתמש בחוטים קצרים ומקובעים.</text>
+<path d="M45 1192 L1355 1192" fill="none" stroke="#333" stroke-width="1.8"/>
+<text x="1355" y="1228" font-size="19" font-weight="700" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">חיבור לצריבה בלבד:</text>
+<text x="45" y="1228" font-size="18" font-weight="400" class="mono">Mac USB → CH340 (PROG) → ESP-01S</text>
+<text x="1355" y="1263" font-size="17" font-weight="400" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">לפני צריבה מנתקים את המודול ממעגל הרובוט ומכניסים אותו לצורב.</text>
+<text x="1355" y="1303" font-size="16" font-weight="400" class="" direction="rtl" unicode-bidi="embed" text-anchor="start">⁦RooCore v2⁩ · מבוסס על ⁦thehookup⁩ · בדיקות תוכנה בוצעו; החומרה לא נבדקה כאן.</text>
+</svg>
