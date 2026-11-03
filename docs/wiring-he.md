@@ -14,7 +14,6 @@ The setup follows thehookup's project and draws power from the Roomba battery. T
 | Buck OUT+ at 3.3V | Module VCC and EN |
 | Roomba pin 4, TXD | Transistor B |
 | Transistor E | Module RX / GPIO3 |
-| Module RX node | 10kΩ resistor to 3.3V |
 | Module TX / GPIO1 | Roomba pin 3, RXD |
 | Module GPIO2 | Roomba pin 5, BRC |
 | Roomba pin 2 | Leave disconnected and insulated |
@@ -31,7 +30,7 @@ The onsemi 2N3906 datasheet assigns pin 1 to E, pin 2 to B and pin 3 to C. Check
 
 The original Fritzing file uses a generic PNP component. Its current part definition places the receive node on C and ground on E.
 For the 2N3906, RooCore connects E to RX, B to the Roomba's TX and C to ground, using the transistor in its normal operating orientation.
-This changes the connections shown by the original symbol. The 10kΩ resistor pulls RX up to 3.3V.
+This changes the connections shown by the original symbol. The firmware enables the ESP's internal RX pull-up.
 
 TX and BRC retain the upstream project's direct connections. The normal TX pin also carries ROM messages when the ESP boots. Those messages are no longer routed to another pin as in the previous version. Our firmware does not print debug messages to this line.
 

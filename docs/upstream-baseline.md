@@ -22,7 +22,7 @@ Its shared schematic image does not include the BRC wire added in the 600-series
 - Passive-only telemetry. Native cleaning is started with the robot button.
 - All received sensor bytes, decoded frames and reconnect events are recorded for later analysis.
 - Timed BRC and start sequencing, without blocking reconnect loops or timer callbacks writing to Serial.
-- The specific PNP uses E to ESP RX, B to Roomba TX, C to ground, plus an explicit RX pull-up.
+- The specific PNP uses E to ESP RX, B to Roomba TX, C to ground, using the ESP's internal RX pull-up.
   The generic upstream Fritzing C/E connector labels differ; see [wiring](wiring.md#pnp-pin-names).
 
 The earlier AP/UDP recorder and two-level-shifter proposal have been replaced. GPIO2 is no longer TX.

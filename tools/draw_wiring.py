@@ -40,10 +40,6 @@ def draw(he=False):
     line(1045,485,875,485,True);line(515,485,345,485,True)
     text(898, 459, 'Sensor data', 16)
     ground(695,550);text(724,577,'GND',15)
-    # Explicit receive pull-up; pin labels identify electrical roles, not leg orientation.
-    line(415,485,415,439);dot(415,485)
-    box(408,405,14,34);line(415,405,415,380)
-    text(385,370,'3.3V',16);text(436,425,'R1',16);text(436,448,'10kΩ',16)
     text(65,624,'TX / GPIO1',20,mono=True);text(1065,624,'3 · RXD',20,mono=True)
     line(345,636,1045,636,True)
     text(550, 620, 'Sensor requests', 17)
@@ -69,7 +65,6 @@ def draw(he=False):
     text(500,972,'2N3906',22,True)
     for i,s in enumerate(['E → ESP RX / GPIO3','B → Roomba TXD / pin 4','C → GND']):text(500,1012+36*i,s,18,mono=True)
     text(500, 1126, 'Follow E/B/C labels, not the image’s leg order.', 16)
-    text(500, 1167, 'R1 pulls the ESP receive node up to 3.3V.', 16)
     text(975, 932, 'Run mode', 20, True)
     text(975,972,'GPIO0 · EN · RST',18,mono=True)
     text(975, 1005, 'Keep high at boot.', 17)

@@ -42,13 +42,6 @@
 <path d="M685 571 L705 571" fill="none" stroke="#333" stroke-width="1.8"/>
 <path d="M690 577 L700 577" fill="none" stroke="#333" stroke-width="1.8"/>
 <text x="724" y="577" font-size="15" font-weight="400" class="">GND</text>
-<path d="M415 485 L415 439" fill="none" stroke="#333" stroke-width="1.8"/>
-<circle cx="415" cy="485" r="4" fill="#222"/>
-<rect x="408" y="405" width="14" height="34" fill="white" stroke="#333" stroke-width="1.5"/>
-<path d="M415 405 L415 380" fill="none" stroke="#333" stroke-width="1.8"/>
-<text x="385" y="370" font-size="16" font-weight="400" class="">3.3V</text>
-<text x="436" y="425" font-size="16" font-weight="400" class="">R1</text>
-<text x="436" y="448" font-size="16" font-weight="400" class="">10kΩ</text>
 <text x="65" y="624" font-size="20" font-weight="400" class="mono">TX / GPIO1</text>
 <text x="1065" y="624" font-size="20" font-weight="400" class="mono">3 · RXD</text>
 <path d="M345 636 L1045 636" fill="none" stroke="#333" stroke-width="1.8" marker-end="url(#arrow)"/>
@@ -94,7 +87,6 @@
 <text x="500" y="1048" font-size="18" font-weight="400" class="mono">B → Roomba TXD / pin 4</text>
 <text x="500" y="1084" font-size="18" font-weight="400" class="mono">C → GND</text>
 <text x="500" y="1126" font-size="16" font-weight="400" class="">Follow E/B/C labels, not the image’s leg order.</text>
-<text x="500" y="1167" font-size="16" font-weight="400" class="">R1 pulls the ESP receive node up to 3.3V.</text>
 <text x="975" y="932" font-size="20" font-weight="700" class="">Run mode</text>
 <text x="975" y="972" font-size="18" font-weight="400" class="mono">GPIO0 · EN · RST</text>
 <text x="975" y="1005" font-size="17" font-weight="400" class="">Keep high at boot.</text>

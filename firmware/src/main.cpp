@@ -121,7 +121,7 @@ void setup() {
   Serial.setRxBufferSize(2048);
   Serial.begin(115200, SERIAL_8N1, SERIAL_FULL, TX_PIN);
   Serial.setDebugOutput(false);
-  // Makes the PNP receive node defined even without the optional external pull-up.
+  // Enable the internal RX pull-up while keeping the UART pin function.
   pinMode(RX_PIN,SPECIAL);
   bootId=os_random();
   snprintf(deviceId,sizeof(deviceId),"roocore-%06x",ESP.getChipId());

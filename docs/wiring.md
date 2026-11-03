@@ -14,7 +14,6 @@ The battery/buck/PNP arrangement comes from thehookup. GPIO2-to-BRC comes from i
 | Buck OUT+ at 3.3V | ESP VCC and EN |
 | Roomba OI pin 4 (TXD) | Q1 base (B) |
 | Q1 emitter (E) | ESP RX / GPIO3 |
-| ESP RX node | 10kΩ resistor to 3.3V (R1) |
 | ESP TX / GPIO1 | Roomba OI pin 3 (RXD) |
 | ESP GPIO2 | Roomba OI pin 5 (BRC) |
 | Roomba OI pin 2 | Unused and insulated |
@@ -32,7 +31,7 @@ The upstream Fritzing component is generic `PNP-CBE`, not a named 2N3906.
 Its saved footprint connections put the receive node on the connector called C and ground on E in the current Fritzing part definition.
 RooCore explicitly uses **E to ESP RX, B to Roomba TX and C to ground**, so the receive-side PNP operates in its normal orientation.
 This is a deliberate component-specific change, not a claim that the original picture labels those legs.
-R1 also makes the RX pull-up explicit; the firmware enables the UART RX pull-up without changing the pin's UART function.
+The firmware enables the ESP's internal UART RX pull-up without changing the pin's UART function.
 
 The TX and BRC lines follow the upstream direct connections. The diagram uses the ordinary GPIO1 TX, which carries the ESP ROM's boot output too; it no longer claims that boot output is routed away from the robot.
 No application debug output is written to that UART.
