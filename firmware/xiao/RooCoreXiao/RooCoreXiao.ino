@@ -38,7 +38,7 @@ struct Request {
   roonav::Pose candidate, reference;
 };
 struct SavedMission {
-  uint32_t magic = 0x524f4f31, version = 3, sequence = 0, crc = 0;
+  uint32_t magic = 0x524f4f31, version = 4, sequence = 0, crc = 0;
   roonav::Config config;
   roonav::Pose dock, checkpoint, pose;
   uint8_t state, pass, passes, recoveries;
@@ -47,6 +47,7 @@ struct SavedMission {
   int8_t cells[roonav::Navigator::MaxCells];
   uint8_t covered[roonav::Navigator::MaxCells], excluded[roonav::Navigator::MaxCells];
   uint8_t sideCovered[roonav::Navigator::MaxCells], edgeSeen[roonav::Navigator::MaxCells];
+  uint8_t contacts[roonav::Navigator::MaxCells], retries[roonav::Navigator::MaxCells];
   uint32_t edgeSegments, edgeIncomplete;
 };
 SavedMission saved;
@@ -129,6 +130,8 @@ bool saveMission() {
   saved.finished = navigator->finished;
   saved.edgeSegments = navigator->edgeSegments;
   saved.edgeIncomplete = navigator->edgeIncomplete;
+  memcpy(saved.contacts, navigator->contacts, sizeof saved.contacts);
+  memcpy(saved.retries, navigator->retries, sizeof saved.retries);
   memcpy(saved.sideCovered, navigator->sideCovered, sizeof saved.sideCovered);
   memcpy(saved.edgeSeen, navigator->edgeSeen, sizeof saved.edgeSeen);
   memcpy(saved.cells, navigator->cells, sizeof saved.cells);
@@ -155,9 +158,9 @@ bool readSlot(const char *path, SavedMission &out) {
     return false;
   bool ok = file.read(reinterpret_cast<uint8_t *>(&out), sizeof out) == sizeof out;
   file.close();
-  return ok && out.magic == 0x524f4f31 && out.version == 3 && out.crc == checksum(out) &&
+  return ok && out.magic == 0x524f4f31 && out.version == 4 && out.crc == checksum(out) &&
          out.pass < out.passes && out.passes >= 1 && out.passes <= 2 &&
-         out.state <= uint8_t(roonav::State::Touchup);
+         out.state <= uint8_t(roonav::State::Yielding);
 }
 void loadMission() {
   if (!storageReady)
@@ -195,6 +198,8 @@ void loadMission() {
       return;
   navigator->edgeSegments = saved.edgeSegments;
   navigator->edgeIncomplete = saved.edgeIncomplete;
+  memcpy(navigator->contacts, saved.contacts, sizeof saved.contacts);
+  memcpy(navigator->retries, saved.retries, sizeof saved.retries);
   memcpy(navigator->sideCovered, saved.sideCovered, sizeof saved.sideCovered);
   memcpy(navigator->edgeSeen, saved.edgeSeen, sizeof saved.edgeSeen);
   navigator->dock = saved.dock;
@@ -255,6 +260,22 @@ void publish(uint32_t now) {
   s += ",\"main_cleaned_samples\":" + String(main);
   s += ",\"side_only_samples\":" + String(side);
   s += ",\"pending_safe_samples\":" + String(pending);
+  s += ",\"cleared_obstacles\":" + String(navigator->clearedObstacles);
+  s += ",\"obstacle_waits\":" + String(navigator->obstacleWaits);
+  s += ",\"contact_points\":[";
+  unsigned contactCount = 0;
+  for (int c = 0; c < navigator->count(); ++c) {
+    if (!navigator->contacts[c])
+      continue;
+    if (contactCount < 32) {
+      if (contactCount)
+        s += ',';
+      auto p = navigator->center(c);
+      s += "[" + String(p.x, 3) + "," + String(p.y, 3) + "]";
+    }
+    ++contactCount;
+  }
+  s += "],\"contact_count\":" + String(contactCount);
   s += ",\"frontier_visits\":" + String(navigator->frontierVisits);
   s += ",\"brush_width_m\":" + String(navigator->cfg.brushWidth, 3);
   s += ",\"geometry_calibrated\":" + String(ROO_BRUSH_GEOMETRY_CALIBRATED ? "true" : "false");
@@ -633,7 +654,10 @@ void apply(roonav::Output out, uint32_t now) {
       }
     if (!clear) {
       stopMotion();
-      navigator->fault(roonav::Reason::NoRoute);
+      if (out.speed > 0 && !undocking && navigator->state == roonav::State::Cleaning)
+        navigator->yieldForObstacle(latest);
+      else
+        navigator->fault(roonav::Reason::NoRoute);
       return;
     }
   }

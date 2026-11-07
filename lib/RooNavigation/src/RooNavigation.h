@@ -33,7 +33,8 @@ enum class State : uint8_t {
   Fault,
   Complete,
   Edging,
-  Touchup
+  Touchup,
+  Yielding
 };
 enum class Reason : uint8_t {
   None,
@@ -102,6 +103,8 @@ public:
   int8_t cells[MaxCells]{};
   // Four 5 cm samples per 10 cm navigation cell, four bits per pass.
   uint8_t covered[MaxCells]{}, sideCovered[MaxCells]{}, safe[MaxCells]{}, excluded[MaxCells]{};
+  uint8_t contacts[MaxCells]{}, retries[MaxCells]{};
+  unsigned clearedObstacles = 0, obstacleWaits = 0;
   uint8_t gapTried[MaxCells]{}, edgeSeen[MaxCells]{}, roomMask[MaxCells]{}, portal[MaxCells]{},
       explored[MaxCells]{};
   unsigned roomsCompleted = 0, frontierVisits = 0, wallContacts = 0;
@@ -144,6 +147,16 @@ public:
     memset(sideCovered, 0, sizeof sideCovered);
     memset(edgeSeen, 0, sizeof edgeSeen);
     memset(gapTried, 0, sizeof gapTried);
+    memset(contacts, 0, sizeof contacts);
+    memset(retries, 0, sizeof retries);
+    memset(lastHitMs_, 0, sizeof lastHitMs_);
+    memset(firstHitMs_, 0, sizeof firstHitMs_);
+    memset(freeVotes_, 0, sizeof freeVotes_);
+    memset(clearBits_, 0, sizeof clearBits_);
+    haveMapScan_ = false;
+    clearedObstacles = obstacleWaits = 0;
+    skipStreak_ = skipCoverage_ = waitStreak_ = waitCoverage_ = 0;
+    wasBumper_ = false;
     touchupDone_ = false;
     touchupCount_ = 0;
     memset(explored, 0, sizeof explored);
@@ -305,8 +318,10 @@ public:
   unsigned pathLength() const { return pathLength_; }
   int pathCell(unsigned i) const { return i < pathLength_ ? path_[i] : -1; }
   State savedState() const {
-    return state == State::Fault || state == State::Paused ? resume_ : state;
+    State s = state == State::Fault || state == State::Paused ? resume_ : state;
+    return s == State::Yielding ? waitResume_ : s;
   }
+  void yieldForObstacle(const Input &in) { beginYield(in, target_); }
   void restorePaused(State prior, uint32_t now) {
     resume_ = prior == State::Docking ? State::Returning : prior;
     if (prior == State::Edging) {
@@ -335,6 +350,16 @@ public:
       fault(Reason::NoProgress);
       return stop;
     }
+    if (in.bumper && !wasBumper_) {
+      int c = cell(in.pose.x + cfg.radius * cosf(in.pose.yaw),
+                   in.pose.y + cfg.radius * sinf(in.pose.yaw));
+      if (c >= 0) {
+        contacts[c] |= 1;
+        cells[c] = 1;
+        lastHitMs_[c] = in.now;
+      }
+    }
+    wasBumper_ = in.bumper;
     // A drop is NOT classified as a cliff. Neither permits motion while active.
     if (state == State::Edging && cfg.wallTouch && !in.wheelDrop &&
         (edgePhase_ == 6 || edgePhase_ == 7))
@@ -419,15 +444,45 @@ public:
       out.action = Action::Charge;
       return out;
     }
-    updateMap(in);
+    if (!haveMapScan_ || in.scanMs != lastMapScan_) {
+      updateMap(in);
+      haveMapScan_ = true;
+      lastMapScan_ = in.scanMs;
+    }
     recordSweep(in);
     const int current = cell(in.pose.x, in.pose.y), home = cell(dock.x, dock.y);
     if (current < 0 || home < 0) {
       fault(Reason::MapBoundary);
       return stop;
     }
+    if (state == State::Yielding) {
+      if (uint32_t(in.now - stateSince_) >= 1000 && safe[current] &&
+          clearSector(in, 0, .5f, cfg.radius + cfg.margin + .07f)) {
+        switchState(waitResume_, in.now);
+        if (waitResume_ == State::Edging)
+          edgePhase_ = 0;
+        if (waitResume_ == State::Touchup)
+          touchupPhase_ = 0;
+        return stop;
+      }
+      if (uint32_t(in.now - stateSince_) < 8000)
+        return stop;
+      if (!safe[current]) {
+        fault(Reason::NoRoute);
+        return stop;
+      }
+      State prior = waitResume_;
+      switchState(prior, in.now);
+      if (prior == State::Edging)
+        edgePhase_ = 0;
+      if (prior == State::Touchup)
+        touchupPhase_ = 0;
+      if (prior == State::Cleaning && blockedGoal_ >= 0)
+        skip(blockedGoal_, in);
+      return stop;
+    }
     if (state != State::Edging && !safe[current]) {
-      fault(Reason::NoRoute);
+      beginYield(in, target_);
       return stop;
     }
     if (state == State::Edging && in.battery <= 25 && !safe[current])
@@ -450,7 +505,8 @@ public:
       }
       return out;
     }
-    if (!roomReady_ || (!roomTransit_ && uint32_t(in.now - roomUpdated_) >= 10000))
+    if (!roomReady_ ||
+        (state == State::Cleaning && !roomTransit_ && uint32_t(in.now - roomUpdated_) >= 10000))
       partitionRoom(in.now);
     if (roomTransit_) {
       bool reached = false;
@@ -538,7 +594,7 @@ public:
       pathLength_ = 0;
       targetSince_ = progressSince_ = in.now;
       if (!safe[target_])
-        skip(target_, in.now);
+        skip(target_, in);
       return stop;
     }
     bool reached = false;
@@ -554,6 +610,7 @@ public:
   void updateMap(const Input &in) {
     memset(hits_, 0, sizeof hits_);
     memset(free_, 0, sizeof free_);
+    memset(centerFree_, 0, sizeof centerFree_);
     for (unsigned i = 0; i < 180; ++i) {
       const float r = in.ranges[i];
       if (!isfinite(r) || r < .05f || r > 12)
@@ -572,16 +629,61 @@ public:
       const float limit = fminf(r - cfg.resolution, 20.f);
       for (float d = 0; d < limit; d += cfg.resolution / 3) {
         int c = cell(in.pose.x + ux * d, in.pose.y + uy * d);
-        if (c >= 0)
+        if (c >= 0) {
           free_[c] = 1;
+          if (cells[c] == 1) {
+            Pose middle = center(c);
+            for (int sub = 0; sub < 4; ++sub) {
+              float dx = middle.x + (sub & 1 ? .4f : -.4f) * cfg.resolution - in.pose.x;
+              float dy = middle.y + (sub & 2 ? .4f : -.4f) * cfg.resolution - in.pose.y;
+              float along = dx * ux + dy * uy, across = fabsf(dx * uy - dy * ux);
+              if (across <= cfg.resolution * .15f && r > along + .03f)
+                centerFree_[c] |= uint8_t(1u << sub);
+            }
+          }
+        }
       }
     }
-    // Obstacles latch for this mission. Clearing/removing furniture requires a
-    // new map. Prevents tangent-ray flicker from endlessly alternating targets.
+    // Block immediately. Reopen only after repeated centre-crossing free rays.
+    // A bumper-only object may be below the laser and cannot be erased by it.
     for (int c = 0; c < count(); ++c) {
-      if (hits_[c])
+      if (hits_[c]) {
+        if (cells[c] != 1 || !firstHitMs_[c])
+          firstHitMs_[c] = in.now;
         cells[c] = 1;
-      else if (free_[c] && cells[c] != 1)
+        lastHitMs_[c] = in.now;
+        freeVotes_[c] = 0;
+        clearBits_[c] = 0;
+        if (contacts[c] & 1)
+          contacts[c] |= 2;
+      } else if (cells[c] == 1) {
+        if (centerFree_[c] && free_[c]) {
+          clearBits_[c] |= centerFree_[c];
+          if (freeVotes_[c] < 255)
+            ++freeVotes_[c];
+        } else {
+          freeVotes_[c] = 0;
+          clearBits_[c] = 0;
+        }
+        if (clearBits_[c] == 15 && freeVotes_[c] >= 20 &&
+            uint32_t(in.now - lastHitMs_[c]) >= 2500 && (!(contacts[c] & 1) || (contacts[c] & 2))) {
+          cells[c] = -1;
+          contacts[c] = 0;
+          firstHitMs_[c] = 0;
+          ++clearedObstacles;
+          // Retry only goals whose clearance could have changed here.
+          const int reach = int(ceilf((cfg.radius + cfg.margin + .15f) / cfg.resolution));
+          for (int dy = -reach; dy <= reach; ++dy)
+            for (int dx = -reach; dx <= reach; ++dx) {
+              int x = c % cfg.cols + dx, y = c / cfg.cols + dy;
+              if (x < 0 || y < 0 || x >= cfg.cols || y >= cfg.rows)
+                continue;
+              int g = y * cfg.cols + x;
+              if (excluded[g] == 1 && retries[g] < 2)
+                excluded[g] = 0;
+            }
+        }
+      } else if (free_[c])
         cells[c] = -1;
       safe[c] = 0;
     }
@@ -607,8 +709,15 @@ public:
 
 private:
   int16_t parent_[MaxCells]{}, queue_[MaxCells]{}, path_[MaxCells]{};
-  uint8_t hits_[MaxCells]{}, free_[MaxCells]{};
+  uint8_t hits_[MaxCells]{}, free_[MaxCells]{}, centerFree_[MaxCells]{}, freeVotes_[MaxCells]{},
+      clearBits_[MaxCells]{};
+  uint32_t lastHitMs_[MaxCells]{}, firstHitMs_[MaxCells]{};
+  uint32_t lastMapScan_ = 0;
+  bool haveMapScan_ = false, wasBumper_ = false;
+  State waitResume_ = State::Cleaning;
+  int blockedGoal_ = -1;
   unsigned pathLength_ = 0;
+  unsigned skipStreak_ = 0, skipCoverage_ = 0, waitStreak_ = 0, waitCoverage_ = 0;
   int target_ = -1, targetSub_ = 0;
   Pose sweepPose_;
   uint32_t sweepMs_ = 0;
@@ -748,8 +857,10 @@ private:
         broken = true;
     if (broken && !plan(current, goal)) {
       if (state == State::Cleaning) {
-        skip(goal, in.now);
-      } else
+        skip(goal, in);
+      } else if (state == State::Edging || state == State::Touchup)
+        beginYield(in, goal);
+      else
         fault(Reason::NoRoute);
       return out;
     }
@@ -783,7 +894,7 @@ private:
     }
     if (uint32_t(in.now - targetSince_) > cfg.targetTimeoutMs) {
       if (state == State::Cleaning)
-        skip(goal, in.now);
+        skip(goal, in);
       else
         fault(Reason::NoProgress);
       return out;
@@ -793,10 +904,7 @@ private:
     out.speed = fabsf(error) < .2f ? fminf(passes == 2 ? .12f : .18f, d * 2.5f) : 0;
     if (out.speed > 0 &&
         !clearSector(in, 0, .5f, cfg.radius + cfg.margin + .02f + out.speed * .2f)) {
-      if (state == State::Cleaning)
-        skip(goal, in.now);
-      else
-        fault(Reason::NoRoute);
+      beginYield(in, goal);
       return Output();
     }
     out.pwm = pwm;
@@ -1291,7 +1399,16 @@ private:
           cornerAt_ = in.now;
           ++corners_;
           edgePhase_ = 5;
-          if (cfg.wallTouch && wallContacts < 8) {
+          float fx = in.pose.x + (front + .005f) * cosf(in.pose.yaw),
+                fy = in.pose.y + (front + .005f) * sinf(in.pose.yaw);
+          fx = fmaxf(cfg.originX + .001f,
+                     fminf(cfg.originX + cfg.cols * cfg.resolution - .001f, fx));
+          fy = fmaxf(cfg.originY + .001f,
+                     fminf(cfg.originY + cfg.rows * cfg.resolution - .001f, fy));
+          int frontCell = cell(fx, fy);
+          bool established = frontCell >= 0 && firstHitMs_[frontCell] &&
+                             uint32_t(in.now - firstHitMs_[frontCell]) >= 10000;
+          if (cfg.wallTouch && established && wallContacts < 8) {
             edgePhase_ = 6;
             contactAt_ = in.now;
             contactPose_ = in.pose;
@@ -1382,15 +1499,44 @@ private:
     }
     return Output();
   }
-  void skip(int goal, uint32_t now) {
-    if (goal >= 0)
-      excluded[goal] = 1;
+  void beginYield(const Input &in, int goal) {
+    if (state == State::Yielding)
+      return;
+    ++obstacleWaits;
+    if (completedCells >= waitCoverage_ + 4)
+      waitStreak_ = 0;
+    waitCoverage_ = completedCells;
+    if (++waitStreak_ > 16) {
+      fault(Reason::NoProgress);
+      return;
+    }
+    waitResume_ = state;
+    blockedGoal_ = goal;
+    switchState(State::Yielding, in.now);
+  }
+  void skip(int goal, const Input &in) {
+    const uint32_t now = in.now;
+    if (roomTransit_) {
+      roomTransit_ = false;
+      roomSeed_ = in.pose;
+      roomReady_ = false;
+      pass = 0;
+    }
+    if (goal >= 0) {
+      if (retries[goal] < 2)
+        ++retries[goal];
+      excluded[goal] = retries[goal] >= 2 ? 2 : 1;
+    }
     ++skipped;
+    if (completedCells >= skipCoverage_ + 4)
+      skipStreak_ = 0;
+    skipCoverage_ = completedCells;
+    ++skipStreak_;
     target_ = -1;
     exploring_ = false;
     pathLength_ = 0;
     targetSince_ = progressSince_ = now;
-    if (skipped >= cfg.maxSkipped)
+    if (skipStreak_ >= cfg.maxSkipped)
       fault(Reason::NoProgress);
   }
 };

@@ -23,6 +23,7 @@ STATES = (
     "COMPLETE",
     "EDGING",
     "TOUCHUP",
+    "YIELDING",
 )
 REASONS = (
     "",
@@ -132,7 +133,7 @@ class NativeMission:
         self._path = (C.c_int * 1728)()
         self._v = (C.c_int * 16)()
         self._f = (C.c_float * 16)()
-        self._map = (C.c_int * (48 * 36 * 7))()
+        self._map = (C.c_int * (48 * 36 * 8))()
         self.refresh()
 
     def __del__(self):
@@ -147,15 +148,18 @@ class NativeMission:
         self.reason = REASONS[v[1]]
         self.pass_index = v[2]
         self.passes = v[3]
+        self.cleared_obstacles = v[11]
+        self.obstacle_waits = v[12]
+        self.contacts = [c for c, m in enumerate(self._map[7::8]) if m]
         self.skipped = v[4]
         self.rooms = v[5]
         self.edge_segments = v[6]
         self.edge_incomplete = v[7]
         self.target = (self._f[0], self._f[1]) if v[8] >= 0 else None
         self.checkpoint = self.grid.cell(self._f[2], self._f[3])
-        self.grid.cells = list(self._map[0::7])
-        self.grid.safe = {i for i, x in enumerate(self._map[3::7]) if x}
-        masks = self._map[1::7]
+        self.grid.cells = list(self._map[0::8])
+        self.grid.safe = {i for i, x in enumerate(self._map[3::8]) if x}
+        masks = self._map[1::8]
         self.covered = [
             {c for c, m in enumerate(masks) if m & (15 << (p * 4)) == (15 << (p * 4))}
             for p in range(self.passes)
@@ -171,12 +175,12 @@ class NativeMission:
         ]
         self.side_covered = [
             c * 4 + sub
-            for c, m in enumerate(self._map[2::7])
+            for c, m in enumerate(self._map[2::8])
             for sub in range(4)
             if m & (1 << sub)
         ]
-        self.room = [c for c, m in enumerate(self._map[4::7]) if m]
-        self.portals = [c for c, m in enumerate(self._map[5::7]) if m]
+        self.room = [c for c, m in enumerate(self._map[4::8]) if m]
+        self.portals = [c for c, m in enumerate(self._map[5::8]) if m]
         length = self.lib.roo_path(self.handle, self._path, 1728)
         self.path = list(self._path[:length])
 

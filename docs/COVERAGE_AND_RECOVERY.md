@@ -27,6 +27,16 @@ OI packet 8 (wall) and 27 (wall signal) are sampled. `ROO_WALL_IR_TARGET=0` mean
 
 The side brush may reach the floor/baseboard junction. This does not promise cleaning the vertical skirting or every sharp corner a circular body cannot reach.
 
+## Moving obstacles and contact memory
+
+A new scan hit blocks the cell immediately. It does not require deciding whether the object is a person, pet or furniture. If forward clearance is lost, `Yielding` stops drive and brushes for at least one second, with an eight-second maximum wait. It then replans around the obstacle when the current footprint is safe. If the body itself cannot be placed safely, it reports `NoRoute` to the existing assistance flow. Cliff, wheel drop, overcurrent, stale essential observations and critical battery still take precedence during waiting.
+
+Occupied cells reopen only after **20 consecutive fresh scans** contribute free evidence, all four inner-cell probes have been traversed by free rays, and no hit has arrived for at least **2.5 seconds**. One tangent ray or elapsed time alone cannot erase furniture. Nearby skipped goals become eligible for one retry; unrelated goals do not reset. A goal has at most two failed attempts. Eight failures without meaningful new central coverage or 16 waits without such progress stop the local attempt; mission time remains bounded. A blocked inter-room target is cancelled before selecting another one, avoiding the stale-doorway loop.
+
+A bumper contact is recorded approximately at the front of the robot, stored in snapshots and exposed as contact coordinates (`/status`, first 32 plus total count). The simulator draws a red cross. A **bumper-only obstacle may be below the LiDAR**, so laser rays above it cannot prove it disappeared: it remains blocked. If a laser return corroborates that occupied cell, the same repeated free-ray rule can later clear it. This is conservative occupancy evidence, not object identity tracking or guaranteed human/pet detection. Optional wall touch requires a cell observed occupied for at least ten seconds and commissioning; it is never enabled by default for new obstacles.
+
+The browser's “מכשול שזז אחרי 20 שניות” inserts a temporary object and removes it after twenty simulated seconds. Floor beneath it remains in the cleaning denominator. The native regression checks obstacle appearance, collision-free rerouting, clearance and subsequent central-brush coverage of its former position. Low bumper-only obstacles and safety interruption during waiting have separate tests. Physical detection range, braking latency and behavior around people/pets remain unvalidated.
+
 ## Continue cleaning while requesting help
 
 The firmware requests assistance on an unresolved local pose or safe-route failure, after stopping and saving the original mission. It publishes a request ID, coordinate frame, reason, live body-centred scan and current telemetry. An authenticated `GET /help/map` returns the frozen original map and safe-cell mask.
@@ -58,7 +68,7 @@ python3 -m roocore_bridge.assistance
 
 For an installed ROS package: `ros2 run roocore_bridge assistance`. Credentials stay local. The current HTTP link is for the trusted LAN only. The worker acknowledges requests, tries at most eight global searches per request, and never sends raw wheel commands. `help-continue` is an acknowledgement, not a command to override a stopped robot. `help-hold` stops; `help-relocalize` proposes a pose for independent verification. A person or another server component can use the same authenticated protocol.
 
-Snapshots use schema 3. Primary files are `/mission-a`, `/mission-b`; provisional files are `/local-a`, `/local-b`. On reboot, only the primary mission is offered paused for physical reanchor; local files are retained but never implicitly merged/resumed.
+Snapshots use schema 4, including contact flags and per-goal retry counts. Primary files are `/mission-a`, `/mission-b`; provisional files are `/local-a`, `/local-b`. On reboot, only the primary mission is offered paused for physical reanchor; local files are retained but never implicitly merged/resumed.
 
 ## Simulation boundary
 

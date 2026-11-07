@@ -51,6 +51,7 @@ static void safety() {
   n.start(false, i.pose, i.now);
   i.bumper = true;
   n.tick(i);
+  assert(n.contacts[n.cell(i.pose.x + n.cfg.radius, i.pose.y)] & 1);
   i.bumper = false;
   clockAt(i, 200);
   n.tick(i);
@@ -162,6 +163,86 @@ static bool collision(Pose p, const std::vector<Box> &boxes) {
       return true;
   return false;
 }
+static void dynamicOccupancy() {
+  Config cfg;
+  cfg.cols = 48;
+  cfg.rows = 36;
+  cfg.originX = cfg.originY = 0;
+  Navigator n(cfg);
+  Input i = healthy();
+  i.pose.x = 1.05f;
+  i.pose.y = 1.05f;
+  n.start(false, i.pose, i.now);
+  std::vector<Box> boxes = {{1.65f, .85f, 1.95f, 1.25f}};
+  auto scan = [&]() {
+    for (int k = 0; k < 180; ++k)
+      i.ranges[k] = ray(i.pose, i.pose.yaw + k * Pi / 90, boxes);
+    n.updateMap(i);
+  };
+  for (int k = 0; k < 8; ++k) {
+    clockAt(i, 100 + k * 100);
+    scan();
+  }
+  int c = n.cell(1.66f, 1.05f);
+  assert(n.cells[c] == 1);
+  boxes.clear();
+  for (int k = 0; k < 10; ++k) {
+    clockAt(i, 900 + k * 100);
+    scan();
+  }
+  assert(n.cells[c] == 1); // a fleeting clear ray is not enough
+  for (int k = 0; k < 40; ++k) {
+    clockAt(i, 1900 + k * 100);
+    scan();
+  }
+  assert(n.cells[c] == -1 && n.clearedObstacles > 0);
+  // Low bumper-only obstacle: laser can see past it, but that proves no floor clearance.
+  n.contacts[c] = 1;
+  n.cells[c] = 1;
+  for (int k = 0; k < 50; ++k) {
+    clockAt(i, 6000 + k * 100);
+    scan();
+  }
+  assert(n.cells[c] == 1 && n.contacts[c] == 1);
+  boxes = {{1.65f, .85f, 1.95f, 1.25f}};
+  clockAt(i, 12000);
+  scan();
+  assert(n.contacts[c] == 3); // now actually corroborated at laser height
+  boxes.clear();
+  for (int k = 0; k < 50; ++k) {
+    clockAt(i, 12100 + k * 100);
+    scan();
+  }
+  assert(n.cells[c] == -1 && !n.contacts[c]);
+}
+static void obstacleWaitSafety() {
+  Config cfg;
+  cfg.cols = 48;
+  cfg.rows = 36;
+  cfg.originX = cfg.originY = 0;
+  Navigator n(cfg);
+  Input i = healthy();
+  i.pose.x = i.pose.y = 1.05f;
+  n.start(false, i.pose, i.now);
+  for (int k = 0; k < 180; ++k)
+    i.ranges[k] = ray(i.pose, i.pose.yaw + k * Pi / 90, {});
+  n.tick(i);
+  n.yieldForObstacle(i);
+  clockAt(i, 500);
+  assert(n.tick(i).action == Action::Stop && n.state == State::Yielding);
+  clockAt(i, 1200);
+  assert(n.tick(i).action == Action::Stop && n.state == State::Cleaning);
+  n.yieldForObstacle(i);
+  i.cliff = true;
+  clockAt(i, 1300);
+  assert(n.tick(i).action == Action::Stop && n.reason == Reason::Cliff);
+  i.cliff = false;
+  n.start(false, i.pose, i.now);
+  n.yieldForObstacle(i);
+  i.battery = 5;
+  clockAt(i, 1400);
+  assert(n.tick(i).action == Action::Stop && n.reason == Reason::Battery);
+}
 static void brushGeometry() {
   Config c;
   c.cols = 40;
@@ -227,7 +308,7 @@ static void brushGeometry() {
   assert(invalid.state == State::Fault); // cannot choose lanes wider than brush minus overlap
 }
 static void scenario(bool furniture, bool deep, bool battery, bool doorway = false,
-                     bool touch = false) {
+                     bool touch = false, bool moving = false) {
   Config cfg;
   cfg.cols = 48;
   cfg.rows = 36;
@@ -250,8 +331,18 @@ static void scenario(bool furniture, bool deep, bool battery, bool doorway = fal
   Pose lastPose = i.pose;
   bool edgeBeforeCross = false;
   float travelled = 0;
+  int movingAt = -1, movingCell = -1;
   for (int step = 0; step < 36000; ++step) {
     clockAt(i, 100 + step * 200);
+    if (moving && movingAt < 0 && step > 100 && i.pose.x > .8f && i.pose.x < 3.8f &&
+        i.pose.y > .6f && i.pose.y < 2.8f) {
+      float x = i.pose.x + .65f * cosf(i.pose.yaw), y = i.pose.y + .65f * sinf(i.pose.yaw);
+      boxes.push_back({x - .15f, y - .15f, x + .15f, y + .15f});
+      movingAt = step;
+      movingCell = n.cell(x, y);
+    }
+    if (movingAt >= 0 && step == movingAt + 100)
+      boxes.clear();
     if (battery && step == 200)
       i.battery = 18;
     for (int j = 0; j < 180; ++j)
@@ -324,9 +415,15 @@ static void scenario(bool furniture, bool deep, bool battery, bool doorway = fal
       "native scenario furniture=%d deep=%d battery=%d state=%d cells=%u skips=%u distance=%.1f\n",
       furniture, deep, battery, int(n.state), n.completedCells, n.skipped, travelled);
   assert(n.state == State::Complete);
-  assert(n.skipped < cfg.maxSkipped);
+  for (int c = 0; c < n.count(); ++c)
+    assert(n.retries[c] <= 2);
   assert(n.roomsCompleted < 12);
   assert(n.completedCells > 200);
+  if (moving) {
+    assert(movingAt >= 0 && n.clearedObstacles > 0);
+    assert(n.cells[movingCell] == -1);
+    assert(n.covered[movingCell] != 0); // return to clean the previously occupied floor
+  }
   std::printf(
       "axis horizontal %.1f/%.1f vertical %.1f/%.1f contacts %u rooms %u edges %u incomplete %u\n",
       axisTravel[0][0], axisTravel[0][1], axisTravel[1][0], axisTravel[1][1], gentleContacts,
@@ -459,6 +556,8 @@ static void arbitration() {
   assert(!a.takeover(1800, true, true));
 }
 int main() {
+  dynamicOccupancy();
+  obstacleWaitSafety();
   assistancePolicy();
   brushGeometry();
   noProgress();
@@ -472,5 +571,6 @@ int main() {
   scenario(false, false, true);
   scenario(false, false, false, true);
   scenario(false, false, false, false, true);
+  scenario(false, false, false, false, false, true);
   puts("Native navigation tests passed");
 }

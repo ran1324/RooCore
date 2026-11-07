@@ -11,6 +11,7 @@ const phases = {
   COMPLETE: "התוכנית הסתיימה",
   EDGING: "ניקוי קירות ופינות",
   TOUCHUP: "השלמת אזורים קטנים",
+  YIELDING: "ממתין למעבר פנוי",
   SETTLING: "עצירה לבדיקת חיישנים",
   RECOVERING: "נסיגה מוגבלת",
 };
@@ -75,6 +76,9 @@ function render(s) {
     (s.edge_incomplete
       ? `נותרו ${s.edge_incomplete} מעברי היקף שלא הושלמו; השטח נשאר גלוי כלא נקי.`
       : "") ||
+    (s.state === "YIELDING"
+      ? "ממתין עד 8 שניות לפינוי המעבר, ואז בודק עקיפה בטוחה. סימן × מציין מגע בפגוש."
+      : "") ||
     "המפה נבנית מהסריקות. תאי מפה שלא נצפו אינם נחשבים פנויים.";
   $("run").textContent = running
     ? "השהיה"
@@ -84,9 +88,13 @@ function render(s) {
         ? "התחלת ניקיון"
         : "המשך הרצה";
   $("run").disabled = s.state === "COMPLETE";
-  $("home").disabled = !["CLEANING", "RESUMING", "EDGING", "TOUCHUP"].includes(
-    s.state,
-  );
+  $("home").disabled = ![
+    "CLEANING",
+    "RESUMING",
+    "EDGING",
+    "TOUCHUP",
+    "YIELDING",
+  ].includes(s.state);
   $("profile").disabled = running;
   $("scenario").disabled = running;
   $("events").replaceChildren(
@@ -160,6 +168,20 @@ function draw() {
   }
   paintSamples(s.side_covered, "#f2ce8c");
   paintSamples(s.fine_covered, "#b7ddc6");
+  ctx.strokeStyle = "#b4462b";
+  ctx.lineWidth = 2;
+  for (const cell of s.contacts || []) {
+    const [x, y] = p(
+      ((cell % s.cols) + 0.5) * s.resolution,
+      (Math.floor(cell / s.cols) + 0.5) * s.resolution,
+    );
+    ctx.beginPath();
+    ctx.moveTo(x - 4, y - 4);
+    ctx.lineTo(x + 4, y + 4);
+    ctx.moveTo(x + 4, y - 4);
+    ctx.lineTo(x - 4, y + 4);
+    ctx.stroke();
+  }
   if ($("truth").checked) {
     ctx.strokeStyle = "#c76832";
     ctx.lineWidth = 2;

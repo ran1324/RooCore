@@ -81,19 +81,22 @@ void roo_status(void *p, int *v, float *f, int *map) {
   v[8] = n.target();
   v[9] = int(n.pathLength());
   v[10] = n.completedCells;
+  v[11] = n.clearedObstacles;
+  v[12] = n.obstacleWaits;
   Pose target = n.targetPose();
   f[0] = target.x;
   f[1] = target.y;
   f[2] = n.checkpoint.x;
   f[3] = n.checkpoint.y;
   for (int c = 0; c < n.count(); ++c) {
-    map[c * 7] = n.cells[c];
-    map[c * 7 + 1] = n.covered[c];
-    map[c * 7 + 2] = n.sideCovered[c];
-    map[c * 7 + 3] = n.safe[c];
-    map[c * 7 + 4] = n.roomMask[c];
-    map[c * 7 + 5] = n.portal[c];
-    map[c * 7 + 6] = n.excluded[c];
+    map[c * 8] = n.cells[c];
+    map[c * 8 + 1] = n.covered[c];
+    map[c * 8 + 2] = n.sideCovered[c];
+    map[c * 8 + 3] = n.safe[c];
+    map[c * 8 + 4] = n.roomMask[c];
+    map[c * 8 + 5] = n.portal[c];
+    map[c * 8 + 6] = n.excluded[c];
+    map[c * 8 + 7] = n.contacts[c];
   }
 }
 }

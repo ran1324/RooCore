@@ -49,3 +49,17 @@ class NativeSimulatorTests(unittest.TestCase):
         sim.inject("obstacle")
         sim.step(100)
         self.assertEqual(sim.collisions, 0)
+
+    def test_temporary_obstacle_does_not_remove_cleaning_target_floor(self):
+        sim = Simulation("room")
+        sim.mission.start()
+        sim.step(50)
+        floor = set(sim.truth_floor)
+        sim.inject("moving_obstacle")
+        self.assertEqual(sim.state()["temporary_obstacles"], 1)
+        self.assertEqual(sim.truth_floor, floor)
+        sim.step(101)
+        self.assertEqual(sim.state()["temporary_obstacles"], 0)
+        self.assertEqual(sim.truth_floor, floor)
+        self.assertEqual(sim.collisions, 0)
+        self.assertNotEqual(sim.mission.state, "FAULT")

@@ -82,6 +82,7 @@ class Simulation:
         self.cliff, self.bumper = False, False
         self.trace = []
         self.command = None
+        self.temporary_obstacles = []
         self.dock_time = 0.0
         self.last_scan = self.world.scan(self.pose)
         self.scan_time = 0.0
@@ -126,6 +127,10 @@ class Simulation:
         for _ in range(count):
             dt = 0.2
             self.time = round(self.time + dt, 6)
+            for box, expiry in list(self.temporary_obstacles):
+                if self.time >= expiry:
+                    self.world.obstacles.remove(box)
+                    self.temporary_obstacles.remove((box, expiry))
             self.command = self.mission.tick(self.observation())
             cmd = self.command
             if cmd.action == "drive":
@@ -219,11 +224,15 @@ class Simulation:
             self.localized = not self.localized
         elif name == "cliff":
             self.cliff = not self.cliff
-        elif name == "obstacle":
+        elif name in ("obstacle", "moving_obstacle"):
             # Place a 30 cm object ahead, outside the robot footprint.
             x = self.pose.x + 0.65 * math.cos(self.pose.yaw)
             y = self.pose.y + 0.65 * math.sin(self.pose.yaw)
-            self.world.obstacles.append((x - 0.15, y - 0.15, x + 0.15, y + 0.15))
+            box = (x - 0.15, y - 0.15, x + 0.15, y + 0.15)
+            self.world.obstacles.append(box)
+            if name == "moving_obstacle":
+                self.temporary_obstacles.append((box, self.time + 20))
+                return  # floor under a person remains part of the cleaning denominator
             self.truth_floor = {
                 p
                 for p in self.truth_floor
@@ -291,6 +300,10 @@ class Simulation:
                 else []
             ),
             "side_covered": getattr(m, "side_covered", []),
+            "contacts": getattr(m, "contacts", []),
+            "cleared_obstacles": getattr(m, "cleared_obstacles", 0),
+            "obstacle_waits": getattr(m, "obstacle_waits", 0),
+            "temporary_obstacles": len(self.temporary_obstacles),
             "room": getattr(m, "room", []),
             "portals": getattr(m, "portals", []),
             "rooms_completed": getattr(m, "rooms", 0),
