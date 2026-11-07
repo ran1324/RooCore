@@ -1,9 +1,9 @@
-name: Roomba OI library
+name: RooCore firmware and navigation
 on:
   push:
-    paths: ['lib/RoombaOI/**', 'tests/**', 'docs/oi-map.json', '.github/workflows/roomba-oi.yml']
+    paths: ['lib/RoombaOI/**', 'lib/RooNavigation/**', 'firmware/xiao/**', 'navigation/**', 'ros2/**', 'tests/**', 'docs/oi-map.json', '.github/workflows/roomba-oi.yml']
   pull_request:
-    paths: ['lib/RoombaOI/**', 'tests/**', 'docs/oi-map.json', '.github/workflows/roomba-oi.yml']
+    paths: ['lib/RoombaOI/**', 'lib/RooNavigation/**', 'firmware/xiao/**', 'navigation/**', 'ros2/**', 'tests/**', 'docs/oi-map.json', '.github/workflows/roomba-oi.yml']
 permissions:
   contents: read
 jobs:
@@ -29,3 +29,17 @@ jobs:
       - run: arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
       - run: arduino-cli core install esp32:esp32@3.3.12 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
       - run: sh tests/build_xiao.sh
+
+  ros2:
+    runs-on: ubuntu-latest
+    container: ros:jazzy-ros-base
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: apt-get update && apt-get install -y ros-jazzy-nav2-msgs ros-jazzy-tf2-ros
+      - shell: bash
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          colcon build --base-paths ros2 --packages-select roocore_bridge
+          source install/setup.bash
+          python3 -c 'import roocore_bridge.bridge, roocore_bridge.cleaner'

@@ -13,3 +13,20 @@ for example in BatteryMonitor LinkSetup; do
     --build-path "$build_root/$example" \
     "lib/RoombaOI/examples/$example"
 done
+
+"$cli" compile --fqbn "$fqbn" --warnings all \
+  --library "$PWD/lib/RoombaOI" --library "$PWD/lib/RooNavigation" \
+  --build-path "$build_root/RooCoreXiao" firmware/xiao/RooCoreXiao
+
+# Compile the real actuator path too; this temporary config is never flashed.
+staged="$build_root/commissioned/RooCoreXiao"
+mkdir -p "$staged"
+cp firmware/xiao/RooCoreXiao/RooCoreXiao.ino "$staged/"
+cp firmware/xiao/RooCoreXiao/config.example.h "$staged/config.example.h"
+sed -e 's/ROO_COMMISSIONED false/ROO_COMMISSIONED true/' \
+    -e 's/ROO_ENCODERS_VERIFIED false/ROO_ENCODERS_VERIFIED true/' \
+    -e 's/ROO_DOCK_EXIT_VERIFIED false/ROO_DOCK_EXIT_VERIFIED true/' \
+    firmware/xiao/RooCoreXiao/config.example.h > "$staged/config.local.h"
+"$cli" compile --fqbn "$fqbn" --warnings all \
+  --library "$PWD/lib/RoombaOI" --library "$PWD/lib/RooNavigation" \
+  --build-path "$build_root/RooCoreXiao-commissioned" "$staged"

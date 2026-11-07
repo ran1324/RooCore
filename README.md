@@ -2,6 +2,14 @@
 
 Roomba 620 control and telemetry. The current controller target is the **plain XIAO ESP32S3**; the older ESP-01S recorder is preserved below as a separate application.
 
+## XIAO cleaning and navigation
+
+[Real firmware](firmware/xiao/RooCoreXiao/RooCoreXiao.ino) · [Behavior and hardware setup](docs/XIAO_NAVIGATION.md) · [Optional Nav2 computer](docs/ROS2_NAVIGATION.md)
+
+The XIAO application adds daily/deep coverage, dirt response, finite recovery decisions, battery return/charge/resume, checkpoint storage and local fallback after server loss. Remote commands expire; reconnecting cannot replay an old movement. It uses Safe mode and stops on invalid sensor/localization state. The onboard mapper is a limited local fallback, not whole-home SLAM. Initial builds disable motion until hardware commissioning. **Compiled/tested in software; not flashed or validated on the robot.**
+
+For the browser behavior prototype: `python3 -m navigation.server`, then open `http://127.0.0.1:8766`. It is a separate Python reference model with ideal localization. `tests/navigation_native_test.cpp` tests the actual C++ firmware planner with independent simulated physics, including charging/resume and bounded recovery. See the setup document for the distinction and limits.
+
 ## Roomba Open Interface library
 
 [API guide and protocol review](docs/OPEN_INTERFACE.md) · [Complete command/sensor map](docs/oi-map.json) · [Validation](docs/VALIDATION_XIAO.md) · [Library](lib/RoombaOI/src/RoombaOI.h)

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <title>RooCore · מעבדת ניווט</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header>
+      <a href="/" class="brand">RooCore<span>מעבדת ניווט</span></a>
+      <div class="tag">סימולציה בלבד <i></i></div>
+    </header>
+    <main>
+      <section class="workspace" aria-label="מפת הסימולציה">
+        <div class="map-heading">
+          <div>
+            <p class="eyebrow">תכנון ניקוי · 01</p>
+            <h1>מפת הניקיון</h1>
+          </div>
+          <button id="export" class="text-button">ייצוא נקודת שמירה ↗</button>
+        </div>
+        <div class="metrics" aria-live="polite">
+          <div><small>מצב משימה</small><strong id="phase">מוכן</strong></div>
+          <div>
+            <small>כיסוי השטח שנצפה</small
+            ><strong id="coverage">0<span>%</span></strong>
+          </div>
+          <div>
+            <small>סוללה מדומה</small
+            ><strong id="battery">90<span>%</span></strong>
+          </div>
+          <div><small>מעבר</small><strong id="pass">1 / 1</strong></div>
+        </div>
+        <div class="map-wrap">
+          <canvas
+            id="map"
+            width="960"
+            height="720"
+            aria-label="מפה: שטח שנצפה, מסלול, רובוט ונקודת טעינה"
+          ></canvas>
+          <div class="map-note">מיקום אידאלי בסימולטור · ללא SLAM</div>
+        </div>
+        <div class="legend">
+          <span><i class="robot"></i>רובוט</span
+          ><span><i class="cleaned"></i>נוקה</span
+          ><span><i class="path"></i>מסלול מתוכנן</span
+          ><span><i class="unknown"></i>טרם נצפה</span
+          ><label
+            ><input type="checkbox" id="truth" /> הצגת המכשולים האמיתיים</label
+          >
+        </div>
+        <p id="reason" role="status">בחרו תרחיש והפעילו את הסימולציה.</p>
+      </section>
+      <aside>
+        <h2>תוכנית הניקיון</h2>
+        <label class="field"
+          >מצב ניקיון<select id="profile">
+            <option value="daily">יומיומי · מעבר אחד</option>
+            <option value="deep">יסודי · שני מעברים</option>
+          </select></label
+        >
+        <p id="profile-description" class="hint">
+          תנועה רגילה וניקוי נוסף באזורים מלוכלכים.
+        </p>
+        <label class="field"
+          >סביבת בדיקה<select id="scenario">
+            <option value="furniture">חדר מרוהט</option>
+            <option value="room">חדר פתוח</option>
+            <option value="doorway">שני חללים ופתח</option>
+            <option value="battery">סוללה חלשה</option>
+            <option value="dirt">אזור עם לכלוך</option>
+          </select></label
+        >
+        <label class="field"
+          >קצב הרצה<select id="speed">
+            <option value="5">רגיל</option>
+            <option value="25" selected>מהיר</option>
+            <option value="100">בדיקה מואצת</option>
+          </select></label
+        >
+        <button id="run" class="primary">התחלת ניקיון <span>←</span></button>
+        <div class="pair">
+          <button id="home">חזרה לטעינה</button
+          ><button id="reset">איפוס</button>
+        </div>
+        <div class="divider"></div>
+        <h2>בדיקת התנהגות</h2>
+        <p class="hint">הוסיפו אירוע בזמן הרצה ובדקו את תגובת הבקר.</p>
+        <div class="faults">
+          <button data-fault="battery">סוללה ל־18%</button
+          ><button data-fault="obstacle">מכשול חדש</button
+          ><button data-fault="lidar" aria-pressed="false">ניתוק ליידר</button
+          ><button data-fault="localization" aria-pressed="false">
+            אובדן מיקום</button
+          ><button data-fault="cliff" aria-pressed="false">זיהוי מדרגה</button>
+        </div>
+        <div class="divider"></div>
+        <div class="log-title">
+          <h2>יומן המשימה</h2>
+          <span id="clock">00:00</span>
+        </div>
+        <ol id="events" aria-live="polite">
+          <li>ממתינים להפעלה</li>
+        </ol>
+        <div class="limits">
+          הטעינה והמיקום מדומים. הכיסוי מחושב על השטח שנצפה ונגיש; הוא אינו
+          אישור שכל הבית נוקה. אין חיבור לרובוט במסך הזה.
+        </div>
+      </aside>
+    </main>
+    <footer>
+      <span>RooCore / Navigation prototype</span
+      ><span id="stats">מרחק 0 מ׳ · התנגשויות 0</span>
+    </footer>
+    <script src="/app.js"></script>
+  </body>
+</html>

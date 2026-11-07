@@ -12,3 +12,5 @@ firmware/include/network_config.h
 # macOS external-volume metadata and local target builds
 ._*
 .roocore-build/
+firmware/xiao/RooCoreXiao/config.local.h
+output/
