@@ -14,3 +14,17 @@
 
 #define ROO_DOCK_EXIT_VERIFIED false // known clear, level floor corridor behind the dock
 #define ROO_DOCK_EXIT_METERS 0.60f // measure approach/exit distance on the real base
+
+// Provisional geometry accepted for development; replace after measuring the robot.
+#define ROO_BRUSH_GEOMETRY_CALIBRATED false
+#define ROO_BRUSH_WIDTH_METERS 0.16f
+#define ROO_BRUSH_DEPTH_METERS 0.04f
+#define ROO_BRUSH_OFFSET_METERS 0.0f
+#define ROO_SIDE_BRUSH_X_METERS 0.10f
+#define ROO_SIDE_BRUSH_Y_METERS -0.13f // right of centre, positive Y is left
+#define ROO_SIDE_BRUSH_RADIUS_METERS 0.10f
+#define ROO_PERIMETER_ENABLED true // bench-test wall clearance before commissioning
+
+#define ROO_WALL_TOUCH_VERIFIED false // optional 1.5 cm/s contact; verify bumper and stop latency first
+#define ROO_WALL_IR_TARGET 0 // raw packet 27 at verified right-wall gap; 0 = observe only
+#define ROO_ASSISTANCE_ENABLED true // isolated local cleaning + authenticated server assistance

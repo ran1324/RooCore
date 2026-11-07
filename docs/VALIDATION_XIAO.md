@@ -53,3 +53,20 @@ sh tests/build_xiao.sh
 Actual Roomba firmware/baud, waking on the dock, NPN pinout/polarity, UART electrical quality, sensor behavior, charging, supply thresholds, real motor stop timing and USB/source isolation. Older firmware may not wake through BRC on the dock. The library reports missing responses; compiling cannot repair or prove that firmware behavior.
 
 The existing ESP-01S recorder remains a separate legacy application. It has not been silently migrated to XIAO, and the library examples are not a complete Wi-Fi/OTA/navigation firmware.
+
+## Cleaning firmware, coverage and assistance — 2026-11-08
+
+`firmware/xiao/RooCoreXiao` and the `lib/RooNavigation` C++ library build for the same XIAO target in telemetry-only and commissioned configurations. The latter uses approximately 16% application flash and 36% static internal RAM; the large navigation maps and temporary checkpoint buffer are allocated in the board's 8 MB PSRAM. Runtime PSRAM availability, task timing, stack/heap peaks, Wi-Fi, flash persistence and UART/motor behavior still need hardware tests.
+
+Validation:
+
+- 707 OI checks under AddressSanitizer/UndefinedBehaviorSanitizer and the opcode/sensor inventory audit.
+- Native C++ navigation scenarios: open room, furnished room, perpendicular deep passes, charge/resume, two spaces connected by a door and optional bounded bumper contact. No unexpected collision assertion fired. The contact scenario generated four intentional low-speed contacts and completed the perimeter.
+- Crosshatch measurement in the furnished deep scenario: pass 1 travelled about 107 m horizontally / 15 m vertically; pass 2 about 12 m horizontally / 106 m vertically. The second pass starts from the current position. These are simulated travel components, not a claim of optimal paths.
+- Regression checks for central brush versus body footprint, independent pass masks, side-only credit, stopped motors, pose jumps, fresh-sensor requirements, no-progress limits, bounded contact/recovery, assistance IDs/frames/deadlines, three-scan confirmation, critical-stop policy and unanchored native docking timeout.
+- 37 Python tests: historical reference regressions, actual C++ browser-adapter tests, HTTP lease behavior and global matcher tests. A symmetric rectangle and an unrelated scan are rejected; a distinctive furnished scene produces a candidate near its true pose. These synthetic cases do not establish a measured real-world false-match rate.
+- The ROS bridge suppresses global scans/odometry for provisional or unresolved frames. ROS 2 Jazzy CI builds/imports the bridge, action client and assistance worker. It is not an end-to-end Nav2 or robot test.
+
+The browser now executes the production Navigator rather than the old Python planner. In an independently measured furnished-room run it finished in 2,319.6 simulated seconds, travelled about 150 m and recorded zero collisions. Whole-floor truth estimates were **70.6% central-brush coverage and 91.1% combined central/side coverage**, using provisional brush geometry. The map's current-pass central metric was 80.5% of known free floor. The remaining floor was not counted clean; one target was excluded. **This is not complete floor coverage or evidence that every corner is reachable.** Local outputs are stored under ignored `output/`; the geometry/method/limitations are documented in [COVERAGE_AND_RECOVERY.md](COVERAGE_AND_RECOVERY.md).
+
+Browser interactions are checked in Hebrew RTL at desktop and phone widths, including start/pause and injected LiDAR loss. The browser does not execute the full firmware assistance/UART/persistence orchestration. No robot or physical LiDAR was connected or flashed.

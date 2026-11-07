@@ -406,3 +406,8 @@ button:disabled {
     font-size: 18px;
   }
 }
+
+#pass {
+  direction: ltr;
+  unicode-bidi: isolate;
+}

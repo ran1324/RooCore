@@ -24,7 +24,7 @@
         <div class="metrics" aria-live="polite">
           <div><small>מצב משימה</small><strong id="phase">מוכן</strong></div>
           <div>
-            <small>כיסוי השטח שנצפה</small
+            <small>כיסוי מרכזי · רצפה מוכרת</small
             ><strong id="coverage">0<span>%</span></strong>
           </div>
           <div>
@@ -40,11 +40,14 @@
             height="720"
             aria-label="מפה: שטח שנצפה, מסלול, רובוט ונקודת טעינה"
           ></canvas>
-          <div class="map-note">מיקום אידאלי בסימולטור · ללא SLAM</div>
+          <div class="map-note">
+            ליבת XIAO ב־C++ · מיקום מדומה · מידות מברשות זמניות
+          </div>
         </div>
         <div class="legend">
           <span><i class="robot"></i>רובוט</span
-          ><span><i class="cleaned"></i>נוקה</span
+          ><span><i class="cleaned"></i>מברשות מרכזיות</span
+          ><span><i style="background: #f2ce8c"></i>מברשת צד</span
           ><span><i class="path"></i>מסלול מתוכנן</span
           ><span><i class="unknown"></i>טרם נצפה</span
           ><label
@@ -105,8 +108,9 @@
           <li>ממתינים להפעלה</li>
         </ol>
         <div class="limits">
-          הטעינה והמיקום מדומים. הכיסוי מחושב על השטח שנצפה ונגיש; הוא אינו
-          אישור שכל הבית נוקה. אין חיבור לרובוט במסך הזה.
+          ליבת הניווט זהה לליבת XIAO. הטעינה והמיקום מדומים. רוחב המברשות זמני:
+          16 ס״מ. ירוק מציין מעבר מברשות מרכזיות, צהוב מברשת צד בלבד. שטח לבן לא
+          נוקה; אפור לא מוכר. אין חיבור לרובוט במסך הזה.
         </div>
       </aside>
     </main>

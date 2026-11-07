@@ -15,7 +15,7 @@ ros2 launch roocore_bridge bridge.launch.py
 
 The token is local configuration; do not put it in commits, launch files, screenshots or command-line URLs. The bridge uses standard-library HTTP with a 150 ms request timeout. Its topics are `/scan` (180 body-centered rays), `/odom`, `/battery`, `/roocore/status`; TF is `odom -> base_link -> laser`. The firmware compensates the measured LiDAR mounting offset before sending ranges. Unknown range bins are NaN, not invented free space. Timestamps currently use host receipt time; network delay and scan deskew are commissioning limitations.
 
-A conservative baseline is included in `config/nav2.yaml`, `config/slam.yaml` and `config/navigate.xml`: 18 cm radius with 5 cm padding, forward speed 0.18 m/s, no automatic reversing, 8-second progress limit and no repeating recovery tree. These are initial engineering values, **not measured acceptance values**. Confirm them during commissioning. The XIAO independently checks its own movement envelope and may reject a Nav2 command.
+A conservative baseline is included in `config/nav2.yaml`, `config/slam.yaml` and `config/navigate.xml`: 17 cm radius with 3 cm padding, forward speed 0.18 m/s, no automatic reversing, 8-second progress limit and no repeating recovery tree. These are initial engineering values, **not measured acceptance values**. Confirm them during commissioning. The XIAO independently checks its own movement envelope and may reject a Nav2 command.
 
 ```sh
 # Use this INSTEAD of bridge.launch.py, not alongside a second bridge.
@@ -28,4 +28,6 @@ After a local mission is active and Nav2 is available, `ros2 run roocore_bridge 
 
 Alternatively use `/roocore/remote` (`std_srvs/Trigger`) with your own Nav2 goal client. `/roocore/local` relinquishes server control. A reconnect does not automatically call remote again. Only one bridge process should own the token/session.
 
-The local fallback map and SLAM Toolbox's map are distinct: goals are expressed in the MCU's `odom` frame and transformed by Nav2. The local map remains available if the server disappears. This does not transfer a saved SLAM pose graph to the XIAO or promise global relocalization after a power cycle. If the local pose fails validation, the correct fallback is stopped, not guessed motion.
+The local fallback map and SLAM Toolbox's map are distinct: goals are expressed in the MCU's `odom` frame and transformed by Nav2. The local map remains available if the server disappears. This does not transfer a saved SLAM pose graph to the XIAO or promise global relocalization after a power cycle. If global pose fails validation, an isolated locally navigable mission may continue with the assistance protocol; invalid local sensing still stops. See [coverage and recovery](COVERAGE_AND_RECOVERY.md).
+
+The optional assistance worker is separate from Nav2 ownership: `ros2 run roocore_bridge assistance`. It receives live requests/scans, searches the frozen known map and proposes expiring frame-bound poses for MCU verification. It never publishes wheel commands.

@@ -8,9 +8,19 @@ const phases = {
   RESUMING: "חוזר לנקודת ההמשך",
   PAUSED: "מושהה",
   FAULT: "עצירה לבדיקה",
-  COMPLETE: "הניקיון הושלם",
+  COMPLETE: "התוכנית הסתיימה",
+  EDGING: "ניקוי קירות ופינות",
+  TOUCHUP: "השלמת אזורים קטנים",
+  SETTLING: "עצירה לבדיקת חיישנים",
+  RECOVERING: "נסיגה מוגבלת",
 };
 const explanations = {
+  "telemetry stale or invalid": "נתוני חישה חסרים או לא עדכניים. התנועה נעצרה.",
+  "localization lost": "המיקום המקומי אינו אמין. התנועה נעצרה.",
+  "no progress": "לא הייתה התקדמות בזמן המותר. הניסיון הסתיים.",
+  "recovery exhausted": "ניסיון ההיחלצות הסתיים; אין ניסיון חוזר אוטומטי.",
+  "dock timeout": "העמדה לא נמצאה בזמן שהוקצה. הרובוט עצר.",
+  cliff: "חיישן מצוק הופעל. התנועה נעצרה.",
   "stale or missing LiDAR": "אין סריקת ליידר עדכנית. התנועה נעצרה.",
   "localization lost / map frame mismatch":
     "המיקום אינו מזוהה. יש לשחזר מיקום לפני המשך.",
@@ -49,13 +59,20 @@ function render(s) {
   $("phase").textContent = phases[s.state];
   $("coverage").innerHTML = `${s.coverage}<span>%</span>`;
   $("battery").innerHTML = `${s.battery}<span>%</span>`;
-  $("pass").textContent = `${s.pass} / ${s.passes}`;
+  $("pass").textContent =
+    `${s.pass} / ${s.passes} ${s.pass_axis === "horizontal" ? "↔" : "↕"}`;
   $("clock").textContent = clock(s.time);
   $("stats").textContent =
-    `מרחק ${s.distance} מ׳ · התנגשויות ${s.collisions} · כיסוי אמת בסימולטור ${s.truth_coverage}%`;
+    `מרחק ${s.distance} מ׳ · התנגשויות ${s.collisions} · מברשות מרכזיות ${s.truth_coverage}% מהרצפה · כולל צד ${s.truth_combined}%`;
   $("reason").textContent =
+    (s.state === "COMPLETE"
+      ? `התוכנית הסתיימה. ${s.pending_main_m2} מ״ר מהרצפה המוכרת לא קיבלו מעבר מרכזי במעבר הזה; צהוב מציין מברשת צד בלבד.`
+      : "") ||
     explanations[s.reason] ||
     s.reason ||
+    (s.edge_incomplete
+      ? `נותרו ${s.edge_incomplete} מעברי היקף שלא הושלמו; השטח נשאר גלוי כלא נקי.`
+      : "") ||
     "המפה נבנית מהסריקות. תאי מפה שלא נצפו אינם נחשבים פנויים.";
   $("run").textContent = running
     ? "השהיה"
@@ -63,7 +80,9 @@ function render(s) {
       ? "אישור והמשך"
       : "התחלת ניקיון";
   $("run").disabled = s.state === "COMPLETE";
-  $("home").disabled = !["CLEANING", "RESUMING"].includes(s.state);
+  $("home").disabled = !["CLEANING", "RESUMING", "EDGING", "TOUCHUP"].includes(
+    s.state,
+  );
   $("profile").disabled = running;
   $("scenario").disabled = running;
   $("events").replaceChildren(
@@ -110,22 +129,33 @@ function draw() {
   ctx.clearRect(0, 0, c.width, c.height);
   ctx.fillStyle = "#e4eae8";
   ctx.fillRect(0, 0, c.width, c.height);
-  const covered = new Set(s.covered);
+
   s.cells.forEach((v, i) => {
     const [x, y] = p(
       (i % s.cols) * s.resolution,
       (Math.floor(i / s.cols) + 1) * s.resolution,
     );
-    ctx.fillStyle =
-      v === 1
-        ? "#687f81"
-        : v === 0
-          ? "#bdc9c7"
-          : covered.has(i)
-            ? "#b7ddc6"
-            : "#f8faf7";
+    ctx.fillStyle = v === 1 ? "#687f81" : v === 0 ? "#bdc9c7" : "#f8faf7";
     ctx.fillRect(x, y, scale * s.resolution + 0.3, scale * s.resolution + 0.3);
   });
+  function paintSamples(samples, color) {
+    ctx.fillStyle = color;
+    for (const index of samples || []) {
+      const cell = Math.floor(index / 4),
+        sub = index % 4;
+      const x = ((cell % s.cols) + (sub & 1) / 2) * s.resolution;
+      const y =
+        (Math.floor(cell / s.cols) + (sub >> 1) / 2 + 0.5) * s.resolution;
+      const point = p(x, y);
+      ctx.fillRect(
+        ...point,
+        (scale * s.resolution) / 2 + 0.1,
+        (scale * s.resolution) / 2 + 0.1,
+      );
+    }
+  }
+  paintSamples(s.side_covered, "#f2ce8c");
+  paintSamples(s.fine_covered, "#b7ddc6");
   if ($("truth").checked) {
     ctx.strokeStyle = "#c76832";
     ctx.lineWidth = 2;
@@ -183,9 +213,16 @@ function draw() {
   ctx.shadowBlur = 12;
   ctx.fillStyle = "#7753c3";
   ctx.beginPath();
-  ctx.arc(0, 0, 0.18 * scale, 0, Math.PI * 2);
+  ctx.arc(0, 0, 0.17 * scale, 0, Math.PI * 2);
   ctx.fill();
   ctx.shadowBlur = 0;
+  // Central strip and right side brush have their own measured/configurable footprint.
+  ctx.fillStyle = "#e7fff0";
+  ctx.fillRect(-0.02 * scale, -0.08 * scale, 0.04 * scale, 0.16 * scale);
+  ctx.strokeStyle = "#e6a33e";
+  ctx.beginPath();
+  ctx.arc(0.1 * scale, 0.13 * scale, 0.1 * scale, 0, Math.PI * 2);
+  ctx.stroke();
   ctx.strokeStyle = "white";
   ctx.lineWidth = 3;
   ctx.beginPath();

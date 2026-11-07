@@ -11,17 +11,17 @@ The executable firmware is `firmware/xiao/RooCoreXiao/RooCoreXiao.ino` for the *
 | Encoder odometry and local scan-to-map alignment | XIAO | `Odometry`, `alignToMap`; limited local estimator, not global SLAM |
 | T-mini Plus packet decoding | XIAO | `TminiPlus.h`, manufacturer protocol, model 151 |
 | Global mapping/navigation with a computer | Linux / ROS 2 Jazzy | SLAM Toolbox + Nav2 through `ros2/roocore_bridge` |
-| Browser behavior prototype | Mac/Linux | `navigation/`; separate Python reference model with ideal pose |
+| Browser behavior prototype | Mac/Linux | `navigation/`; the C++ Navigator via ctypes, with simulated ideal pose |
 | Tests of actual embedded planning code | Mac/Linux/CI | `tests/navigation_native_test.cpp`; independent physics and obstacle geometry |
 
-The browser model is **not** the firmware and its screenshots are not hardware validation. The native tests directly include the firmware's C++ navigation library. Neither simulator proves wheel calibration, localization performance or docking on a Roomba 620.
+The browser executes the navigation library, not the complete ESP32 application; screenshots are not hardware validation. The native tests directly include the firmware's C++ navigation library. Neither simulator proves wheel calibration, localization performance or docking on a Roomba 620.
 
 ## Loss of server
 
 1. Commands carry the current MCU session epoch, a strictly increasing sequence and an expiry in the **MCU clock**. Maximum accepted lifetime is 250 ms; the bridge requests 200 ms. Duplicate, out-of-order, wrong-session and expired commands cannot refresh the lease.
 2. After expiry, remote commands become zero and the epoch changes. The robot is held stopped for at least 500 ms.
 3. If local localization, battery, sensors and mission remain valid, local planning resumes. At 25% simulated/estimated charge it prefers returning to the dock. A known route is still required.
-4. Invalid local state leaves control held/stopped, with the mission saved. A server reconnect cannot automatically re-arm remote ownership. A new explicit takeover synchronizes state and receives a new epoch.
+4. Critical invalid sensing leaves control held/stopped. A lost global pose or route can start an isolated local mission and request assistance, as described in [coverage and recovery](COVERAGE_AND_RECOVERY.md). A server reconnect cannot automatically re-arm remote ownership. A new explicit takeover synchronizes state and receives a new epoch.
 
 The MCU updates its own map and coverage during remote driving. Nav2 receives the MCU coverage target in the `odom` frame. Only the arbiter selects motor output; there are never two writers to the Roomba UART. Motion also has a 300 ms OI library lease, checked by the control task. A total MCU/transport failure is **not** covered by a hardware motor watchdog: the lease is software, not a Roomba command timeout.
 
@@ -29,7 +29,7 @@ The MCU updates its own map and coverage during remote driving. Nav2 receives th
 
 - Daily: nominal 0.18 m/s and cleaning PWM 85, one pass. Deep: 0.12 m/s and PWM 127, two distinct passes. These are commissioning defaults, not measured suction/cleaning performance.
 - Dirt packet 15 is a relative signal. Threshold 90 produces one extra 1.5-second clean at each distinct dirty zone (up to 16 zones). Calibrate the threshold on the actual floor; it is not a calibrated dirt quantity.
-- Coverage counts only while a cleaning command is active. It refers to **observed reachable robot-center cells**, not the entire floor area or all rooms. Edge margins, unknown areas and excluded targets remain outside that claim.
+- Coverage follows the oriented central brushes, with separate side-brush credit and two independent crosshatch passes. See [coverage and recovery](COVERAGE_AND_RECOVERY.md) for provisional geometry, room partitions, perimeter control and server assistance.
 - A blocked target is excluded, rather than endlessly retried. Eight excluded targets end the mission in a fault. Lack of progress toward a waypoint is limited to 8 seconds; a target is limited to 120 seconds; a mission to 2 hours. These conservative defaults may need adjustment after measurements.
 - Cliff/virtual-wall, overcurrent, invalid pose and stale telemetry stop immediately. No `Full` mode is used.
 - A wheel-drop or bumper event stops first. A drop does not establish that there is a cliff. If the event persists for 5 seconds, stop finally. If it clears for 1 second, a **single** retreat may be attempted only with valid rear LiDAR clearance **and** a recently traversed floor corridor. Retreat is at most 5 cm / 1.5 seconds at 0.04 m/s, brushes off. Another event or failed retreat ends the mission; no automatic repeated escape.
@@ -38,9 +38,9 @@ The MCU updates its own map and coverage during remote driving. Nav2 receives th
 
 ## Map/localization limitations
 
-The onboard map is 12.8 × 12.8 m centered on the initial dock anchor, at 20 cm resolution, with robot footprint inflation. Cells outside the map cannot be driven into. Occupied cells latch for a mission to prevent tangent-ray flicker and target oscillation; removed furniture requires a new mission/map. It is a conservative local fallback, not whole-home loop-closure SLAM.
+The onboard map is 12.8 × 12.8 m centered on the initial dock anchor, at 10 cm navigation / 5 cm coverage-sample resolution, with robot footprint inflation. Cells outside the map cannot be driven into. Occupied cells latch for a mission to prevent tangent-ray flicker and target oscillation; removed furniture requires a new mission/map. It is a conservative local fallback, not whole-home loop-closure SLAM.
 
-The local scan alignment uses a bounded search around wheel odometry. Low agreement stops navigation. It does not reliably identify every ambiguous room or a robot picked up and relocated. Dock re-anchoring after a reboot requires physical placement at the same recorded dock orientation. Automatic global relocalization after a power loss is not implemented. Never resume using the saved pose as if it were a new measurement.
+The local scan alignment uses a bounded search around wheel odometry. Low agreement stops navigation. It does not reliably identify every ambiguous room or a robot picked up and relocated. Dock re-anchoring after a reboot requires physical placement at the same recorded dock orientation. Power-loss recovery still requires a dock reanchor. During an active mission, the optional assistance worker can propose a global scan match; it is separately verified and may remain ambiguous. Never resume using the saved pose as if it were a new measurement.
 
 The browser prototype's former furniture loop came from occupied cells flickering between free/occupied and changing the target. Occupancy latching and finite progress limits address that failure; the C++ implementation additionally excludes failed targets with a finite budget.
 
@@ -63,7 +63,7 @@ Arduino ESP32 **3.3.12**, FQBN `esp32:esp32:XIAO_ESP32S3:PSRAM=opi,FlashSize=8M,
 7. Initialize the LittleFS mission store explicitly (`init-storage`). This formats its filesystem and deletes its old checkpoints; normal boot never formats automatically. Configure a physical dock anchor with `anchor`. Default builds refuse all motion commands.
 8. Start a small supervised `daily` mission. Test stop, missing sensor frames, blocked path, lost server, return, real charging and departure in separate steps. Enable unattended use only after those measurements support it.
 
-Authenticated API: `GET /status`, `POST /command` with URL-encoded `action`. Supported actions: `init-storage`, `anchor`, `daily`, `deep`, `pause`, `resume`, `home`, `local`, `remote`, `velocity`. HTTP 202 means **queued**, not executed; inspect state/reason/error in `/status`. `anchor` requires a stopped robot with dock contact/charging. A resume may first need to warm the LiDAR; retry only after status shows valid observations. There is no public unauthenticated motor endpoint.
+Authenticated API: `GET /status`, `POST /command` with URL-encoded `action`. Supported actions: `init-storage`, `anchor`, `daily`, `deep`, `pause`, `resume`, `home`, `local`, `remote`, `velocity`, `relocate`, and the frame-bound `help-continue`, `help-hold`, `help-relocalize` protocol. HTTP 202 means **queued**, not executed; inspect state/reason/error in `/status`. `anchor` requires a stopped robot with dock contact/charging. A resume may first need to warm the LiDAR; retry only after status shows valid observations. There is no public unauthenticated motor endpoint.
 
 Checkpoints use two alternating slots with schema/version and integrity checks. Boot loads the newest valid compatible snapshot and stays paused; it never blindly drives from a persisted pose. A new mission intentionally clears prior coverage. File writes stop motor control first. The map, pass, coverage, skipped cells and interruption point survive; this does not prove persistence on the untested physical flash.
 

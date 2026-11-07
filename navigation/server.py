@@ -1,4 +1,5 @@
 """Loopback-only simulator UI. No serial, Wi-Fi or robot command endpoint."""
+
 import argparse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -22,7 +23,11 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     def reply(self, data, status=200, mime="application/json; charset=utf-8"):
-        content = json.dumps(data, allow_nan=False).encode() if mime.startswith("application/json") else data
+        content = (
+            json.dumps(data, allow_nan=False).encode()
+            if mime.startswith("application/json")
+            else data
+        )
         self.send_response(status)
         self.send_header("Content-Type", mime)
         self.send_header("Content-Length", str(len(content)))
@@ -41,7 +46,11 @@ class Handler(BaseHTTPRequestHandler):
                 self.reply(self.server.sim.mission.snapshot())
         elif path in ("/", "/app.js", "/style.css"):
             name = "index.html" if path == "/" else path[1:]
-            mime = {"index.html": "text/html", "app.js": "text/javascript", "style.css": "text/css"}[name]
+            mime = {
+                "index.html": "text/html",
+                "app.js": "text/javascript",
+                "style.css": "text/css",
+            }[name]
             self.reply((WEB / name).read_bytes(), mime=mime + "; charset=utf-8")
         else:
             self.reply({"error": "not found"}, 404)
@@ -50,20 +59,29 @@ class Handler(BaseHTTPRequestHandler):
         # Same-origin browser only; the server is always bound to loopback.
         origin = self.headers.get("Origin")
         host = self.headers.get("Host", "")
-        if host not in ("127.0.0.1:%d" % self.server.server_port, "localhost:%d" % self.server.server_port):
+        if host not in (
+            "127.0.0.1:%d" % self.server.server_port,
+            "localhost:%d" % self.server.server_port,
+        ):
             return self.reply({"error": "invalid host"}, 403)
         if origin and origin not in ("http://" + host,):
             return self.reply({"error": "cross-origin request"}, 403)
         try:
             length = int(self.headers.get("Content-Length", "0"))
-            if not 0 < length <= 4096 or self.headers.get("Content-Type", "").split(";")[0] != "application/json":
+            if (
+                not 0 < length <= 4096
+                or self.headers.get("Content-Type", "").split(";")[0]
+                != "application/json"
+            ):
                 raise ValueError("expected a small JSON body")
             body = json.loads(self.rfile.read(length))
             action = self.path
             with self.server.lock:
                 sim = self.server.sim
                 if action == "/api/reset":
-                    sim = self.server.sim = Simulation(body.get("scenario", "furniture"), body.get("profile", "daily"))
+                    sim = self.server.sim = Simulation(
+                        body.get("scenario", "furniture"), body.get("profile", "daily")
+                    )
                 elif action == "/api/start":
                     sim.mission.start()
                 elif action == "/api/step":
@@ -76,7 +94,12 @@ class Handler(BaseHTTPRequestHandler):
                 elif action == "/api/resume":
                     sim.mission.resume(sim.observation())
                 elif action == "/api/home":
-                    if sim.mission.state not in ("CLEANING", "RESUMING"):
+                    if sim.mission.state not in (
+                        "CLEANING",
+                        "RESUMING",
+                        "EDGING",
+                        "TOUCHUP",
+                    ):
                         raise ValueError("home requires an active localized mission")
                     sim.mission.return_home(sim.pose)
                 elif action == "/api/inject":

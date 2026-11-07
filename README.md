@@ -8,7 +8,7 @@ Roomba 620 control and telemetry. The current controller target is the **plain X
 
 The XIAO application adds daily/deep coverage, dirt response, finite recovery decisions, battery return/charge/resume, checkpoint storage and local fallback after server loss. Remote commands expire; reconnecting cannot replay an old movement. It uses Safe mode and stops on invalid sensor/localization state. The onboard mapper is a limited local fallback, not whole-home SLAM. Initial builds disable motion until hardware commissioning. **Compiled/tested in software; not flashed or validated on the robot.**
 
-For the browser behavior prototype: `python3 -m navigation.server`, then open `http://127.0.0.1:8766`. It is a separate Python reference model with ideal localization. `tests/navigation_native_test.cpp` tests the actual C++ firmware planner with independent simulated physics, including charging/resume and bounded recovery. See the setup document for the distinction and limits.
+For the browser behavior prototype: `python3 -m navigation.server`, then open `http://127.0.0.1:8766`. It runs the actual C++ Navigator through a local ctypes adapter; physics/localization/charging are simulated. Install a C++ compiler (clang++) first. `tests/navigation_native_test.cpp` tests the actual C++ firmware planner with independent simulated physics, including charging/resume and bounded recovery. See the setup document for the distinction and limits.
 
 ## Roomba Open Interface library
 
@@ -135,3 +135,5 @@ clang++ -std=c++11 -Ifirmware/include tests/core_test.cpp -o /tmp/roocore-core-t
 ```
 
 [Protocol](docs/protocol.md) · [Upstream changes](docs/upstream-baseline.md) · [Validation](docs/validation.md)
+
+Coverage geometry, perpendicular passes, room/perimeter ordering, IR/bumper limits and bounded server-assisted recovery are documented in [COVERAGE_AND_RECOVERY.md](docs/COVERAGE_AND_RECOVERY.md).

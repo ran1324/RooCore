@@ -12,6 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - run: sh tests/run.sh
+      - run: python3 -m pip install "numpy>=1.24,<3"
       - run: python3 -m unittest discover -s tests -v
       - run: clang++ -std=c++11 -Ifirmware/include tests/core_test.cpp -o /tmp/recorder-test && /tmp/recorder-test
   xiao:
@@ -36,10 +37,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - run: apt-get update && apt-get install -y ros-jazzy-nav2-msgs ros-jazzy-tf2-ros
+      - run: apt-get update && apt-get install -y ros-jazzy-nav2-msgs ros-jazzy-tf2-ros python3-numpy
       - shell: bash
         run: |
           source /opt/ros/jazzy/setup.bash
           colcon build --base-paths ros2 --packages-select roocore_bridge
           source install/setup.bash
-          python3 -c 'import roocore_bridge.bridge, roocore_bridge.cleaner'
+          python3 -c 'import roocore_bridge.bridge, roocore_bridge.cleaner, roocore_bridge.assistance'

@@ -1,4 +1,5 @@
 #include "ControlArbiter.h"
+#include "NavigationHelp.h"
 #include "RooNavigation.h"
 #include "TminiPlus.h"
 #include <algorithm>
@@ -154,20 +155,86 @@ static float ray(Pose p, float a, const std::vector<Box> &boxes) {
   return best - .001f;
 }
 static bool collision(Pose p, const std::vector<Box> &boxes) {
-  if (p.x < .18 || p.y < .18 || p.x > 4.62 || p.y > 3.42)
+  if (p.x < .17 || p.y < .17 || p.x > 4.63 || p.y > 3.43)
     return true;
   for (auto b : boxes)
-    if (distance(p.x, p.y, fmaxf(b.x1, fminf(b.x2, p.x)), fmaxf(b.y1, fminf(b.y2, p.y))) < .18)
+    if (distance(p.x, p.y, fmaxf(b.x1, fminf(b.x2, p.x)), fmaxf(b.y1, fminf(b.y2, p.y))) < .17)
       return true;
   return false;
 }
-static void scenario(bool furniture, bool deep, bool battery) {
+static void brushGeometry() {
+  Config c;
+  c.cols = 40;
+  c.rows = 30;
+  c.originX = c.originY = 0;
+  Navigator n(c);
+  Input i = healthy();
+  i.pose.x = i.pose.y = 1.025f;
+  n.start(false, i.pose, i.now);
+  for (int k = 0; k < n.count(); ++k)
+    n.cells[k] = -1;
+  auto has = [&](float x, float y, int pass) {
+    int cell = n.cell(x, y);
+    for (int sub = 0; sub < 4; ++sub) {
+      Pose p = n.samplePoint(cell, sub);
+      if (distance(x, y, p.x, p.y) < .002f)
+        return bool(n.covered[cell] & (1u << (sub + pass * 4)));
+    }
+    assert(false);
+    return false;
+  };
+  n.recordSweep(i);
+  assert(has(1.025f, 1.025f, 0));
+  assert(has(1.025f, 1.075f, 0));
+  assert(!has(1.125f, 1.025f, 0)); // body over it, but main brush never crossed it
+  assert(!has(1.025f, 1.125f, 0));
+  assert(!has(1.025f, 1.025f, 1));
+  clockAt(i, 200);
+  i.pose.x = 1.085f;
+  n.recordSweep(i);
+  assert(has(1.075f, 1.025f, 0)); // continuous ribbon, not disconnected pose stamps
+  clockAt(i, 400);
+  i.pose.x = 2.025f;
+  n.recordSweep(i);
+  assert(!has(1.525f, 1.025f, 0)); // teleport never paints a joining line
+  i.cleaningActive = false;
+  i.sideBrushActive = true;
+  clockAt(i, 600);
+  i.pose.x = 3.025f;
+  unsigned before = n.completedCells;
+  n.recordSweep(i);
+  assert(n.completedCells == before); // side brush is NEVER counted as main brush
+  bool side = false;
+  for (int k = 0; k < n.count(); ++k)
+    side |= n.sideCovered[k] != 0;
+  assert(side);
+  i.sideBrushActive = false;
+  clockAt(i, 800);
+  i.pose.y = 2.025f;
+  n.recordSweep(i);
+  assert(n.completedCells == before);
+  i.cleaningActive = true;
+  i.pose.x = i.pose.y = 1.025f;
+  i.pose.yaw = Pi / 2;
+  n.pass = 1;
+  clockAt(i, 1000);
+  n.recordSweep(i);
+  assert(has(1.075f, 1.025f, 1));
+  assert(!has(1.025f, 1.075f, 1)); // second pass footprint is rotated, not copied
+  c.brushWidth = .11f;
+  Navigator invalid(c);
+  invalid.start(false, i.pose, i.now);
+  assert(invalid.state == State::Fault); // cannot choose lanes wider than brush minus overlap
+}
+static void scenario(bool furniture, bool deep, bool battery, bool doorway = false,
+                     bool touch = false) {
   Config cfg;
-  cfg.cols = 32;
-  cfg.rows = 24;
-  cfg.resolution = .15;
+  cfg.cols = 48;
+  cfg.rows = 36;
+  cfg.resolution = .1;
   cfg.originX = cfg.originY = 0;
-  cfg.margin = .04;
+  cfg.margin = .03;
+  cfg.wallTouch = touch;
   Navigator n(cfg);
   Input i = healthy();
   i.pose.x = i.pose.y = .675;
@@ -175,17 +242,39 @@ static void scenario(bool furniture, bool deep, bool battery) {
   std::vector<Box> boxes;
   if (furniture)
     boxes = {{1.8f, 1.4f, 2.4f, 2.1f}, {3.5f, .6f, 4.1f, 1.2f}};
-  bool charged = false, resumed = false;
+  if (doorway)
+    boxes = {{2.25f, 0, 2.55f, 1.1f}, {2.25f, 2.3f, 2.55f, 3.6f}};
+  bool charged = false, resumed = false, rightRoom = false, secondStartedHere = false;
+  float axisTravel[2][2]{};
+  unsigned gentleContacts = 0, lastPass = 0;
+  Pose lastPose = i.pose;
+  bool edgeBeforeCross = false;
   float travelled = 0;
-  for (int step = 0; step < 18000; ++step) {
+  for (int step = 0; step < 36000; ++step) {
     clockAt(i, 100 + step * 200);
     if (battery && step == 200)
       i.battery = 18;
     for (int j = 0; j < 180; ++j)
       i.ranges[j] = ray(i.pose, i.pose.yaw + j * Pi / 90, boxes);
+    if (n.state == State::Edging && i.pose.x < 2.25f)
+      edgeBeforeCross = true;
+    if (doorway && i.pose.x > 2.55f) {
+      assert(edgeBeforeCross);
+      rightRoom = true;
+    }
+    auto before = n.state;
+    bool transit = n.roomTransit();
+    i.retreatVerified = true; // ideal simulator has a recorded level-floor trail
     auto out = n.tick(i);
+    i.cleaningActive = out.action == Action::Drive && out.pwm > 0;
+    i.sideBrushActive =
+        out.action == Action::Drive && (out.sidePwm == 255 ? out.pwm : out.sidePwm) > 0;
     if (n.state == State::Fault) {
-      std::printf("scenario fault %d at %d skip %u\n", int(n.reason), step, n.skipped);
+      std::printf("scenario fault %d at %d skip %u edge=%u seg=%u pos=%.3f,%.3f yaw=%.2f\n",
+                  int(n.reason), step, n.skipped, n.edgePhase(), n.edgeSegments, i.pose.x, i.pose.y,
+                  i.pose.yaw);
+      std::printf("before state=%d safe=%d target=%d\n", int(before),
+                  n.safe[n.cell(i.pose.x, i.pose.y)], n.target());
       break;
     }
     if (n.state == State::Docking) {
@@ -199,12 +288,32 @@ static void scenario(bool furniture, bool deep, bool battery) {
       resumed = true;
       i.docked = i.charging = false;
     }
+    if (deep && lastPass == 0 && n.pass == 1) {
+      assert(distance(i.pose.x, i.pose.y, lastPose.x, lastPose.y) < .05f);
+      secondStartedHere = true;
+    }
+    lastPass = n.pass;
+    lastPose = i.pose;
     if (out.action == Action::Drive) {
+      if (before == State::Cleaning && !transit) {
+        axisTravel[n.pass][0] += fabsf(out.speed * cosf(i.pose.yaw)) * .2f;
+        axisTravel[n.pass][1] += fabsf(out.speed * sinf(i.pose.yaw)) * .2f;
+      }
       for (int sub = 0; sub < 10; ++sub) {
+        Pose previous = i.pose;
         i.pose.x += out.speed * cosf(i.pose.yaw + out.turn * .01f) * .02f;
         i.pose.y += out.speed * sinf(i.pose.yaw + out.turn * .01f) * .02f;
         i.pose.yaw = wrap(i.pose.yaw + out.turn * .02f);
-        assert(!collision(i.pose, boxes));
+        if (collision(i.pose, boxes)) {
+          assert(touch && n.wallApproach() && out.speed <= .0151f);
+          i.pose = previous;
+          if (!i.bumper)
+            ++gentleContacts;
+          i.bumper = true;
+          break;
+        }
+        if (out.speed < 0)
+          i.bumper = false;
       }
       travelled += fabsf(out.speed) * .2f;
     }
@@ -216,19 +325,35 @@ static void scenario(bool furniture, bool deep, bool battery) {
       furniture, deep, battery, int(n.state), n.completedCells, n.skipped, travelled);
   assert(n.state == State::Complete);
   assert(n.skipped < cfg.maxSkipped);
+  assert(n.roomsCompleted < 12);
   assert(n.completedCells > 200);
-  if (deep)
-    assert(n.pass == 1);
+  std::printf(
+      "axis horizontal %.1f/%.1f vertical %.1f/%.1f contacts %u rooms %u edges %u incomplete %u\n",
+      axisTravel[0][0], axisTravel[0][1], axisTravel[1][0], axisTravel[1][1], gentleContacts,
+      n.roomsCompleted, n.edgeSegments, n.edgeIncomplete);
+  assert(axisTravel[0][0] > axisTravel[0][1] * 1.3f);
+  if (deep) {
+    assert(n.pass == 1 && secondStartedHere);
+    assert(axisTravel[1][1] > axisTravel[1][0] * 1.3f);
+  }
+  if (doorway) {
+    assert(rightRoom);
+    assert(n.roomsCompleted >= 2);
+  }
+  if (touch) {
+    assert(gentleContacts > 0 && gentleContacts <= 8);
+    assert(n.wallContacts == gentleContacts);
+  }
   if (battery)
     assert(charged && resumed);
 }
 static void noProgress() {
   Config cfg;
-  cfg.cols = 32;
-  cfg.rows = 24;
-  cfg.resolution = .15;
+  cfg.cols = 48;
+  cfg.rows = 36;
+  cfg.resolution = .1;
   cfg.originX = cfg.originY = 0;
-  cfg.margin = .04;
+  cfg.margin = .03;
   Navigator n(cfg);
   Input i = healthy();
   i.pose.x = i.pose.y = .675;
@@ -249,6 +374,63 @@ static void noProgress() {
   bad.start(false, i.pose, 0);
   assert(bad.state == State::Fault);
   assert(isnan(wrap(INFINITY)));
+}
+static void assistancePolicy() {
+  NavigationHelp paused;
+  paused.operatorPause();
+  assert(!paused.begin(Reason::Localization, 100, true));
+  paused.operatorResume();
+  assert(paused.begin(Reason::Localization, 100, true));
+  paused.operatorPause();
+  Pose candidate;
+  assert(!paused.candidate(candidate));
+  assert(!paused.allowLocal(healthy()));
+  NavigationHelp h;
+  Input i = healthy();
+  assert(h.begin(Reason::Localization, 100, true));
+  assert(h.allowLocal(i));
+  assert(!h.begin(Reason::NoRoute, 200, true));
+  assert(!h.validReply(h.id - 1, h.frame, 500, 200));
+  assert(!h.validReply(h.id, h.frame + 1, 500, 200));
+  assert(!h.validReply(h.id, h.frame, 200, 200));
+  assert(h.validReply(h.id, h.frame, 500, 200));
+  i.battery = 24;
+  assert(h.allowLocal(i)); // low battery may invoke native IR search
+  i.cliff = true;
+  assert(!h.allowLocal(i));
+  assert(h.status == NavigationHelp::Status::Held);
+  Pose p;
+  assert(h.candidate(p));
+  assert(!h.confirm(true));
+  assert(!h.confirm(true));
+  assert(h.confirm(true));
+  assert(!h.pending());
+  assert(h.begin(Reason::Localization, 1000, false));
+  assert(!h.allowLocal(i));
+  assert(h.candidate(p));
+  assert(!h.confirm(false));
+  assert(h.status == NavigationHelp::Status::Held);
+  NavigationHelp deadline;
+  assert(deadline.begin(Reason::NoRoute, 0xfffffff0u, true));
+  assert(deadline.validReply(deadline.id, deadline.frame, 100, 0xfffffff1u));
+  i = healthy(7200100);
+  assert(!deadline.allowLocal(i));
+  Config cfg;
+  cfg.homeKnown = false;
+  Navigator n(cfg);
+  i = healthy();
+  n.start(false, i.pose, i.now);
+  n.goHome(i);
+  assert(n.state == State::Docking);
+  assert(n.tick(i).action == Action::SeekDock);
+  clockAt(i, 60200);
+  assert(n.tick(i).action == Action::Stop);
+  assert(n.state == State::Fault && n.reason == Reason::DockTimeout);
+  n.start(false, i.pose, i.now);
+  n.goHome(i);
+  i.docked = i.charging = true;
+  n.tick(i);
+  assert(n.state == State::Complete); // never guesses a global resume pose after docking
 }
 static void arbitration() {
   ControlArbiter wrapOwner;
@@ -277,6 +459,8 @@ static void arbitration() {
   assert(!a.takeover(1800, true, true));
 }
 int main() {
+  assistancePolicy();
+  brushGeometry();
   noProgress();
   arbitration();
   safety();
@@ -286,5 +470,7 @@ int main() {
   scenario(true, false, false);
   scenario(true, true, false);
   scenario(false, false, true);
+  scenario(false, false, false, true);
+  scenario(false, false, false, false, true);
   puts("Native navigation tests passed");
 }
