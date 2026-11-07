@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")/.."
+build_dir=$(mktemp -d "${TMPDIR:-/tmp}/roocore-tests.XXXXXX")
+trap 'rm -rf "$build_dir"' EXIT HUP INT TERM
+"${CXX:-clang++}" -std=c++11 -Wall -Wextra -Werror -pedantic \
+  -fsanitize=address,undefined -fno-omit-frame-pointer \
+  -Ilib/RoombaOI/src lib/RoombaOI/src/RoombaOI.cpp tests/roomba_oi_test.cpp \
+  -o "$build_dir/roomba-oi-test"
+"$build_dir/roomba-oi-test"
+
+python3 tests/check_oi_map.py

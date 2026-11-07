@@ -1,0 +1,759 @@
+{
+  "source": "iRobot Create 2 / Roomba 600 Open Interface, 2021-04-13",
+  "source_url": "https://cdn.hackaday.io/files/1835247851890816/2021-04-13_iRobot_Roomba_600_Open_Interface_Spec-3.pdf",
+  "hardware_status": "Roomba 620 firmware and physical support not yet verified",
+  "commands": [
+    {
+      "opcode": 7,
+      "api": "resetRobot",
+      "availability": "resetAndStop"
+    },
+    {
+      "opcode": 128,
+      "api": "beginPassive",
+      "availability": "base"
+    },
+    {
+      "opcode": 129,
+      "api": "changeBaud",
+      "availability": "platform link control; Passive only"
+    },
+    {
+      "opcode": 130,
+      "api": "enterSafe",
+      "availability": "alias; sends 131"
+    },
+    {
+      "opcode": 131,
+      "api": "enterSafe",
+      "availability": "base"
+    },
+    {
+      "opcode": 132,
+      "api": "enterFullDisablingSafety",
+      "availability": "explicit safety disable"
+    },
+    {
+      "opcode": 133,
+      "api": "powerDownRobot",
+      "availability": "base"
+    },
+    {
+      "opcode": 134,
+      "api": "spot",
+      "availability": "base"
+    },
+    {
+      "opcode": 135,
+      "api": "clean",
+      "availability": "base"
+    },
+    {
+      "opcode": 136,
+      "api": "maxClean",
+      "availability": "base"
+    },
+    {
+      "opcode": 137,
+      "api": "driveStraight / driveArc / turnInPlace",
+      "availability": "base"
+    },
+    {
+      "opcode": 138,
+      "api": "setMotors",
+      "availability": "base"
+    },
+    {
+      "opcode": 139,
+      "api": "setLeds",
+      "availability": "base"
+    },
+    {
+      "opcode": 140,
+      "api": "defineSong",
+      "availability": "base"
+    },
+    {
+      "opcode": 141,
+      "api": "playSong",
+      "availability": "base"
+    },
+    {
+      "opcode": 142,
+      "api": "request / requestBattery",
+      "availability": "base"
+    },
+    {
+      "opcode": 143,
+      "api": "seekDock",
+      "availability": "base"
+    },
+    {
+      "opcode": 144,
+      "api": "setMotorPwm",
+      "availability": "base"
+    },
+    {
+      "opcode": 145,
+      "api": "driveWheels / stopWheels",
+      "availability": "base"
+    },
+    {
+      "opcode": 146,
+      "api": "driveWheelPwm",
+      "availability": "base"
+    },
+    {
+      "opcode": 148,
+      "api": "startStream",
+      "availability": "base"
+    },
+    {
+      "opcode": 149,
+      "api": "request",
+      "availability": "base"
+    },
+    {
+      "opcode": 150,
+      "api": "pauseStream / resumeStream",
+      "availability": "base"
+    },
+    {
+      "opcode": 162,
+      "api": "setSchedulingLeds",
+      "availability": "schedulingAndDisplay"
+    },
+    {
+      "opcode": 163,
+      "api": "displaySegments",
+      "availability": "schedulingAndDisplay; known firmware bug"
+    },
+    {
+      "opcode": 164,
+      "api": "displayText",
+      "availability": "schedulingAndDisplay"
+    },
+    {
+      "opcode": 165,
+      "api": "pressButton",
+      "availability": "schedule buttons need schedulingAndDisplay"
+    },
+    {
+      "opcode": 167,
+      "api": "setSchedule",
+      "availability": "schedulingAndDisplay"
+    },
+    {
+      "opcode": 168,
+      "api": "setClock",
+      "availability": "schedulingAndDisplay"
+    },
+    {
+      "opcode": 173,
+      "api": "stopInterface",
+      "availability": "resetAndStop"
+    }
+  ],
+  "excluded_legacy_opcodes": [
+    147,
+    151,
+    152,
+    153,
+    154,
+    155,
+    156,
+    157,
+    158
+  ],
+  "sensors": [
+    {
+      "id": 7,
+      "name": "BumpsAndDrops",
+      "bytes": 1,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "base",
+      "bits": {
+        "0": "bump right",
+        "1": "bump left",
+        "2": "wheel drop right",
+        "3": "wheel drop left"
+      }
+    },
+    {
+      "id": 8,
+      "name": "Wall",
+      "bytes": 1,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "base"
+    },
+    {
+      "id": 9,
+      "name": "CliffLeft",
+      "bytes": 1,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "base"
+    },
+    {
+      "id": 10,
+      "name": "CliffFrontLeft",
+      "bytes": 1,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "base"
+    },
+    {
+      "id": 11,
+      "name": "CliffFrontRight",
+      "bytes": 1,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "base"
+    },
+    {
+      "id": 12,
+      "name": "CliffRight",
+      "bytes": 1,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "base"
+    },
+    {
+      "id": 13,
+      "name": "VirtualWall",
+      "bytes": 1,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "base"
+    },
+    {
+      "id": 14,
+      "name": "Overcurrents",
+      "bytes": 1,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "base",
+      "bits": {
+        "0": "side brush overcurrent",
+        "2": "main brush overcurrent",
+        "3": "right wheel overcurrent",
+        "4": "left wheel overcurrent"
+      }
+    },
+    {
+      "id": 15,
+      "name": "DirtDetect",
+      "bytes": 1,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "base"
+    },
+    {
+      "id": 16,
+      "name": "Unused16",
+      "bytes": 1,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "reserved; consume bytes, no physical sensor meaning"
+    },
+    {
+      "id": 17,
+      "name": "InfraredOmni",
+      "bytes": 1,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "base"
+    },
+    {
+      "id": 18,
+      "name": "Buttons",
+      "bytes": 1,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "base",
+      "bits": {
+        "0": "Clean",
+        "1": "Spot",
+        "2": "Dock",
+        "3": "Minute",
+        "4": "Hour",
+        "5": "Day",
+        "6": "Schedule",
+        "7": "Clock"
+      }
+    },
+    {
+      "id": 19,
+      "name": "DistanceMm",
+      "bytes": 2,
+      "wire_signed": true,
+      "decoded_signed": true,
+      "units": "mm since last read; firmware dependent",
+      "availability": "base"
+    },
+    {
+      "id": 20,
+      "name": "AngleDegrees",
+      "bytes": 2,
+      "wire_signed": true,
+      "decoded_signed": true,
+      "units": "degrees since last read; firmware dependent",
+      "availability": "base"
+    },
+    {
+      "id": 21,
+      "name": "ChargingState",
+      "bytes": 1,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "base"
+    },
+    {
+      "id": 22,
+      "name": "VoltageMv",
+      "bytes": 2,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "mV",
+      "availability": "base"
+    },
+    {
+      "id": 23,
+      "name": "CurrentMa",
+      "bytes": 2,
+      "wire_signed": true,
+      "decoded_signed": true,
+      "units": "mA; negative = discharge",
+      "availability": "base"
+    },
+    {
+      "id": 24,
+      "name": "TemperatureC",
+      "bytes": 1,
+      "wire_signed": true,
+      "decoded_signed": true,
+      "units": "degrees C",
+      "availability": "base"
+    },
+    {
+      "id": 25,
+      "name": "ChargeMah",
+      "bytes": 2,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "mAh",
+      "availability": "base"
+    },
+    {
+      "id": 26,
+      "name": "CapacityMah",
+      "bytes": 2,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "mAh",
+      "availability": "base"
+    },
+    {
+      "id": 27,
+      "name": "WallSignal",
+      "bytes": 2,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "base"
+    },
+    {
+      "id": 28,
+      "name": "CliffLeftSignal",
+      "bytes": 2,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "base"
+    },
+    {
+      "id": 29,
+      "name": "CliffFrontLeftSignal",
+      "bytes": 2,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "base"
+    },
+    {
+      "id": 30,
+      "name": "CliffFrontRightSignal",
+      "bytes": 2,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "base"
+    },
+    {
+      "id": 31,
+      "name": "CliffRightSignal",
+      "bytes": 2,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "base"
+    },
+    {
+      "id": 32,
+      "name": "Unused32",
+      "bytes": 1,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "reserved; consume bytes, no physical sensor meaning"
+    },
+    {
+      "id": 33,
+      "name": "Unused33",
+      "bytes": 2,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "reserved; consume bytes, no physical sensor meaning"
+    },
+    {
+      "id": 34,
+      "name": "ChargingSources",
+      "bytes": 1,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "base",
+      "bits": {
+        "0": "internal charger",
+        "1": "home base"
+      }
+    },
+    {
+      "id": 35,
+      "name": "OiMode",
+      "bytes": 1,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "base"
+    },
+    {
+      "id": 36,
+      "name": "SongNumber",
+      "bytes": 1,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "base"
+    },
+    {
+      "id": 37,
+      "name": "SongPlaying",
+      "bytes": 1,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "base"
+    },
+    {
+      "id": 38,
+      "name": "StreamCount",
+      "bytes": 1,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "base"
+    },
+    {
+      "id": 39,
+      "name": "RequestedVelocity",
+      "bytes": 2,
+      "wire_signed": true,
+      "decoded_signed": true,
+      "units": "mm/s requested",
+      "availability": "base"
+    },
+    {
+      "id": 40,
+      "name": "RequestedRadius",
+      "bytes": 2,
+      "wire_signed": true,
+      "decoded_signed": true,
+      "units": "mm requested; special markers; firmware dependent",
+      "availability": "base"
+    },
+    {
+      "id": 41,
+      "name": "RequestedRightVelocity",
+      "bytes": 2,
+      "wire_signed": true,
+      "decoded_signed": true,
+      "units": "mm/s requested",
+      "availability": "base"
+    },
+    {
+      "id": 42,
+      "name": "RequestedLeftVelocity",
+      "bytes": 2,
+      "wire_signed": true,
+      "decoded_signed": true,
+      "units": "mm/s requested",
+      "availability": "base"
+    },
+    {
+      "id": 43,
+      "name": "LeftEncoder",
+      "bytes": 2,
+      "wire_signed": true,
+      "decoded_signed": false,
+      "units": "modulo-65536 encoder counts",
+      "availability": "extendedSensors"
+    },
+    {
+      "id": 44,
+      "name": "RightEncoder",
+      "bytes": 2,
+      "wire_signed": true,
+      "decoded_signed": false,
+      "units": "modulo-65536 encoder counts",
+      "availability": "extendedSensors"
+    },
+    {
+      "id": 45,
+      "name": "LightBumper",
+      "bytes": 1,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "extendedSensors",
+      "bits": {
+        "0": "left",
+        "1": "front left",
+        "2": "center left",
+        "3": "center right",
+        "4": "front right",
+        "5": "right"
+      }
+    },
+    {
+      "id": 46,
+      "name": "LightLeft",
+      "bytes": 2,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "extendedSensors"
+    },
+    {
+      "id": 47,
+      "name": "LightFrontLeft",
+      "bytes": 2,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "extendedSensors"
+    },
+    {
+      "id": 48,
+      "name": "LightCenterLeft",
+      "bytes": 2,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "extendedSensors"
+    },
+    {
+      "id": 49,
+      "name": "LightCenterRight",
+      "bytes": 2,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "extendedSensors"
+    },
+    {
+      "id": 50,
+      "name": "LightFrontRight",
+      "bytes": 2,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "extendedSensors"
+    },
+    {
+      "id": 51,
+      "name": "LightRight",
+      "bytes": 2,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "extendedSensors"
+    },
+    {
+      "id": 52,
+      "name": "InfraredLeft",
+      "bytes": 1,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "extendedSensors"
+    },
+    {
+      "id": 53,
+      "name": "InfraredRight",
+      "bytes": 1,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "extendedSensors"
+    },
+    {
+      "id": 54,
+      "name": "LeftMotorCurrent",
+      "bytes": 2,
+      "wire_signed": true,
+      "decoded_signed": true,
+      "units": "mA",
+      "availability": "extendedSensors"
+    },
+    {
+      "id": 55,
+      "name": "RightMotorCurrent",
+      "bytes": 2,
+      "wire_signed": true,
+      "decoded_signed": true,
+      "units": "mA",
+      "availability": "extendedSensors"
+    },
+    {
+      "id": 56,
+      "name": "MainBrushCurrent",
+      "bytes": 2,
+      "wire_signed": true,
+      "decoded_signed": true,
+      "units": "mA",
+      "availability": "extendedSensors"
+    },
+    {
+      "id": 57,
+      "name": "SideBrushCurrent",
+      "bytes": 2,
+      "wire_signed": true,
+      "decoded_signed": true,
+      "units": "mA",
+      "availability": "extendedSensors"
+    },
+    {
+      "id": 58,
+      "name": "Stasis",
+      "bytes": 1,
+      "wire_signed": false,
+      "decoded_signed": false,
+      "units": "raw sensor value or status",
+      "availability": "extendedSensors",
+      "bits": {
+        "0": "stasis toggling",
+        "1": "stasis disabled"
+      }
+    }
+  ],
+  "groups": [
+    {
+      "id": 0,
+      "name": "Basic",
+      "first": 7,
+      "last": 26,
+      "bytes": 26
+    },
+    {
+      "id": 1,
+      "name": "Safety",
+      "first": 7,
+      "last": 16,
+      "bytes": 10
+    },
+    {
+      "id": 2,
+      "name": "Motion",
+      "first": 17,
+      "last": 20,
+      "bytes": 6
+    },
+    {
+      "id": 3,
+      "name": "Battery",
+      "first": 21,
+      "last": 26,
+      "bytes": 10
+    },
+    {
+      "id": 4,
+      "name": "Signals",
+      "first": 27,
+      "last": 34,
+      "bytes": 14
+    },
+    {
+      "id": 5,
+      "name": "Status",
+      "first": 35,
+      "last": 42,
+      "bytes": 12
+    },
+    {
+      "id": 6,
+      "name": "AllBase",
+      "first": 7,
+      "last": 42,
+      "bytes": 52
+    },
+    {
+      "id": 100,
+      "name": "AllExtended",
+      "first": 7,
+      "last": 58,
+      "bytes": 80
+    },
+    {
+      "id": 101,
+      "name": "Extended",
+      "first": 43,
+      "last": 58,
+      "bytes": 28
+    },
+    {
+      "id": 106,
+      "name": "LightSignals",
+      "first": 46,
+      "last": 51,
+      "bytes": 12
+    },
+    {
+      "id": 107,
+      "name": "MotorCurrentsAndStasis",
+      "first": 54,
+      "last": 58,
+      "bytes": 9
+    }
+  ],
+  "brc": {
+    "wakeViaBrc": "one 100 ms low pulse, release, 2000 ms settling, fresh OI mode response",
+    "forceBaud19200ViaBrc": "powered robot; release for 2000 ms; three 100 ms low / 100 ms released pulses; host 19200; fresh OI mode response"
+  }
+}

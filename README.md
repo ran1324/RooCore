@@ -1,5 +1,33 @@
 # RooCore
 
+Roomba 620 control and telemetry. The current controller target is the **plain XIAO ESP32S3**; the older ESP-01S recorder is preserved below as a separate application.
+
+## Roomba Open Interface library
+
+[API guide and protocol review](docs/OPEN_INTERFACE.md) · [Complete command/sensor map](docs/oi-map.json) · [Validation](docs/VALIDATION_XIAO.md) · [Library](lib/RoombaOI/src/RoombaOI.h)
+
+Portable C++11 library with typed commands, sensor snapshots, stream validation, expiring wheel commands, baud changes and BRC wake/recovery. The ESP32 adapter uses D0/GPIO1 for TX, D1/GPIO2 for RX and D9/GPIO8 through the planned NPN for BRC. Never connect a 3.3V GPIO directly to the robot's 5V serial/BRC signals.
+
+```cpp
+robot.beginPassive();
+robot.requestBattery(now);
+robot.poll(now);
+auto battery = robot.battery(now); // use only when battery.valid
+```
+
+Install `lib/RoombaOI` as an Arduino library. [BatteryMonitor](lib/RoombaOI/examples/BatteryMonitor/BatteryMonitor.ino) reads sensors without driving; [LinkSetup](lib/RoombaOI/examples/LinkSetup/LinkSetup.ino) demonstrates verified wake and baud changes. Maintenance operations block briefly and require inactive custom motor control and no pending query/stream.
+
+```sh
+sh tests/run.sh
+sh tests/build_xiao.sh
+```
+
+Both examples compile for **XIAO_ESP32S3 with 8 MB flash and OPI PSRAM**, using Arduino ESP32 3.3.12. The host suite passes 707 checks plus the protocol-inventory audit. No firmware has been flashed or tested on the physical robot. Hardware-dependent features remain explicitly gated or unverified. See the validation page for setup, exact build settings and limits.
+
+## Legacy ESP-01S recorder
+
+The wiring diagrams and setup instructions below describe the earlier ESP-01S recorder, **not the current XIAO power or pin wiring**. Its source and recording tools remain available; integrating the new library into a complete XIAO Wi-Fi/OTA application is separate work.
+
 Roomba 620 sensor recording with an ESP-01S and our own server.
 The hardware starts from [thehookup/MQTT-Roomba-ESP01](https://github.com/thehookup/MQTT-Roomba-ESP01): battery power, a 3.3V buck converter, a PNP receive interface and GPIO2 connected to BRC.
 RooCore uses a direct TCP connection to our server. It does not need an MQTT broker or a separate Arduino board.

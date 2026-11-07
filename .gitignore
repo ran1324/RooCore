@@ -8,3 +8,7 @@ firmware/include/secrets.h
 .playwright-cli/
 firmware/include/network_config.h
 .roocore-token
+
+# macOS external-volume metadata and local target builds
+._*
+.roocore-build/
