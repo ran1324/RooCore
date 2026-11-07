@@ -706,6 +706,9 @@ void tryAssistance(uint32_t now) {
                    uint32_t(now - latest.sensorsMs) <= 200 &&
                    uint32_t(now - latest.scanMs) <= 400 && left.fresh(now, 200) &&
                    right.fresh(now, 200);
+  // A fresh map must not erase a nearby bumper hazard that may be below the laser.
+  // Keep the help request, but require verified relocalization/operator intervention.
+  localSafe = localSafe && !navigator->nearbyContact(latest.pose);
   if (!saveMission()) {
     navigator->fault(roonav::Reason::Telemetry);
     lastError = "cannot preserve global mission";

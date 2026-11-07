@@ -322,6 +322,16 @@ public:
     return s == State::Yielding ? waitResume_ : s;
   }
   void yieldForObstacle(const Input &in) { beginYield(in, target_); }
+  bool nearbyContact(Pose pose) const {
+    for (int c = 0; c < count(); ++c) {
+      if (!contacts[c])
+        continue;
+      Pose p = center(c);
+      if (distance(pose.x, pose.y, p.x, p.y) <= .6f)
+        return true;
+    }
+    return false;
+  }
   void restorePaused(State prior, uint32_t now) {
     resume_ = prior == State::Docking ? State::Returning : prior;
     if (prior == State::Edging) {

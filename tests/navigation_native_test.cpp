@@ -199,6 +199,11 @@ static void dynamicOccupancy() {
   // Low bumper-only obstacle: laser can see past it, but that proves no floor clearance.
   n.contacts[c] = 1;
   n.cells[c] = 1;
+  Pose near = n.center(c);
+  near.x -= .25f;
+  assert(n.nearbyContact(near));
+  near.x -= 1.f;
+  assert(!n.nearbyContact(near));
   for (int k = 0; k < 50; ++k) {
     clockAt(i, 6000 + k * 100);
     scan();

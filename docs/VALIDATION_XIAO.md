@@ -56,7 +56,7 @@ The existing ESP-01S recorder remains a separate legacy application. It has not 
 
 ## Cleaning firmware, coverage and assistance — 2026-11-08
 
-`firmware/xiao/RooCoreXiao` and the `lib/RooNavigation` C++ library build for the same XIAO target in telemetry-only and commissioned configurations. The latter uses 512,267 bytes (15%) application flash and 148,284 bytes (45%) static internal RAM; the large navigation maps and temporary checkpoint buffer are allocated in the board's 8 MB PSRAM. Runtime PSRAM availability, task timing, stack/heap peaks, Wi-Fi, flash persistence and UART/motor behavior still need hardware tests.
+`firmware/xiao/RooCoreXiao` and the `lib/RooNavigation` C++ library build for the same XIAO target in telemetry-only and commissioned configurations. The latter uses 512,515 bytes (15%) application flash and 148,284 bytes (45%) static internal RAM; the large navigation maps and temporary checkpoint buffer are allocated in the board's 8 MB PSRAM. Runtime PSRAM availability, task timing, stack/heap peaks, Wi-Fi, flash persistence and UART/motor behavior still need hardware tests.
 
 Validation:
 
