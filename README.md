@@ -6,6 +6,8 @@ Roomba 620 control and telemetry. The current controller target is the **plain X
 
 [Real firmware](firmware/xiao/RooCoreXiao/RooCoreXiao.ino) · [Behavior and hardware setup](docs/XIAO_NAVIGATION.md) · [Optional Nav2 computer](docs/ROS2_NAVIGATION.md)
 
+[Current XIAO wiring SVG](docs/diagrams/wiring-xiao.svg) · [PNG](docs/diagrams/wiring-xiao.png) · [Connections and pre-power checks](docs/wiring-xiao.md). Includes the battery branch, fuse, D36V28F5, LiDAR switch, both UART adapters and BRC/EN circuits. Unverified fuse/cutoff values and the pending software power-off path are marked in the drawing.
+
 The XIAO application adds daily/deep coverage, observation-only dirt logging, finite recovery decisions, battery return/charge/resume, checkpoint storage and local fallback after server loss. Remote commands expire; reconnecting cannot replay an old movement. It uses Safe mode and stops on invalid sensor/localization state. The onboard mapper is a limited local fallback, not whole-home SLAM. Initial builds disable motion until hardware commissioning. [DirtDetect collection and calibration](docs/DIRT_DETECT.md) do not trigger automatic extra cleaning. **Compiled/tested in software; not flashed or validated on the robot.**
 
 For the browser behavior prototype: `python3 -m navigation.server`, then open `http://127.0.0.1:8766`. It runs the actual C++ Navigator through a local ctypes adapter; physics/localization/charging are simulated. Install a C++ compiler (clang++) first. `tests/navigation_native_test.cpp` tests the actual C++ firmware planner with independent simulated physics, including charging/resume and bounded recovery. See the setup document for the distinction and limits.
