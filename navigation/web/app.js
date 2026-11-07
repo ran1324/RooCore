@@ -56,6 +56,8 @@ function clock(t) {
 }
 function render(s) {
   state = s;
+  $("profile").value = s.profile;
+  $("scenario").value = s.scenario;
   $("phase").textContent = phases[s.state];
   $("coverage").innerHTML = `${s.coverage}<span>%</span>`;
   $("battery").innerHTML = `${s.battery}<span>%</span>`;
@@ -78,7 +80,9 @@ function render(s) {
     ? "השהיה"
     : s.state === "PAUSED" || s.state === "FAULT"
       ? "אישור והמשך"
-      : "התחלת ניקיון";
+      : s.state === "READY"
+        ? "התחלת ניקיון"
+        : "המשך הרצה";
   $("run").disabled = s.state === "COMPLETE";
   $("home").disabled = !["CLEANING", "RESUMING", "EDGING", "TOUCHUP"].includes(
     s.state,
@@ -275,7 +279,10 @@ $("run").onclick = async () => {
       await api(
         state.state === "PAUSED" || state.state === "FAULT"
           ? "resume"
-          : "start",
+          : state.state === "READY"
+            ? "start"
+            : "step",
+        { count: 1 },
       );
       running = !["FAULT", "PAUSED", "COMPLETE"].includes(state.state);
       render(state);

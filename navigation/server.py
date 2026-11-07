@@ -83,6 +83,10 @@ class Handler(BaseHTTPRequestHandler):
                         body.get("scenario", "furniture"), body.get("profile", "daily")
                     )
                 elif action == "/api/start":
+                    if sim.mission.state != "READY":
+                        raise ValueError(
+                            "mission already exists; resume or reset explicitly"
+                        )
                     sim.mission.start()
                 elif action == "/api/step":
                     count = body.get("count", 1)
