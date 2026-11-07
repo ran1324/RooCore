@@ -60,6 +60,13 @@ struct SafetyState {
   bool cliffLeft=false, cliffFrontLeft=false, cliffFrontRight=false, cliffRight=false;
   bool virtualWall=false;
 };
+enum class StasisMeaning : uint8_t { NoForwardProgress=0, ForwardProgress=1, CasterNeedsCleaning=2, Unknown=3 };
+struct StasisState {
+  Sample sample;
+  StasisMeaning meaning=StasisMeaning::Unknown;
+  bool usableForProgress=false;
+  bool maintenanceSuggested=false;
+};
 struct Note { uint8_t midi, ticks64; }; // midi=0 is a rest; 1 tick = 1/64 s.
 struct ScheduleEntry { bool enabled; uint8_t hour, minute; };
 struct Leds { bool debris, spot, dock, checkRobot; uint8_t color, intensity; };
@@ -135,6 +142,14 @@ class Roomba {
   Result resynchronizeInput(uint32_t now);
   void poll(uint32_t now); // Call continuously: RX, deadlines, and wheel lease.
   Sample sensor(Sensor id) const;
+  StasisState stasis(uint32_t now, uint32_t maxAgeMs=200) const;
+  // Called once per updated individual sensor, AFTER a complete valid frame commits.
+  // Runs synchronously in poll(); callback must be bounded, nonblocking and must not
+  // call this Roomba's transport/command/poll methods. Samples contain MCU receive time.
+  using SampleObserver = void (*)(void*, Sensor, const Sample&);
+  void setSampleObserver(SampleObserver observer, void* context=nullptr) {
+    observer_=observer; observerContext_=context;
+  }
   BatteryState battery(uint32_t now, uint32_t maxAgeMs=1000) const;
   SafetyState safety(uint32_t now, uint32_t maxAgeMs=100) const;
   Mode requestedMode() const { return mode_; } // Commanded/inferred, NOT an ACK.
@@ -161,6 +176,9 @@ class Roomba {
   size_t selected_=0, expected_=0, used_=0;
   uint8_t rx_[258]{};
   Sample samples_[59]{};
+  SampleObserver observer_=nullptr;
+  void* observerContext_=nullptr;
+  void notifySamples();
   Result send(const uint8_t* bytes, size_t count);
   Result command(uint8_t opcode, bool actuator=false);
   Result changeMode(uint8_t opcode, Mode target);

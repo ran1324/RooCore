@@ -312,22 +312,7 @@ class Mission:
             self.resume_state = "CLEANING"
             self.transition("FAULT", "no coverage progress within 60 seconds")
             return Command()
-        if obs.dirt >= 90 and not any(math.hypot(obs.pose.x - x, obs.pose.y - y) < .65 for x, y in self.dirty_zones):
-            # Bounded revisit of nearby cells, once per dirt zone per mission.
-            self.dirty_zones.append((obs.pose.x, obs.pose.y))
-            candidates = [c for c in self.grid.safe if .2 < math.dist(self.grid.center(c), (obs.pose.x, obs.pose.y)) < .45]
-            self.extra.extend(sorted(candidates)[:4] + [current])
-            self.path = []
-            self.event("DIRT: local extra pass")
-        if self.extra:
-            if self.grid.route(current, {self.extra[0]}) is None:
-                self.extra.popleft()
-                self.path = []
-                return Command()
-            command, reached = self._follow(obs, {self.extra[0]}, 127)
-            if reached:
-                self.extra.popleft()
-            return command
+        # Dirt response is disabled pending physical calibration, including this reference engine.
         targets = self.grid.safe - self.covered[self.pass_index]
         if self.grid.route(current, targets) is None:
             if current not in self.grid.safe:

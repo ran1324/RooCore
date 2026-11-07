@@ -28,7 +28,7 @@ The MCU updates its own map and coverage during remote driving. Nav2 receives th
 ## Cleaning and finite decisions
 
 - Daily: nominal 0.18 m/s and cleaning PWM 85, one pass. Deep: 0.12 m/s and PWM 127, two distinct passes. These are commissioning defaults, not measured suction/cleaning performance.
-- Dirt packet 15 is a relative signal. Threshold 90 produces one extra 1.5-second clean at each distinct dirty zone (up to 16 zones). Calibrate the threshold on the actual floor; it is not a calibrated dirt quantity.
+- Dirt packet 15 is observation-only. The former uncalibrated threshold-90 motor response has been removed. Timestamped capture, optional consecutive-reading detection, bounded advisory plans and passive revisit comparisons are described in [DIRT_DETECT.md](DIRT_DETECT.md). No automatic dirt cleaning is enabled or implemented before physical calibration.
 - Coverage follows the oriented central brushes, with separate side-brush credit and two independent crosshatch passes. See [coverage and recovery](COVERAGE_AND_RECOVERY.md) for provisional geometry, room partitions, perimeter control and server assistance.
 - A blocked target is excluded, rather than endlessly retried. Eight target failures without meaningful new brush coverage end the mission in a fault. Nearby goals can be retried once after observed obstacle clearance; each goal is excluded after two failures. Lack of progress toward a waypoint is limited to 8 seconds; a target is limited to 120 seconds; a mission to 2 hours. These conservative defaults may need adjustment after measurements.
 - Cliff/virtual-wall, overcurrent, invalid pose and stale telemetry stop immediately. No `Full` mode is used.

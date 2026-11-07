@@ -180,8 +180,6 @@ public:
     skipped = 0;
     completedCells = 0;
     finished = false;
-    dirtCount_ = 0;
-    dirtUntil_ = 0;
     missionStart_ = now;
     switchState(State::Cleaning, now);
     reason = Reason::None;
@@ -545,17 +543,8 @@ public:
       return out;
     }
     const uint8_t bit = uint8_t(15u << (pass * 4));
-    // At most 16 dirt zones, one bounded stationary extra clean per zone.
-    if (in.dirt >= 90 && !dirtSeen(in.pose) && dirtCount_ < 16) {
-      dirtZones_[dirtCount_++] = in.pose;
-      dirtUntil_ = in.now + 1500;
-    }
-    if (int32_t(dirtUntil_ - in.now) > 0) {
-      Output out;
-      out.action = Action::Drive;
-      out.pwm = 127;
-      return out;
-    }
+    // DirtDetect is observation-only until physical calibration. It must not
+    // change coverage, motor PWM or trajectory here.
     if (!exploring_ && target_ >= 0 && (covered[target_] & (1u << (targetSub_ + pass * 4)))) {
       target_ = -1;
       pathLength_ = 0;
@@ -749,17 +738,10 @@ private:
   float edgeHeading_ = 0, edgeTravel_ = 0, cornerYaw_ = 0;
   bool edgeClosing_ = false;
   uint32_t stateSince_ = 0, targetSince_ = 0, progressSince_ = 0, missionStart_ = 0,
-           stableSince_ = 0, dirtUntil_ = 0;
+           stableSince_ = 0;
   float bestDistance_ = 1e9f;
   State resume_ = State::Cleaning;
-  Pose recoveryOrigin_, dirtZones_[16];
-  unsigned dirtCount_ = 0;
-  bool dirtSeen(Pose p) const {
-    for (unsigned i = 0; i < dirtCount_; ++i)
-      if (distance(p.x, p.y, dirtZones_[i].x, dirtZones_[i].y) < .6f)
-        return true;
-    return false;
-  }
+  Pose recoveryOrigin_;
   void switchState(State s, uint32_t now) {
     state = s;
     sweepValid_ = false;

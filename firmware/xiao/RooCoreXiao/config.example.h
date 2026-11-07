@@ -43,3 +43,12 @@
 #define ROO_CARPET_127_EXIT_MA 0
 #define ROO_CARPET_127_ENTER_MA 0
 #define ROO_CARPET_127_MAX_MA 0
+
+// DirtDetect: collection/analysis ONLY. There is deliberately no auto-cleaning switch.
+#define ROO_DIRT_THRESHOLD 0 // 0 disables region detection; retain raw readings
+#define ROO_DIRT_CONSECUTIVE 5
+#define ROO_DIRT_MIN_HIGH_MS 300
+#define ROO_DIRT_MAX_GAP_MS 200
+#define ROO_DIRT_REGION_RADIUS_M 0.30f
+#define ROO_DIRT_REVISIT_BUDGET_MS 20000 // advisory plan / passive comparison limit
+#define ROO_STASIS_VERIFIED false // optional packet 58; verify on this 620 first

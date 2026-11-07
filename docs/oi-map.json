@@ -667,9 +667,11 @@
       "decoded_signed": false,
       "units": "raw sensor value or status",
       "availability": "extendedSensors",
-      "bits": {
-        "0": "stasis toggling",
-        "1": "stasis disabled"
+      "values": {
+        "0": "no forward progress; also normal when stopped, turning or reversing",
+        "1": "forward progress",
+        "2": "caster too dirty to read; clean and dry; not a stuck/slip indication",
+        "3": "undocumented; do not use for progress"
       }
     }
   ],

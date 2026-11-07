@@ -63,3 +63,16 @@ class NativeSimulatorTests(unittest.TestCase):
         self.assertEqual(sim.truth_floor, floor)
         self.assertEqual(sim.collisions, 0)
         self.assertNotEqual(sim.mission.state, "FAULT")
+
+    def test_dirt_never_changes_motion_or_pwm_before_physical_calibration(self):
+        clean = Simulation("room")
+        dirty = Simulation("room")
+        dirty.world.dirt = (0.675, 0.675, 10.0)
+        clean.mission.start()
+        dirty.mission.start()
+        for _ in range(5):
+            clean.step(20)
+            dirty.step(20)
+            self.assertEqual(clean.pose, dirty.pose)
+            self.assertEqual(clean.command, dirty.command)
+            self.assertEqual(clean.mission.state, dirty.mission.state)

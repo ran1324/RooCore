@@ -32,8 +32,8 @@ Tools used locally:
 
 | Sketch | Build | Program storage | Static RAM |
 |---|---|---:|---:|
-| BatteryMonitor | passed | 289,651 bytes / 3,342,336 | 23,716 bytes / 327,680 |
-| LinkSetup | passed | 291,091 bytes / 3,342,336 | 23,732 bytes / 327,680 |
+| BatteryMonitor | passed | 289,795 bytes / 3,342,336 | 23,724 bytes / 327,680 |
+| LinkSetup | passed | 291,239 bytes / 3,342,336 | 23,740 bytes / 327,680 |
 
 These are ESP32-S3 target builds, not only host syntax checks. Flash partitioning reserves application slots; OTA logic is not included. The static RAM report is internal RAM use, not a measurement of PSRAM availability or runtime stack peaks.
 
@@ -46,7 +46,7 @@ sh tests/run.sh
 sh tests/build_xiao.sh
 ```
 
-`ROOCORE_BUILD_DIR` can select the build output directory; otherwise the script creates a temporary directory and prints it. No upload command is run. GitHub Actions repeats host tests, the original recorder tests and the two target builds.
+`ROOCORE_BUILD_DIR` can select the build output directory; otherwise the script creates a temporary directory and prints it. No upload command is run. GitHub Actions repeats host tests, the original recorder tests and the four target builds.
 
 ## Still requires the delivered hardware
 
@@ -56,7 +56,7 @@ The existing ESP-01S recorder remains a separate legacy application. It has not 
 
 ## Cleaning firmware, coverage and assistance — 2026-11-08
 
-`firmware/xiao/RooCoreXiao` and the `lib/RooNavigation` C++ library build for the same XIAO target in telemetry-only and commissioned configurations. The latter uses 516,723 bytes (15%) application flash and 148,404 bytes (45%) static internal RAM; the large navigation maps and temporary checkpoint buffer are allocated in the board's 8 MB PSRAM. Runtime PSRAM availability, task timing, stack/heap peaks, Wi-Fi, flash persistence and UART/motor behavior still need hardware tests.
+`firmware/xiao/RooCoreXiao` and the `lib/RooNavigation` C++ library build for the same XIAO target in telemetry-only and commissioned configurations. The latter uses 522,039 bytes (15%) application flash and 151,012 bytes (46%) static internal RAM; the large navigation maps and temporary checkpoint buffer are allocated in the board's 8 MB PSRAM. Runtime PSRAM availability, task timing, stack/heap peaks, Wi-Fi, flash persistence and UART/motor behavior still need hardware tests.
 
 Validation:
 
@@ -66,9 +66,20 @@ Validation:
 - Dynamic-obstacle checks verify repeated free-ray evidence, bumper-only persistence, bounded waiting with immediate safety override, and revisiting/cleaning a former obstacle position without collisions. Occupied-cell removals count cells, not tracked objects.
 - Regression checks for central brush versus body footprint, independent pass masks, side-only credit, stopped motors, pose jumps, fresh-sensor requirements, no-progress limits, bounded contact/recovery, assistance IDs/frames/deadlines, three-scan confirmation, critical-stop policy and unanchored native docking timeout.
 - Carpet policy tests use synthetic readings to check delayed entry/exit, hysteresis, distinct samples, stale data, implausible current, voltage range, stopped motors, PWM changes and disabled configuration. The target build also enables the optional packet/current path with synthetic test-only calibration; no physical detector accuracy is claimed.
-- 38 Python tests: historical reference regressions, actual C++ browser-adapter tests, HTTP lease behavior and global matcher tests. A symmetric rectangle and an unrelated scan are rejected; a distinctive furnished scene produces a candidate near its true pose. These synthetic cases do not establish a measured real-world false-match rate.
+- 43 Python tests: historical reference regressions, actual C++ browser-adapter tests, HTTP lease behavior and global matcher tests. A symmetric rectangle and an unrelated scan are rejected; a distinctive furnished scene produces a candidate near its true pose. These synthetic cases do not establish a measured real-world false-match rate.
 - The ROS bridge suppresses global scans/odometry for provisional or unresolved frames. ROS 2 Jazzy CI builds/imports the bridge, action client and assistance worker. It is not an end-to-end Nav2 or robot test.
 
 The browser now executes the production Navigator rather than the old Python planner. In an independently measured furnished-room run it finished in 2,379.4 simulated seconds, travelled about 157 m and recorded zero collisions. Whole-floor truth estimates were **74.1% central-brush coverage and 94.8% combined central/side coverage**, using provisional brush geometry. The map's current-pass central metric was 84.1% of known free floor. The remaining floor was not counted clean; one perimeter attempt was incomplete and 2.35 square metres of known floor lacked a central-brush pass. **This is not complete floor coverage or evidence that every corner is reachable.** Local outputs are stored under ignored `output/`; the geometry/method/limitations are documented in [COVERAGE_AND_RECOVERY.md](COVERAGE_AND_RECOVERY.md).
 
 Browser interactions are checked in Hebrew RTL at desktop and phone widths, including start/pause and injected LiDAR loss. The browser does not execute the full firmware assistance/UART/persistence orchestration. No robot or physical LiDAR was connected or flashed.
+
+## DirtDetect observation and Stasis — 2026-11-08
+
+[DIRT_DETECT.md](DIRT_DETECT.md) describes the collection API, configuration and physical validation plan. The default threshold is zero: collection only. The previous single-reading motor response was removed. Dirty-region detection can emit a bounded advisory plan and compare a natural revisit, but cannot command an extra cleaning pass.
+
+- The dedicated native test passes under AddressSanitizer/UndefinedBehaviorSanitizer using simulated OI frames: all readings in a multi-frame poll, query/stream callback timing, corrupt frames, consecutive thresholds, time and region budgets, unlocated samples, safety/battery/link/frame interruptions, PWM comparability, rollover and ring overflow.
+- Four recorder tests verify authenticated read-only HTTP capture, restart cursors, reboot IDs, gaps, invalid responses, deduplication and unlocated reporting. The production-core regression confirms dirt readings do not change the path or PWM. All 43 Python tests pass.
+- Stasis values 0/1/2/3 and stale data are tested. Value 2 requests caster maintenance and is not usable as progress evidence. This optional packet remains disabled until physically verified.
+- All four ESP32-S3 builds pass. RooCoreXiao defaults: 516,955 bytes application flash / 151,004 bytes static RAM; commissioned test configuration: 522,039 / 151,012. The commissioned build uses a synthetic threshold of 100 solely to compile the optional paths, not as a physical calibration.
+
+No physical Roomba 620 readings were collected. Sensor availability, false positives, useful thresholds, timestamp/pose accuracy, runtime memory and timing, and the benefit of an extra pass remain unverified. Automatic dirt-triggered cleaning is intentionally deferred until that evidence exists.

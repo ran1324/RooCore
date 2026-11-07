@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <CarpetBoost.h>
 #include <ControlArbiter.h>
+#include <DirtMonitor.h>
 #include <LittleFS.h>
 #include <NavigationHelp.h>
 #include <RooNavigation.h>
@@ -33,6 +34,19 @@
 #define ROO_CARPET_127_ENTER_MA 0
 #define ROO_CARPET_127_MAX_MA 0
 #endif
+
+#ifndef ROO_DIRT_THRESHOLD
+#define ROO_DIRT_THRESHOLD 0
+#define ROO_DIRT_CONSECUTIVE 5
+#define ROO_DIRT_MIN_HIGH_MS 300
+#define ROO_DIRT_MAX_GAP_MS 200
+#define ROO_DIRT_REGION_RADIUS_M .30f
+#define ROO_DIRT_REVISIT_BUDGET_MS 20000
+#endif
+#ifndef ROO_STASIS_VERIFIED
+#define ROO_STASIS_VERIFIED false
+#endif
+static_assert(ROO_DIRT_THRESHOLD >= 0 && ROO_DIRT_THRESHOLD <= 255, "Dirt threshold range");
 
 // Real hardware UARTs. USB CDC is diagnostic only, never the Roomba UART.
 HardwareSerial roombaSerial(1), lidarSerial(2);
@@ -91,6 +105,22 @@ uint32_t trailMs[16]{};
 uint32_t wheelDropSince = 0;
 unsigned trailAt = 0;
 roonav::Input latest;
+roonav::DirtMonitor *dirtMonitor = nullptr;
+roonav::DirtMonitor::Record *dirtApiRows = nullptr;
+SemaphoreHandle_t dirtMutex;
+uint32_t dirtBoot = 0, dirtFrame = 1, dirtSession = 0;
+struct PendingDirt {
+  roocore::Sample sample;
+  uint32_t frame, rejected;
+  bool managed, globalPose, cleaning, safe, link;
+  float battery;
+  uint8_t brush, vacuum;
+};
+PendingDirt dirtQueue[64];
+unsigned dirtHead = 0, dirtSize = 0, dirtQueueLost = 0;
+uint32_t dirtRejected = 0;
+bool stasisMaintenance = false;
+uint32_t stasisMaintenanceAt = 0, lastStasisGeneration = 0;
 
 bool terminal(roonav::State s) {
   return s == roonav::State::Idle || s == roonav::State::Fault || s == roonav::State::Paused ||
@@ -111,6 +141,102 @@ void lidarPower(bool on) {
     digitalWrite(7, LOW);
     digitalWrite(4, LOW);
   }
+}
+// Invoked by Roomba::poll after the whole validated frame is committed. No I/O/locks here.
+void observeDirt(void *, roocore::Sensor id, const roocore::Sample &reading) {
+  if (id != roocore::Sensor::DirtDetect)
+    return;
+  if (dirtSize == 64) {
+    ++dirtQueueLost;
+    return;
+  }
+  PendingDirt &p = dirtQueue[(dirtHead + dirtSize++) % 64];
+  p.sample = reading;
+  p.frame = dirtFrame;
+  p.rejected = robot->rejectedFrames();
+  const auto safety = robot->safety(reading.timestampMs, 200);
+  const auto battery = robot->battery(reading.timestampMs, 1000);
+  const auto mode = robot->sensor(roocore::Sensor::OiMode);
+  const auto current = robot->sensor(roocore::Sensor::Overcurrents);
+  p.managed = ownsRobot && !nativeDock && mode.fresh(reading.timestampMs, 200) && mode.value == 2;
+  p.globalPose = navigator == primaryNavigator && anchored && !assistance.pending();
+  p.cleaning = p.managed && appliedPwm > 0;
+  p.link = safety.valid && battery.valid && battery.percentageValid &&
+           current.fresh(reading.timestampMs, 200);
+  p.safe = p.link && !safety.cliffLeft && !safety.cliffFrontLeft && !safety.cliffFrontRight &&
+           !safety.cliffRight && !safety.virtualWall && !safety.wheelDropLeft &&
+           !safety.wheelDropRight && !safety.bumpLeft && !safety.bumpRight && current.value == 0;
+  p.battery = battery.percentage;
+  p.brush = appliedPwm;
+  p.vacuum = appliedVacuumPwm;
+}
+roonav::DirtMonitor::Context dirtContext(uint32_t now) {
+  roonav::DirtMonitor::Context c;
+  c.now = now;
+  c.poseMs = latest.poseMs;
+  c.frame = dirtFrame;
+  c.pose = latest.pose;
+  c.managed = ownsRobot && !nativeDock;
+  c.poseValid = navigator == primaryNavigator && anchored && !assistance.pending() &&
+                latest.localized && uint32_t(now - latest.poseMs) <= 100 && latest.scanValid &&
+                uint32_t(now - latest.scanMs) <= 400;
+  c.cleaning = latest.cleaningActive;
+  c.battery = latest.battery;
+  c.link = latest.sensorsValid && uint32_t(now - latest.sensorsMs) <= 200 &&
+           arbiter.owner != roonav::Owner::Stopping && arbiter.owner != roonav::Owner::Held;
+  c.safe = c.link && !latest.cliff && !latest.wheelDrop && !latest.bumper && !latest.overcurrent;
+  c.brush = appliedPwm;
+  c.vacuum = appliedVacuumPwm;
+  c.action = !c.managed   ? roonav::DirtMonitor::Action::Unmanaged
+             : c.cleaning ? roonav::DirtMonitor::Action::RoutineCleaning
+                          : roonav::DirtMonitor::Action::RoutineTravel;
+  return c;
+}
+void collectDirt(uint32_t now) {
+  // Logging cannot hold the control task waiting for an HTTP client.
+  if (!dirtMonitor || xSemaphoreTake(dirtMutex, 0) != pdTRUE)
+    return;
+  auto c = dirtContext(now);
+  while (dirtSize) {
+    PendingDirt p = dirtQueue[dirtHead];
+    dirtHead = (dirtHead + 1) % 64;
+    --dirtSize;
+    if (p.rejected != dirtRejected) {
+      dirtMonitor->gap(c);
+      dirtRejected = p.rejected;
+    }
+    auto sampleContext = c;
+    sampleContext.managed = p.managed;
+    sampleContext.cleaning = p.cleaning;
+    sampleContext.safe = c.safe && p.safe;
+    sampleContext.link = c.link && p.link;
+    sampleContext.battery = fminf(c.battery, p.battery);
+    sampleContext.poseValid = c.poseValid && p.globalPose && p.frame == dirtFrame;
+    sampleContext.brush = p.brush;
+    sampleContext.vacuum = p.vacuum;
+    sampleContext.action = !p.managed   ? roonav::DirtMonitor::Action::Unmanaged
+                           : p.cleaning ? roonav::DirtMonitor::Action::RoutineCleaning
+                                        : roonav::DirtMonitor::Action::RoutineTravel;
+    dirtMonitor->observe(uint8_t(p.sample.value), p.sample.timestampMs, p.sample.generation,
+                         sampleContext);
+  }
+  if (dirtQueueLost || robot->rejectedFrames() != dirtRejected) {
+    dirtMonitor->gap(c, dirtQueueLost);
+    dirtQueueLost = 0;
+    dirtRejected = robot->rejectedFrames();
+  }
+  dirtMonitor->tick(c);
+  const auto stasis = robot->stasis(now);
+  if (stasis.sample.fresh(now, 200) && stasis.sample.generation != lastStasisGeneration) {
+    lastStasisGeneration = stasis.sample.generation;
+    if (stasis.maintenanceSuggested && !stasisMaintenance) {
+      stasisMaintenance = true;
+      stasisMaintenanceAt = now;
+      dirtMonitor->maintenance(2, stasis.sample.timestampMs, c);
+    } else if (stasis.usableForProgress)
+      stasisMaintenance = false;
+  }
+  xSemaphoreGive(dirtMutex);
 }
 void stopMotion() {
   appliedPwm = appliedSidePwm = appliedVacuumPwm = 0;
@@ -322,6 +448,18 @@ void publish(uint32_t now) {
        (floorVoltage.fresh(now, 1000) ? String(floorVoltage.value) : String("null"));
   s += ",\"floor_forward_mps\":" + String(floorSpeed, 3);
   s += ",\"floor_yaw_rate\":" + String(floorTurn, 3);
+  const auto stasis = robot->stasis(now);
+  s += ",\"stasis_value\":" +
+       (stasis.sample.fresh(now, 200) ? String(stasis.sample.value) : String("null"));
+  s += ",\"stasis_usable_for_progress\":" + String(stasis.usableForProgress ? "true" : "false");
+  s += ",\"caster_maintenance_suggested\":" + String(stasisMaintenance ? "true" : "false");
+  s += ",\"caster_maintenance_at_ms\":" + String(stasisMaintenanceAt);
+  s += ",\"caster_maintenance_message\":";
+  s += stasisMaintenance
+           ? "\"Check and clean the caster wheel, then dry it before refitting. This may also "
+             "prompt a general maintenance check; it does not prove the whole robot is dirty.\""
+           : "null";
+  s += ",\"dirt_automatic_cleaning\":false";
   s += ",\"wall_ir_valid\":" + String(latest.wallIRValid ? "true" : "false");
   s += ",\"wall_signal\":" + String(latest.wallSignal);
   s += ",\"rooms_completed\":" + String(navigator->roomsCompleted);
@@ -439,6 +577,7 @@ void sample(uint32_t now) {
       if (accepted) {
         stopMotion();
         navigator = primaryNavigator;
+        ++dirtFrame;
         odometry.reset(assistance.proposed, left.value, right.value, now);
         anchored = true;
         latest.pose = odometry.pose;
@@ -627,6 +766,7 @@ void request(const Request &r, uint32_t now) {
     roonav::Pose p = navigator->dock;
     p.x += ROO_DOCK_EXIT_METERS * cosf(p.yaw);
     p.y += ROO_DOCK_EXIT_METERS * sinf(p.yaw);
+    ++dirtFrame;
     odometry.reset(p, l.value, rr.value, now);
     anchored = true;
     assistance.operatorResume();
@@ -653,6 +793,9 @@ void request(const Request &r, uint32_t now) {
       lastError = "pause before starting a new mission";
       return;
     }
+    xSemaphoreTake(dirtMutex, portMAX_DELAY);
+    dirtMonitor->beginSession(++dirtSession, dirtContext(now));
+    xSemaphoreGive(dirtMutex);
     assistance.attempts = 0;
     assistance.operatorResume();
     if (latest.docked) {
@@ -832,6 +975,7 @@ void tryAssistance(uint32_t now) {
   provisionalNavigator->cfg.wallTouch = false;
   navigator = provisionalNavigator;
   roonav::Pose origin;
+  ++dirtFrame;
   odometry.reset(origin, left.value, right.value, now);
   anchored = true;
   navigator->start(false, origin, now);
@@ -850,9 +994,9 @@ void controlTask(void *) {
   }
   linkReady = robot->verifyConnection() == roocore::Result::Ok;
   if (linkReady) {
-    roocore::Sensor ids[9] = {roocore::Sensor::Safety,          roocore::Sensor::Battery,
-                              roocore::Sensor::ChargingSources, roocore::Sensor::OiMode,
-                              roocore::Sensor::WallSignal,      roocore::Sensor::InfraredOmni};
+    roocore::Sensor ids[10] = {roocore::Sensor::Safety,          roocore::Sensor::Battery,
+                               roocore::Sensor::ChargingSources, roocore::Sensor::OiMode,
+                               roocore::Sensor::WallSignal,      roocore::Sensor::InfraredOmni};
     unsigned count = 6;
     if (ROO_ENCODERS_VERIFIED) {
       ids[count++] = roocore::Sensor::LeftEncoder;
@@ -860,6 +1004,8 @@ void controlTask(void *) {
     }
     if (ROO_CARPET_CURRENT_VERIFIED)
       ids[count++] = roocore::Sensor::MainBrushCurrent;
+    if (ROO_STASIS_VERIFIED)
+      ids[count++] = roocore::Sensor::Stasis;
     linkReady = robot->startStream(ids, count) == roocore::Result::Ok;
   }
   storageReady = LittleFS.begin(false);
@@ -877,6 +1023,7 @@ void controlTask(void *) {
     if (uint32_t(now - lastControl) >= 50) {
       lastControl = now;
       sample(now);
+      collectDirt(now);
       updateFloorEstimate(now);
       Request req;
       for (unsigned i = 0; i < 4 && xQueueReceive(requests, &req, 0) == pdTRUE; ++i)
@@ -915,10 +1062,8 @@ void controlTask(void *) {
         out = navigator->tick(latest, arbiter.owner == roonav::Owner::Remote);
         if (navigator->state != roonav::State::Cleaning && arbiter.owner == roonav::Owner::Remote)
           arbiter.local(now);
-        const bool dirtHold = out.action == roonav::Action::Drive && out.pwm == 127 &&
-                              out.speed == 0 && out.turn == 0;
         if (arbiter.owner == roonav::Owner::Remote && healthy() &&
-            navigator->state == roonav::State::Cleaning && !dirtHold) {
+            navigator->state == roonav::State::Cleaning) {
           out.action = roonav::Action::Drive;
           out.speed = (arbiter.left + arbiter.right) / 2000.f;
           out.turn = (arbiter.right - arbiter.left) / (1000 * navigator->cfg.wheelSeparation);
@@ -986,6 +1131,111 @@ bool number(const char *name, int64_t &out, int64_t minimum, int64_t maximum) {
   out = strtoll(value.c_str(), &end, 10);
   return end != value.c_str() && *end == 0 && out >= minimum && out <= maximum;
 }
+String dirtNumber(uint64_t n) {
+  char text[24];
+  snprintf(text, sizeof text, "%llu", static_cast<unsigned long long>(n));
+  return String(text);
+}
+void serveDirt() {
+  if (!authenticated()) {
+    web.send(401);
+    return;
+  }
+  uint64_t cursor = 0;
+  if (web.hasArg("after")) {
+    String text = web.arg("after");
+    if (!text.length() || text.length() > 19) {
+      web.send(400);
+      return;
+    }
+    for (unsigned i = 0; i < text.length(); ++i)
+      if (text[i] < '0' || text[i] > '9') {
+        web.send(400);
+        return;
+      }
+    cursor = strtoull(text.c_str(), nullptr, 10);
+  }
+  xSemaphoreTake(dirtMutex, portMAX_DELAY);
+  unsigned count = dirtMonitor->copyAfter(cursor, dirtApiRows, 32);
+  uint64_t oldest = dirtMonitor->oldestSequence(), latestSeq = dirtMonitor->latestSequence;
+  auto cfg = dirtMonitor->cfg;
+  uint32_t lost = dirtMonitor->lostSourceReadings;
+  xSemaphoreGive(dirtMutex); // never serialize JSON or send HTTP under the control lock
+  if (cursor > latestSeq) {
+    web.send(409, "application/json",
+             "{\"error\":\"cursor_ahead\",\"boot_id\":" + String(dirtBoot) + "}");
+    return;
+  }
+  String s = "{\"schema\":1,\"boot_id\":" + String(dirtBoot) +
+             ",\"mode\":\"observe_only\",\"automatic_cleaning\":false";
+  s.reserve(16000);
+  s += ",\"coordinate_system\":\"roocore_odom\",\"pose_source\":\"anchored_odometry_with_local_"
+       "scan_alignment\"";
+  s += ",\"oldest\":" + dirtNumber(oldest) + ",\"latest\":" + dirtNumber(latestSeq);
+  uint64_t next = count ? dirtApiRows[count - 1].sequence : cursor;
+  s += ",\"next\":" + dirtNumber(next) +
+       ",\"has_more\":" + String(next < latestSeq ? "true" : "false");
+  s += ",\"lost_records\":" + dirtNumber(cursor + 1 < oldest ? oldest - cursor - 1 : 0);
+  s += ",\"lost_source_readings\":" + String(lost);
+  s += ",\"config\":{\"threshold\":" + String(cfg.threshold) +
+       ",\"consecutive\":" + String(cfg.consecutive);
+  s += ",\"minimum_high_ms\":" + String(cfg.minimumHighMs) +
+       ",\"maximum_gap_ms\":" + String(cfg.maximumGapMs);
+  s += ",\"radius_m\":" + String(cfg.radius, 3) +
+       ",\"max_extra_passes\":1,\"revisit_budget_ms\":" + String(cfg.revisitBudgetMs) +
+       "},\"records\":[";
+  const char *kinds[] = {"reading",
+                         "region_detected",
+                         "natural_revisit_started",
+                         "natural_revisit_result",
+                         "interrupted",
+                         "source_gap",
+                         "maintenance"};
+  const char *actions[] = {"unmanaged", "stopped", "routine_travel", "routine_cleaning"};
+  const char *reasons[] = {"none",
+                           "awaiting_physical_calibration",
+                           "safety",
+                           "low_battery",
+                           "communication_lost",
+                           "pose_unreliable",
+                           "time_limit",
+                           "insufficient_comparable_data",
+                           "frame_changed",
+                           "region_limit",
+                           "data_loss",
+                           "caster_needs_cleaning"};
+  for (unsigned i = 0; i < count; ++i) {
+    const auto &r = dirtApiRows[i];
+    if (i)
+      s += ',';
+    s += "{\"seq\":" + dirtNumber(r.sequence) + ",\"kind\":\"" + String(kinds[unsigned(r.kind)]) +
+         "\",\"received_ms\":" + String(r.stamp);
+    s += ",\"generation\":" + String(r.generation) + ",\"session\":" + String(r.session) +
+         ",\"region\":" + String(r.region);
+    s += ",\"value\":" + String(r.value) +
+         ",\"frame\":" + (r.located ? String(r.frame) : String("null")) + ",\"pose\":";
+    if (r.located)
+      s += "{\"x\":" + String(r.pose.x, 4) + ",\"y\":" + String(r.pose.y, 4) +
+           ",\"yaw\":" + String(r.pose.yaw, 4) + ",\"estimated\":true}";
+    else
+      s += "null";
+    s += ",\"action\":\"" + String(actions[unsigned(r.action)]) + "\",\"reason\":\"" +
+         String(reasons[unsigned(r.why)]) + "\"";
+    s += ",\"brush_pwm\":" + String(r.brush) + ",\"vacuum_pwm\":" + String(r.vacuum) +
+         ",\"sample_count\":" + String(r.count);
+    s += ",\"before_mean\":" + (r.region ? String(r.before, 3) : String("null"));
+    s += ",\"after_mean\":" + (r.kind == roonav::DirtMonitor::Kind::RevisitResult && r.count
+                                   ? String(r.after, 3)
+                                   : String("null"));
+    if (r.kind == roonav::DirtMonitor::Kind::Region)
+      s += ",\"proposed_action\":\"one_extra_pass\",\"execution\":\"deferred_calibration\"";
+    s += ",\"comparison_valid\":" + String(r.comparable ? "true" : "false") +
+         ",\"readings_decreased\":" +
+         (r.comparable ? String(r.decreased ? "true" : "false") : String("null")) + "}";
+  }
+  s += "]}";
+  web.send(200, "application/json", s);
+}
 void setup() {
   Serial.begin(115200);
   for (int pin : {4, 7, 9}) {
@@ -997,7 +1247,8 @@ void setup() {
   robotLink.beginBrc();
   lidarSerial.setRxBufferSize(8192);
   lidarSerial.begin(230400, SERIAL_8N1, 44, 43);
-  capabilities.extendedSensors = ROO_ENCODERS_VERIFIED || ROO_CARPET_CURRENT_VERIFIED;
+  capabilities.extendedSensors =
+      ROO_ENCODERS_VERIFIED || ROO_CARPET_CURRENT_VERIFIED || ROO_STASIS_VERIFIED;
   carpet.cfg.enabled = ROO_CARPET_BOOST_ENABLED && ROO_CARPET_CURRENT_VERIFIED;
   carpet.cfg.minimumMv = ROO_CARPET_MIN_MV;
   carpet.cfg.maximumMv = ROO_CARPET_MAX_MV;
@@ -1018,6 +1269,28 @@ void setup() {
   }
   navigator = new (navMemory) roonav::Navigator();
   primaryNavigator = navigator;
+  void *dirtMemory =
+      heap_caps_malloc(sizeof(roonav::DirtMonitor), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  dirtApiRows = static_cast<roonav::DirtMonitor::Record *>(heap_caps_malloc(
+      32 * sizeof(roonav::DirtMonitor::Record), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+  dirtMutex = xSemaphoreCreateMutex();
+  if (!dirtMemory || !dirtApiRows || !dirtMutex) {
+    Serial.println("Dirt recorder allocation failed; motion disabled");
+    return;
+  }
+  dirtMonitor = new (dirtMemory) roonav::DirtMonitor();
+  dirtMonitor->cfg.threshold = ROO_DIRT_THRESHOLD;
+  dirtMonitor->cfg.consecutive = ROO_DIRT_CONSECUTIVE;
+  dirtMonitor->cfg.minimumHighMs = ROO_DIRT_MIN_HIGH_MS;
+  dirtMonitor->cfg.maximumGapMs = ROO_DIRT_MAX_GAP_MS;
+  dirtMonitor->cfg.radius = ROO_DIRT_REGION_RADIUS_M;
+  dirtMonitor->cfg.revisitBudgetMs = ROO_DIRT_REVISIT_BUDGET_MS;
+  if (!dirtMonitor->cfg.valid()) {
+    Serial.println("Invalid dirt analysis settings; motion disabled");
+    return;
+  }
+  dirtBoot = esp_random();
+  robot->setSampleObserver(observeDirt);
   assistance.id = esp_random();
   navigator->cfg.brushWidth = ROO_BRUSH_WIDTH_METERS;
   navigator->cfg.brushDepth = ROO_BRUSH_DEPTH_METERS;
@@ -1044,6 +1317,7 @@ void setup() {
   }
   const char *headers[] = {"Authorization"};
   web.collectHeaders(headers, 1);
+  web.on("/dirt", HTTP_GET, serveDirt);
   web.on("/status", HTTP_GET, [] {
     if (!authenticated()) {
       web.send(401);

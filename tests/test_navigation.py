@@ -133,18 +133,18 @@ class NavigationTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 Mission.restore(broken)
 
-    def test_dirt_revisit_is_bounded(self):
+    def test_dirt_does_not_schedule_uncalibrated_cleaning(self):
         sim = Simulation("room")
         sim.mission.start()
         obs = replace(sim.observation(), dirt=140)
         sim.mission.tick(obs)
-        self.assertEqual(len(sim.mission.dirty_zones), 1)
+        self.assertEqual(len(sim.mission.dirty_zones), 0)
         for i in range(1, 20):
             sim.mission.tick(
                 replace(obs, time=i * 0.2, scan_time=i * 0.2, pose_time=i * 0.2)
             )
-        self.assertEqual(len(sim.mission.dirty_zones), 1)
-        self.assertLessEqual(len(sim.mission.extra), 5)
+        self.assertEqual(len(sim.mission.dirty_zones), 0)
+        self.assertEqual(len(sim.mission.extra), 0)
 
     def test_new_obstacle_never_causes_collision(self):
         sim = Simulation("room")

@@ -458,6 +458,7 @@ void Roomba::finishQuery(uint32_t now) {
     decode(uint8_t(selection_[i]),rx_+offset,n,now,true); offset+=n;
   }
   pending_=false; used_=0; event_=Result::Ok; ++frames_;
+  notifySamples();
 }
 void Roomba::streamByte(uint8_t byte,uint32_t now) {
   if (used_==sizeof(rx_)) { memmove(rx_,rx_+1,--used_); ++rejected_; }
@@ -486,8 +487,15 @@ void Roomba::streamByte(uint8_t byte,uint32_t now) {
       decode(uint8_t(selection_[i]),rx_+offset+1,n,now,true); offset+=1+n;
     }
     ++frames_; event_=Result::Ok;
+    notifySamples();
     used_-=total; memmove(rx_,rx_+total,used_);
   }
+}
+void Roomba::notifySamples() {
+  if (!observer_) return;
+  for (unsigned id=7; id<=58; ++id)
+    if (samples_[id].valid && samples_[id].generation==generation_)
+      observer_(observerContext_, Sensor(id), samples_[id]);
 }
 void Roomba::poll(uint32_t now) {
   if (linkBusy_) return;
@@ -514,6 +522,15 @@ void Roomba::poll(uint32_t now) {
   if (draining_ && uint32_t(now-lastRx_)>=100) {
     draining_=desync_=false; queried_=false; used_=0; event_=Result::Ok;
   }
+}
+StasisState Roomba::stasis(uint32_t now,uint32_t maxAgeMs) const {
+  StasisState result;result.sample=sensor(Sensor::Stasis);
+  if(!result.sample.fresh(now,maxAgeMs))return result;
+  if(result.sample.value>=0 && result.sample.value<=2)
+    result.meaning=StasisMeaning(result.sample.value);
+  result.usableForProgress=result.meaning==StasisMeaning::NoForwardProgress || result.meaning==StasisMeaning::ForwardProgress;
+  result.maintenanceSuggested=result.meaning==StasisMeaning::CasterNeedsCleaning;
+  return result;
 }
 Sample Roomba::sensor(Sensor id) const {
   const uint8_t i=uint8_t(id); return i>=7 && i<=58 ? samples_[i] : Sample();

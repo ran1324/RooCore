@@ -18,7 +18,7 @@ done
   --library "$PWD/lib/RoombaOI" --library "$PWD/lib/RooNavigation" \
   --build-path "$build_root/RooCoreXiao" firmware/xiao/RooCoreXiao
 
-# Compile the real actuator and carpet-policy paths too. Synthetic carpet thresholds
+# Compile the real actuator and carpet-policy paths too. Synthetic dirt/carpet thresholds
 # below are test fixtures, NOT calibration. This temporary config is never flashed.
 staged="$build_root/commissioned/RooCoreXiao"
 mkdir -p "$staged"
@@ -26,6 +26,8 @@ cp firmware/xiao/RooCoreXiao/RooCoreXiao.ino "$staged/"
 cp firmware/xiao/RooCoreXiao/config.example.h "$staged/config.example.h"
 sed -e 's/ROO_COMMISSIONED false/ROO_COMMISSIONED true/' \
     -e 's/ROO_ENCODERS_VERIFIED false/ROO_ENCODERS_VERIFIED true/' \
+    -e 's/ROO_STASIS_VERIFIED false/ROO_STASIS_VERIFIED true/' \
+    -e 's/ROO_DIRT_THRESHOLD 0/ROO_DIRT_THRESHOLD 100/' \
     -e 's/ROO_DOCK_EXIT_VERIFIED false/ROO_DOCK_EXIT_VERIFIED true/' \
     -e 's/ROO_CARPET_CURRENT_VERIFIED false/ROO_CARPET_CURRENT_VERIFIED true/' \
     -e 's/ROO_CARPET_BOOST_ENABLED false/ROO_CARPET_BOOST_ENABLED true/' \
