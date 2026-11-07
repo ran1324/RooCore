@@ -28,3 +28,18 @@
 #define ROO_WALL_TOUCH_VERIFIED false // optional 1.5 cm/s contact; verify bumper and stop latency first
 #define ROO_WALL_IR_TARGET 0 // raw packet 27 at verified right-wall gap; 0 = observe only
 #define ROO_ASSISTANCE_ENABLED true // isolated local cleaning + authenticated server assistance
+
+// Optional load-based carpet estimate. No physical calibration has been performed.
+#define ROO_CARPET_CURRENT_VERIFIED false // packet 56 verified separately from encoders
+#define ROO_CARPET_BOOST_ENABLED false
+#define ROO_CARPET_MIN_MV 0 // measured voltage envelope for BOTH calibration profiles
+#define ROO_CARPET_MAX_MV 0
+// Minimum plausible current, floor-exit threshold, carpet-entry threshold, overload ceiling.
+#define ROO_CARPET_85_MIN_MA 0
+#define ROO_CARPET_85_EXIT_MA 0
+#define ROO_CARPET_85_ENTER_MA 0
+#define ROO_CARPET_85_MAX_MA 0
+#define ROO_CARPET_127_MIN_MA 0
+#define ROO_CARPET_127_EXIT_MA 0
+#define ROO_CARPET_127_ENTER_MA 0
+#define ROO_CARPET_127_MAX_MA 0

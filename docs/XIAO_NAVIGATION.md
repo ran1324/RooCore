@@ -70,3 +70,7 @@ Checkpoints use two alternating slots with schema/version and integrity checks. 
 ## Linux navigation
 
 See [ROS 2 setup](ROS2_NAVIGATION.md). Nav2 is optional: local cleaning and fallback do not need a computer. The bridge/coverage action client are real ROS nodes, but their runtime, Nav2 tuning and physical network latency require integration testing with the robot. The ROS CI check builds/imports the nodes; it is not a navigation acceptance test.
+
+## Carpet option (disabled pending measurements)
+
+The optional current-based floor estimate and independent vacuum boost are described in [Coverage and recovery](COVERAGE_AND_RECOVERY.md#optional-carpet-estimate-and-vacuum-boost). Verify packet 56 separately, capture hard-floor/carpet current at both brush PWM settings and across the intended battery voltage range, then configure the `ROO_CARPET_*` block. Zero/default calibration cannot activate boost. Copy the entire new block when updating an older `config.local.h`; older configurations without that block remain disabled. The synthetic values in `tests/build_xiao.sh` are compilation fixtures and must never be flashed as calibration.

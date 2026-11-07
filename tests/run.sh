@@ -13,6 +13,11 @@ python3 tests/check_oi_map.py
 
 "${CXX:-clang++}" -std=c++11 -Wall -Wextra -Werror -pedantic \
   -fsanitize=address,undefined -fno-omit-frame-pointer \
+  -Ilib/RooNavigation/src tests/carpet_native_test.cpp -o "$build_dir/carpet-test"
+"$build_dir/carpet-test"
+
+"${CXX:-clang++}" -std=c++11 -Wall -Wextra -Werror -pedantic \
+  -fsanitize=address,undefined -fno-omit-frame-pointer \
   -Ilib/RooNavigation/src tests/navigation_native_test.cpp \
   -o "$build_dir/navigation-test"
 "$build_dir/navigation-test"

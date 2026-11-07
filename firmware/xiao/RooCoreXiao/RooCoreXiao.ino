@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <CarpetBoost.h>
 #include <ControlArbiter.h>
 #include <LittleFS.h>
 #include <NavigationHelp.h>
@@ -15,6 +16,24 @@
 #include "config.example.h"
 #endif
 
+// Older local configurations keep the optional feature disabled.
+#ifndef ROO_CARPET_CURRENT_VERIFIED
+#define ROO_CARPET_CURRENT_VERIFIED false
+#endif
+#ifndef ROO_CARPET_BOOST_ENABLED
+#define ROO_CARPET_BOOST_ENABLED false
+#define ROO_CARPET_MIN_MV 0
+#define ROO_CARPET_MAX_MV 0
+#define ROO_CARPET_85_MIN_MA 0
+#define ROO_CARPET_85_EXIT_MA 0
+#define ROO_CARPET_85_ENTER_MA 0
+#define ROO_CARPET_85_MAX_MA 0
+#define ROO_CARPET_127_MIN_MA 0
+#define ROO_CARPET_127_EXIT_MA 0
+#define ROO_CARPET_127_ENTER_MA 0
+#define ROO_CARPET_127_MAX_MA 0
+#endif
+
 // Real hardware UARTs. USB CDC is diagnostic only, never the Roomba UART.
 HardwareSerial roombaSerial(1), lidarSerial(2);
 roocore::Esp32Transport robotLink(roombaSerial, UART_NUM_1, 8);
@@ -23,6 +42,11 @@ roocore::Roomba *robot;
 roonav::Navigator *navigator = nullptr; // large maps belong in external PSRAM
 roonav::Navigator *primaryNavigator = nullptr, *provisionalNavigator = nullptr;
 roonav::NavigationHelp assistance;
+roonav::CarpetBoost carpet;
+roonav::Pose floorMotionPose;
+uint32_t floorMotionAt = 0;
+float floorSpeed = 0, floorTurn = 0;
+bool floorMotionReady = false;
 roonav::Odometry odometry;
 roonav::TminiPlus lidar;
 roonav::ControlArbiter arbiter;
@@ -59,7 +83,7 @@ bool storageReady = false, anchored = false, nativeDock = false, enabledLidar = 
 uint32_t lidarOnMs = 0, lastScan = 0, lastGeneration = 0, sequence = 0, armingSince = 0;
 uint32_t lastControl = 0, lastPublish = 0, lastSaved = 0, anchorAt = 0;
 float alignmentScore = 0;
-uint8_t appliedPwm = 0, appliedSidePwm = 0;
+uint8_t appliedPwm = 0, appliedSidePwm = 0, appliedVacuumPwm = 0;
 bool ownsRobot = false;
 String lastError = "not commissioned";
 roonav::Pose trail[16];
@@ -89,7 +113,9 @@ void lidarPower(bool on) {
   }
 }
 void stopMotion() {
-  appliedPwm = appliedSidePwm = 0;
+  appliedPwm = appliedSidePwm = appliedVacuumPwm = 0;
+  carpet.invalidate();
+  floorMotionReady = false;
   // Passive Drive packets are not an emergency stop for native docking.
   // Safe stops native cleaning/docking without disabling cliff protection.
   if (nativeDock || (ownsRobot && robot->requestedMode() != roocore::Mode::Safe)) {
@@ -280,6 +306,22 @@ void publish(uint32_t now) {
   s += ",\"brush_width_m\":" + String(navigator->cfg.brushWidth, 3);
   s += ",\"geometry_calibrated\":" + String(ROO_BRUSH_GEOMETRY_CALIBRATED ? "true" : "false");
   s += ",\"pass_axis\":\"" + String(navigator->pass == 0 ? "horizontal" : "vertical") + "\"";
+  const char *floorNames[] = {"unknown", "hard_estimate", "carpet_estimate"};
+  s += ",\"floor_estimate\":\"" + String(floorNames[unsigned(carpet.surface)]) + "\"";
+  s += ",\"carpet_boost_configured\":" + String(carpet.configured() ? "true" : "false");
+  s +=
+      ",\"carpet_entries\":" + String(carpet.entries) + ",\"carpet_exits\":" + String(carpet.exits);
+  s += ",\"carpet_entered_at_ms\":" + String(carpet.enteredAt);
+  s += ",\"carpet_exited_at_ms\":" + String(carpet.exitedAt);
+  const auto brushCurrent = robot->sensor(roocore::Sensor::MainBrushCurrent);
+  s += ",\"main_brush_current_ma\":" +
+       (brushCurrent.fresh(now, 200) ? String(brushCurrent.value) : String("null"));
+  s += ",\"brush_pwm\":" + String(appliedPwm) + ",\"vacuum_pwm\":" + String(appliedVacuumPwm);
+  const auto floorVoltage = robot->sensor(roocore::Sensor::VoltageMv);
+  s += ",\"battery_mv\":" +
+       (floorVoltage.fresh(now, 1000) ? String(floorVoltage.value) : String("null"));
+  s += ",\"floor_forward_mps\":" + String(floorSpeed, 3);
+  s += ",\"floor_yaw_rate\":" + String(floorTurn, 3);
   s += ",\"wall_ir_valid\":" + String(latest.wallIRValid ? "true" : "false");
   s += ",\"wall_signal\":" + String(latest.wallSignal);
   s += ",\"rooms_completed\":" + String(navigator->roomsCompleted);
@@ -438,6 +480,38 @@ bool healthy() {
          uint32_t(now - latest.scanMs) <= 400 && latest.sensorsValid && latest.localized &&
          latest.scanValid && !latest.cliff && !latest.wheelDrop &&
          (!latest.bumper || navigator->wallRetreat()) && !latest.overcurrent && latest.battery > 6;
+}
+void updateFloorEstimate(uint32_t now) {
+  const bool safe = healthy() && active() && !nativeDock && !undocking && appliedPwm > 0;
+  if (!safe) {
+    floorMotionReady = false;
+    floorSpeed = floorTurn = 0;
+  } else if (!floorMotionReady) {
+    floorMotionReady = true;
+    floorMotionPose = latest.pose;
+    floorMotionAt = now;
+    floorSpeed = floorTurn = 0;
+  } else if (uint32_t(now - floorMotionAt) >= 200) {
+    float dt = uint32_t(now - floorMotionAt) / 1000.f;
+    float dx = latest.pose.x - floorMotionPose.x, dy = latest.pose.y - floorMotionPose.y;
+    floorSpeed = (dx * cosf(floorMotionPose.yaw) + dy * sinf(floorMotionPose.yaw)) / dt;
+    floorTurn = roonav::wrap(latest.pose.yaw - floorMotionPose.yaw) / dt;
+    floorMotionPose = latest.pose;
+    floorMotionAt = now;
+  }
+  const auto current = robot->sensor(roocore::Sensor::MainBrushCurrent);
+  const auto voltage = robot->sensor(roocore::Sensor::VoltageMv);
+  roonav::CarpetBoost::Sample s;
+  s.now = now;
+  s.stamp = current.timestampMs;
+  s.currentMa = current.value;
+  s.batteryMv = voltage.value;
+  s.brushPwm = appliedPwm;
+  s.valid = ROO_CARPET_CURRENT_VERIFIED && current.fresh(now, 200) && voltage.fresh(now, 1000);
+  s.safe = safe;
+  s.movingStraight = floorMotionReady && floorSpeed >= .03f && floorSpeed <= .25f &&
+                     fabsf(floorTurn) <= .25f && uint32_t(now - floorMotionAt) <= 300;
+  carpet.update(s);
 }
 void request(const Request &r, uint32_t now) {
   if (!strcmp(r.action, "pause")) {
@@ -685,9 +759,11 @@ void apply(roonav::Output out, uint32_t now) {
       lroundf((out.speed + out.turn * navigator->cfg.wheelSeparation / 2) * 1000), -250, 250);
   appliedPwm = out.pwm;
   appliedSidePwm = out.sidePwm == 255 ? out.pwm : out.sidePwm;
+  appliedVacuumPwm =
+      out.speed >= .03f && fabsf(out.turn) <= .25f ? carpet.vacuum(out.pwm, out.pwm, now) : out.pwm;
   ownsRobot = true;
   if (robot->driveWheels(l, r, now, 300) != roocore::Result::Ok ||
-      robot->setMotorPwm(out.pwm, appliedSidePwm, out.pwm) != roocore::Result::Ok) {
+      robot->setMotorPwm(out.pwm, appliedSidePwm, appliedVacuumPwm) != roocore::Result::Ok) {
     stopMotion();
     navigator->fault(roonav::Reason::Telemetry);
   }
@@ -774,11 +850,17 @@ void controlTask(void *) {
   }
   linkReady = robot->verifyConnection() == roocore::Result::Ok;
   if (linkReady) {
-    const roocore::Sensor ids[] = {roocore::Sensor::Safety,          roocore::Sensor::Battery,
-                                   roocore::Sensor::ChargingSources, roocore::Sensor::OiMode,
-                                   roocore::Sensor::WallSignal,      roocore::Sensor::InfraredOmni,
-                                   roocore::Sensor::LeftEncoder,     roocore::Sensor::RightEncoder};
-    linkReady = robot->startStream(ids, ROO_ENCODERS_VERIFIED ? 8 : 6) == roocore::Result::Ok;
+    roocore::Sensor ids[9] = {roocore::Sensor::Safety,          roocore::Sensor::Battery,
+                              roocore::Sensor::ChargingSources, roocore::Sensor::OiMode,
+                              roocore::Sensor::WallSignal,      roocore::Sensor::InfraredOmni};
+    unsigned count = 6;
+    if (ROO_ENCODERS_VERIFIED) {
+      ids[count++] = roocore::Sensor::LeftEncoder;
+      ids[count++] = roocore::Sensor::RightEncoder;
+    }
+    if (ROO_CARPET_CURRENT_VERIFIED)
+      ids[count++] = roocore::Sensor::MainBrushCurrent;
+    linkReady = robot->startStream(ids, count) == roocore::Result::Ok;
   }
   storageReady = LittleFS.begin(false);
   loadMission();
@@ -795,6 +877,7 @@ void controlTask(void *) {
     if (uint32_t(now - lastControl) >= 50) {
       lastControl = now;
       sample(now);
+      updateFloorEstimate(now);
       Request req;
       for (unsigned i = 0; i < 4 && xQueueReceive(requests, &req, 0) == pdTRUE; ++i)
         request(req, now);
@@ -914,7 +997,18 @@ void setup() {
   robotLink.beginBrc();
   lidarSerial.setRxBufferSize(8192);
   lidarSerial.begin(230400, SERIAL_8N1, 44, 43);
-  capabilities.extendedSensors = ROO_ENCODERS_VERIFIED;
+  capabilities.extendedSensors = ROO_ENCODERS_VERIFIED || ROO_CARPET_CURRENT_VERIFIED;
+  carpet.cfg.enabled = ROO_CARPET_BOOST_ENABLED && ROO_CARPET_CURRENT_VERIFIED;
+  carpet.cfg.minimumMv = ROO_CARPET_MIN_MV;
+  carpet.cfg.maximumMv = ROO_CARPET_MAX_MV;
+  carpet.cfg.daily.minimumMa = ROO_CARPET_85_MIN_MA;
+  carpet.cfg.daily.exitMa = ROO_CARPET_85_EXIT_MA;
+  carpet.cfg.daily.enterMa = ROO_CARPET_85_ENTER_MA;
+  carpet.cfg.daily.maximumMa = ROO_CARPET_85_MAX_MA;
+  carpet.cfg.deep.minimumMa = ROO_CARPET_127_MIN_MA;
+  carpet.cfg.deep.exitMa = ROO_CARPET_127_EXIT_MA;
+  carpet.cfg.deep.enterMa = ROO_CARPET_127_ENTER_MA;
+  carpet.cfg.deep.maximumMa = ROO_CARPET_127_MAX_MA;
   robot = new roocore::Roomba(robotLink, capabilities);
   void *navMemory =
       heap_caps_malloc(sizeof(roonav::Navigator), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);

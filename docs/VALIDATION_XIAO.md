@@ -56,7 +56,7 @@ The existing ESP-01S recorder remains a separate legacy application. It has not 
 
 ## Cleaning firmware, coverage and assistance — 2026-11-08
 
-`firmware/xiao/RooCoreXiao` and the `lib/RooNavigation` C++ library build for the same XIAO target in telemetry-only and commissioned configurations. The latter uses 512,515 bytes (15%) application flash and 148,284 bytes (45%) static internal RAM; the large navigation maps and temporary checkpoint buffer are allocated in the board's 8 MB PSRAM. Runtime PSRAM availability, task timing, stack/heap peaks, Wi-Fi, flash persistence and UART/motor behavior still need hardware tests.
+`firmware/xiao/RooCoreXiao` and the `lib/RooNavigation` C++ library build for the same XIAO target in telemetry-only and commissioned configurations. The latter uses 516,723 bytes (15%) application flash and 148,404 bytes (45%) static internal RAM; the large navigation maps and temporary checkpoint buffer are allocated in the board's 8 MB PSRAM. Runtime PSRAM availability, task timing, stack/heap peaks, Wi-Fi, flash persistence and UART/motor behavior still need hardware tests.
 
 Validation:
 
@@ -65,6 +65,7 @@ Validation:
 - Crosshatch measurement in the furnished deep scenario: pass 1 travelled about 112 m horizontally / 16 m vertically; pass 2 about 11 m horizontally / 119 m vertically. The second pass starts from the current position. These are simulated travel components, not a claim of optimal paths.
 - Dynamic-obstacle checks verify repeated free-ray evidence, bumper-only persistence, bounded waiting with immediate safety override, and revisiting/cleaning a former obstacle position without collisions. Occupied-cell removals count cells, not tracked objects.
 - Regression checks for central brush versus body footprint, independent pass masks, side-only credit, stopped motors, pose jumps, fresh-sensor requirements, no-progress limits, bounded contact/recovery, assistance IDs/frames/deadlines, three-scan confirmation, critical-stop policy and unanchored native docking timeout.
+- Carpet policy tests use synthetic readings to check delayed entry/exit, hysteresis, distinct samples, stale data, implausible current, voltage range, stopped motors, PWM changes and disabled configuration. The target build also enables the optional packet/current path with synthetic test-only calibration; no physical detector accuracy is claimed.
 - 38 Python tests: historical reference regressions, actual C++ browser-adapter tests, HTTP lease behavior and global matcher tests. A symmetric rectangle and an unrelated scan are rejected; a distinctive furnished scene produces a candidate near its true pose. These synthetic cases do not establish a measured real-world false-match rate.
 - The ROS bridge suppresses global scans/odometry for provisional or unresolved frames. ROS 2 Jazzy CI builds/imports the bridge, action client and assistance worker. It is not an end-to-end Nav2 or robot test.
 
