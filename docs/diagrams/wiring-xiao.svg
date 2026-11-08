@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="2000" height="3480" viewBox="0 0 2000 3480" role="img" aria-labelledby="title desc">
 <title id="title">RooCore — XIAO ESP32S3 wiring, power, fuse, UART and shutdown</title>
-<desc id="desc">Bench wiring plan, not physically validated. Direct battery branch through one 5x20 fuse and XT30 into D36V28F5. Five volts feed XIAO and the LiDAR MOSFET switch. Two TXB0104 modules isolate UART. Two 2N3904 transistors drive BRC and regulator EN. All grounds are common. Unverified fuse and battery cutoff values are marked amber. GPIO-triggered whole-system shutdown is not enabled in the current firmware.</desc>
+<desc id="desc">Bench wiring plan, not physically validated. Direct battery branch through one 5x20 fuse and XT30 into D36V28F5. Five volts feed XIAO and the LiDAR MOSFET switch. Two TXB0104 modules isolate UART. Two 2N3904 transistors drive BRC and regulator EN. All grounds are common. Unverified fuse and battery cutoff values are marked amber. Automatic D10 shutdown is implemented; measured power calibration is required before enabling it.</desc>
 <defs>
 <marker id="arrow-bat" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#b45a15"/></marker>
 <marker id="arrow-v5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#c13a40"/></marker>
@@ -16,7 +16,7 @@ text{font-family:Arial,"Arial Hebrew",Helvetica,sans-serif;fill:#183044}
 <rect width="2000" height="3480" fill="#eef3f5"/>
 <text x="70" y="70" font-size="45" font-weight="700" text-anchor="start" class="" style="fill:#183044">RooCore</text>
 <text x="1920" y="70" font-size="40" font-weight="700" text-anchor="start" class="he" style="fill:#183044">מפת חיווט מלאה — בקר, ליידר ורומבה</text>
-<text x="70" y="112" font-size="24" font-weight="400" text-anchor="start" class="" style="fill:#586b7c">XIAO ESP32S3 · D36V28F5 · T-mini Plus · Rev 1 / 2026-11-08</text>
+<text x="70" y="112" font-size="24" font-weight="400" text-anchor="start" class="" style="fill:#586b7c">XIAO ESP32S3 · D36V28F5 · T-mini Plus · Rev 2 / 2026-11-08</text>
 <text x="1920" y="153" font-size="24" font-weight="400" text-anchor="start" class="he" style="fill:#986300">תכנון לבדיקת שולחן • טרם נבדק על החומרה • פרטי ההרכבה המסומנים בכתום דורשים אימות</text>
 <path d="M75,190 L125,190" fill="none" stroke="white" stroke-width="9" stroke-linejoin="round"/>
 <path d="M75,190 L125,190" fill="none" stroke="#b45a15" stroke-width="4" stroke-linejoin="round"/>
@@ -262,7 +262,7 @@ text{font-family:Arial,"Arial Hebrew",Helvetica,sans-serif;fill:#183044}
 <text x="80" y="1766" font-size="22" font-weight="700" text-anchor="start" class="" style="fill:#8250ac">EN is NOT connected directly to GPIO.</text>
 <text x="80" y="1870" font-size="23" font-weight="700" text-anchor="start" class="" style="fill:#986300">Divider values: BENCH STARTING POINT, not approved battery limits.</text>
 <text x="80" y="1906" font-size="23" font-weight="400" text-anchor="start" class="" style="fill:#986300">Nominal model: OFF ≈12.81V · ON ≈14.41V; battery/rebound unverified.</text>
-<text x="80" y="1942" font-size="22" font-weight="400" text-anchor="start" class="" style="fill:#986300">GPIO9 is held LOW in current navigation firmware; software cutoff pending.</text>
+<text x="80" y="1942" font-size="22" font-weight="400" text-anchor="start" class="" style="fill:#986300">GPIO9: automatic cutoff implemented; measured calibration required.</text>
 <rect x="1065.0" y="1439" width="160" height="36" rx="7" fill="white" stroke="#8250ac" stroke-width="2"/>
 <text x="1145" y="1465" font-size="21" font-weight="700" text-anchor="middle" class="mono" style="fill:#8250ac">OI pin 5</text>
 <path d="M1418 1580V1513Q1418 1490 1441 1490H1519Q1542 1490 1542 1513V1580Z" fill="#26333b" stroke="#16212a" stroke-width="2"/>

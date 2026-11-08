@@ -83,3 +83,14 @@ Browser interactions are checked in Hebrew RTL at desktop and phone widths, incl
 - All four ESP32-S3 builds pass. RooCoreXiao defaults: 516,955 bytes application flash / 151,004 bytes static RAM; commissioned test configuration: 522,039 / 151,012. The commissioned build uses a synthetic threshold of 100 solely to compile the optional paths, not as a physical calibration.
 
 No physical Roomba 620 readings were collected. Sensor availability, false positives, useful thresholds, timestamp/pose accuracy, runtime memory and timing, and the benefit of an extra pass remain unverified. Automatic dirt-triggered cleaning is intentionally deferred until that evidence exists.
+
+## Automatic D10 power cutoff — 2026-11-08
+
+The production control task now uses the tested `PowerShutdown` policy and shared OI stop sequence. See [POWER_SHUTDOWN.md](POWER_SHUTDOWN.md) for the circuit, commissioning values and failure boundaries.
+
+- The full native suite passes under ASan/UBSan, including 707 OI checks, the inventory audit, navigation and the new power regressions. Power tests cover stop ordering, fresh coherent samples, encoder confirmation, charger/rebound cancellation, write failures, post-write UART resynchronization, persisted restart guards, timeouts and clock wraparound.
+- All 43 Python tests pass. These exercise the existing server/recorder/navigation integrations; they are not physical power-cut tests.
+- All four ESP32-S3 target builds pass with Arduino CLI 1.5.1 / esp32 core 3.3.12. BatteryMonitor and LinkSetup remain at the sizes above. Current RooCoreXiao defaults use **522,815 bytes flash / 151,140 bytes static RAM**; the commissioned test configuration uses **528,083 / 151,148**. The five voltage values in that build are synthetic compile fixtures, not approved calibration.
+- The wiring SVG and rendered PNG now describe the implemented cutoff and its calibration requirement. The revised panel was visually inspected.
+
+No board was connected or flashed. Actual EN thresholds, battery rebound, OI voltage accuracy, stopping latency, LittleFS durability during supply decay and automatic voltage-based restart still require measurements on the installed circuit. The default configuration keeps D10 inactive and motion blocked until those calibration values are supplied; the code path itself is implemented.

@@ -9,7 +9,7 @@ C = dict(bat="#b45a15", v5="#c13a40", v3="#147957", gnd="#425267",
          amber="#986300", line="#d3dfe5")
 p = [f'''<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" aria-labelledby="title desc">
 <title id="title">RooCore — XIAO ESP32S3 wiring, power, fuse, UART and shutdown</title>
-<desc id="desc">Bench wiring plan, not physically validated. Direct battery branch through one 5x20 fuse and XT30 into D36V28F5. Five volts feed XIAO and the LiDAR MOSFET switch. Two TXB0104 modules isolate UART. Two 2N3904 transistors drive BRC and regulator EN. All grounds are common. Unverified fuse and battery cutoff values are marked amber. GPIO-triggered whole-system shutdown is not enabled in the current firmware.</desc>
+<desc id="desc">Bench wiring plan, not physically validated. Direct battery branch through one 5x20 fuse and XT30 into D36V28F5. Five volts feed XIAO and the LiDAR MOSFET switch. Two TXB0104 modules isolate UART. Two 2N3904 transistors drive BRC and regulator EN. All grounds are common. Unverified fuse and battery cutoff values are marked amber. Automatic D10 shutdown is implemented; measured power calibration is required before enabling it.</desc>
 <defs>''']
 for k in ("bat", "v5", "v3", "tx", "rx", "ctl"):
     p.append(f'<marker id="arrow-{k}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="{C[k]}"/></marker>')
@@ -86,7 +86,7 @@ def npn(x, y, name):
 
 text(70, 70, "RooCore", 45, bold=True)
 text(1920, 70, "מפת חיווט מלאה — בקר, ליידר ורומבה", 40, bold=True, he=True)
-text(70, 112, "XIAO ESP32S3 · D36V28F5 · T-mini Plus · Rev 1 / 2026-11-08", 24, "muted")
+text(70, 112, "XIAO ESP32S3 · D36V28F5 · T-mini Plus · Rev 2 / 2026-11-08", 24, "muted")
 text(1920, 153, "תכנון לבדיקת שולחן • טרם נבדק על החומרה • פרטי ההרכבה המסומנים בכתום דורשים אימות", 24, "amber", he=True)
 for x, k, s in ((100, "bat", "BAT+ fused"), (410, "v5", "+5V"), (660, "v3", "+3V3"), (910, "gnd", "GND"), (1160, "tx", "UART TX"), (1460, "rx", "UART RX"), (1750, "ctl", "Control")):
     wire([(x-25, 190), (x+25, 190)], k)
@@ -200,7 +200,7 @@ wire([(590,1800),(620,1800)],"ctl")
 text(80,1766,"EN is NOT connected directly to GPIO.",22,"ctl",True)
 text(80,1870,"Divider values: BENCH STARTING POINT, not approved battery limits.",23,"amber",True)
 text(80,1906,"Nominal model: OFF ≈12.81V · ON ≈14.41V; battery/rebound unverified.",23,"amber")
-text(80,1942,"GPIO9 is held LOW in current navigation firmware; software cutoff pending.",22,"amber")
+text(80,1942,"GPIO9: automatic cutoff implemented; measured calibration required.",22,"amber")
 
 tag(1145,1460,"OI pin 5","ctl",160)
 npn(1480,1490,"Q2")

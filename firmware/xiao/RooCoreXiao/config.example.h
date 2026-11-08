@@ -52,3 +52,13 @@
 #define ROO_DIRT_REGION_RADIUS_M 0.30f
 #define ROO_DIRT_REVISIT_BUDGET_MS 20000 // advisory plan / passive comparison limit
 #define ROO_STASIS_VERIFIED false // optional packet 58; verify on this 620 first
+
+// Automatic D10 -> NPN -> D36 EN cutoff. Complete code; hardware calibration required.
+// With missing/invalid calibration, telemetry works but commissioned motion is held.
+// See docs/POWER_SHUTDOWN.md. Do NOT copy synthetic build-test values to a robot.
+#define ROO_POWER_CUTOFF_VERIFIED false
+#define ROO_POWER_CUTOFF_MV 0 // loaded voltage: stop and prepare after 2 s continuously low
+#define ROO_POWER_RECOVER_MV 0 // stable voltage before allowing a new explicit motion request
+#define ROO_POWER_RESTART_MIN_MV 0 // measured LOWEST EN turn-on voltage across conditions
+#define ROO_POWER_REBOUND_MARGIN_MV 0 // measured post-cut rebound + voltage-measurement error
+#define ROO_POWER_SAVE_MIN_MV 0 // measured safe flash-write voltage above hardware EN cutoff

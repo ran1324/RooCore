@@ -18,7 +18,7 @@ done
   --library "$PWD/lib/RoombaOI" --library "$PWD/lib/RooNavigation" \
   --build-path "$build_root/RooCoreXiao" firmware/xiao/RooCoreXiao
 
-# Compile the real actuator and carpet-policy paths too. Synthetic dirt/carpet thresholds
+# Compile the real actuator and power-policy paths too. Synthetic power/dirt/carpet thresholds
 # below are test fixtures, NOT calibration. This temporary config is never flashed.
 staged="$build_root/commissioned/RooCoreXiao"
 mkdir -p "$staged"
@@ -26,6 +26,12 @@ cp firmware/xiao/RooCoreXiao/RooCoreXiao.ino "$staged/"
 cp firmware/xiao/RooCoreXiao/config.example.h "$staged/config.example.h"
 sed -e 's/ROO_COMMISSIONED false/ROO_COMMISSIONED true/' \
     -e 's/ROO_ENCODERS_VERIFIED false/ROO_ENCODERS_VERIFIED true/' \
+    -e 's/ROO_POWER_CUTOFF_VERIFIED false/ROO_POWER_CUTOFF_VERIFIED true/' \
+    -e 's/ROO_POWER_CUTOFF_MV 0/ROO_POWER_CUTOFF_MV 13200/' \
+    -e 's/ROO_POWER_RECOVER_MV 0/ROO_POWER_RECOVER_MV 13800/' \
+    -e 's/ROO_POWER_RESTART_MIN_MV 0/ROO_POWER_RESTART_MIN_MV 14400/' \
+    -e 's/ROO_POWER_REBOUND_MARGIN_MV 0/ROO_POWER_REBOUND_MARGIN_MV 400/' \
+    -e 's/ROO_POWER_SAVE_MIN_MV 0/ROO_POWER_SAVE_MIN_MV 13000/' \
     -e 's/ROO_STASIS_VERIFIED false/ROO_STASIS_VERIFIED true/' \
     -e 's/ROO_DIRT_THRESHOLD 0/ROO_DIRT_THRESHOLD 100/' \
     -e 's/ROO_DOCK_EXIT_VERIFIED false/ROO_DOCK_EXIT_VERIFIED true/' \

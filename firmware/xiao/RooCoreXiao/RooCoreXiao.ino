@@ -4,6 +4,8 @@
 #include <DirtMonitor.h>
 #include <LittleFS.h>
 #include <NavigationHelp.h>
+#include <PowerShutdown.h>
+#include <PowerShutdownOI.h>
 #include <RooNavigation.h>
 #include <RoombaOIArduino.h>
 #include <TminiPlus.h>
@@ -46,6 +48,14 @@
 #ifndef ROO_STASIS_VERIFIED
 #define ROO_STASIS_VERIFIED false
 #endif
+#ifndef ROO_POWER_CUTOFF_VERIFIED
+#define ROO_POWER_CUTOFF_VERIFIED false
+#define ROO_POWER_CUTOFF_MV 0
+#define ROO_POWER_RECOVER_MV 0
+#define ROO_POWER_RESTART_MIN_MV 0
+#define ROO_POWER_REBOUND_MARGIN_MV 0
+#define ROO_POWER_SAVE_MIN_MV 0
+#endif
 static_assert(ROO_DIRT_THRESHOLD >= 0 && ROO_DIRT_THRESHOLD <= 255, "Dirt threshold range");
 
 // Real hardware UARTs. USB CDC is diagnostic only, never the Roomba UART.
@@ -64,6 +74,10 @@ bool floorMotionReady = false;
 roonav::Odometry odometry;
 roonav::TminiPlus lidar;
 roonav::ControlArbiter arbiter;
+roonav::PowerShutdown powerShutdown;
+bool powerStreamResync = false;
+uint32_t powerStreamResyncAt = 0;
+constexpr char PowerIntentPath[] = "/power-cutoff";
 WebServer web(80);
 QueueHandle_t requests;
 SemaphoreHandle_t statusMutex;
@@ -370,6 +384,70 @@ void loadMission() {
   arbiter.hold();
   lastError = "checkpoint restored; physical dock reanchor required";
 }
+// Only the control task owns these operations. HTTP handlers only enqueue commands.
+struct FirmwarePowerPort : roonav::PowerShutdown::Port {
+  uint32_t nowMs() const override { return millis(); }
+  bool quiesce() override {
+    arbiter.hold();
+    assistance.operatorPause();
+    navigator->pause(millis());
+    undocking = startAfterUndock = false;
+    xQueueReset(requests); // discard queued velocity/takeover/resume before final cut
+    appliedPwm = appliedSidePwm = appliedVacuumPwm = 0;
+    carpet.invalidate();
+    floorMotionReady = false;
+    const bool stopped = roonav::stopRoombaForPowerCutoff(*robot, robotLink);
+    if (stopped)
+      nativeDock = false;
+    ownsRobot = false;
+    armingSince = 0;
+    if (enabledLidar && digitalRead(7) == HIGH) {
+      const uint8_t stop[] = {0xa5, 0x25};
+      lidarSerial.write(stop, sizeof stop);
+      uart_wait_tx_done(UART_NUM_2, pdMS_TO_TICKS(50));
+    }
+    digitalWrite(7, LOW); // UART isolation BEFORE removing LiDAR power
+    digitalWrite(4, LOW);
+    enabledLidar = false;
+    lidar.reset();
+    lastScan = 0;
+    return stopped;
+  }
+  roonav::PowerShutdown::PersistResult persist() override {
+    roonav::PowerShutdown::PersistResult result;
+    if (!storageReady)
+      return result;
+    result.checkpoint = saveMission(); // failure loses the new snapshot, not battery protection
+    const char marker[] = "RooCore power cutoff v1\n";
+    File file = LittleFS.open(PowerIntentPath, "w");
+    if (!file)
+      return result;
+    bool ok = file.write(reinterpret_cast<const uint8_t *>(marker), sizeof marker) == sizeof marker;
+    file.flush();
+    file.close();
+    file = LittleFS.open(PowerIntentPath, "r");
+    char checked[sizeof marker]{};
+    ok = ok && file && file.size() == sizeof marker &&
+         file.read(reinterpret_cast<uint8_t *>(checked), sizeof checked) == sizeof checked &&
+         !memcmp(marker, checked, sizeof marker);
+    file.close();
+    // Bytes accumulated during flash IO must never masquerade as a fresh battery sample.
+    // Stop stream, invalidate parser/cache, observe 100 ms RX silence, then restart below.
+    if (ok && robot->resynchronizeInput(millis()) == roocore::Result::Ok) {
+      powerStreamResync = true;
+      powerStreamResyncAt = millis();
+      result.intent = true;
+    }
+    return result;
+  }
+  bool clearIntent() override {
+    return storageReady && (!LittleFS.exists(PowerIntentPath) || LittleFS.remove(PowerIntentPath));
+  }
+  void assertD10() override {
+    digitalWrite(9, HIGH); // retain HIGH; do not reboot, sleep or release this output
+  }
+} powerPort;
+
 void publish(uint32_t now) {
   String s = "{\"now\":" + String(now) + ",\"epoch\":" + String(arbiter.epoch) +
              ",\"owner\":" + String(uint8_t(arbiter.owner));
@@ -385,7 +463,9 @@ void publish(uint32_t now) {
   s += ",\"state\":" + String(uint8_t(navigator->state)) +
        ",\"reason\":" + String(uint8_t(navigator->reason));
   s += ",\"undocking\":" + String(undocking ? "true" : "false");
-  s += ",\"commissioned\":" + String(ROO_COMMISSIONED && ROO_ENCODERS_VERIFIED ? "true" : "false");
+  s += ",\"commissioned\":" +
+       String(ROO_COMMISSIONED && ROO_ENCODERS_VERIFIED && powerShutdown.cfg.valid() ? "true"
+                                                                                     : "false");
   s += ",\"localized\":" + String(latest.localized ? "true" : "false") +
        ",\"x\":" + String(odometry.pose.x, 4) + ",\"y\":" + String(odometry.pose.y, 4) +
        ",\"yaw\":" + String(odometry.pose.yaw, 5);
@@ -446,6 +526,25 @@ void publish(uint32_t now) {
   const auto floorVoltage = robot->sensor(roocore::Sensor::VoltageMv);
   s += ",\"battery_mv\":" +
        (floorVoltage.fresh(now, 1000) ? String(floorVoltage.value) : String("null"));
+  const char *powerStates[] = {"unconfigured", "boot_guard", "running", "settling",
+                               "verify",       "held",       "asserted"};
+  const char *powerReasons[] = {
+      "calibration_required",     "boot_stabilizing",    "none",           "low_voltage",
+      "telemetry_invalid",        "charger_present",     "rebound_margin", "stop_failed",
+      "persistence_failed",       "preparation_timeout", "restart_guard",  "cutoff_not_observed",
+      "voltage_too_low_for_flash"};
+  s += ",\"power_state\":\"" + String(powerStates[unsigned(powerShutdown.state)]) + "\"";
+  s += ",\"power_reason\":\"" + String(powerReasons[unsigned(powerShutdown.reason)]) + "\"";
+  s += ",\"power_configured\":" + String(powerShutdown.cfg.valid() ? "true" : "false");
+  s += ",\"power_intent_pending\":" + String(powerShutdown.intentPending ? "true" : "false");
+  s += ",\"power_d10_assertions\":" + String(powerShutdown.assertions);
+  s += ",\"power_asserted_at_ms\":" + String(powerShutdown.assertedAt);
+  s += ",\"power_cutoff_voltage_mv\":" + String(powerShutdown.cutoffVoltageMv);
+  s += ",\"power_checkpoint_saved\":" + String(powerShutdown.checkpointSaved ? "true" : "false");
+  s += ",\"power_cutoff_mv\":" + String(powerShutdown.cfg.cutoffMv);
+  s += ",\"power_restart_min_mv\":" + String(powerShutdown.cfg.restartMinMv);
+  s += ",\"power_rebound_margin_mv\":" + String(powerShutdown.cfg.reboundMarginMv);
+
   s += ",\"floor_forward_mps\":" + String(floorSpeed, 3);
   s += ",\"floor_yaw_rate\":" + String(floorTurn, 3);
   const auto stasis = robot->stasis(now);
@@ -550,7 +649,8 @@ void sample(uint32_t now) {
       if (latest.ranges[j] == 0 || range < latest.ranges[j])
         latest.ranges[j] = range;
     }
-    if (assistance.status == roonav::NavigationHelp::Status::Checking) {
+    if (!powerShutdown.blocksMotion() &&
+        assistance.status == roonav::NavigationHelp::Status::Checking) {
       roonav::Pose candidate = assistance.proposed;
       float score = 0;
       bool ok = roonav::alignToMap(candidate, latest.ranges, *primaryNavigator, score) &&
@@ -615,10 +715,11 @@ void sample(uint32_t now) {
 }
 bool healthy() {
   const uint32_t now = millis();
-  return uint32_t(now - latest.sensorsMs) <= 200 && uint32_t(now - latest.poseMs) <= 300 &&
-         uint32_t(now - latest.scanMs) <= 400 && latest.sensorsValid && latest.localized &&
-         latest.scanValid && !latest.cliff && !latest.wheelDrop &&
-         (!latest.bumper || navigator->wallRetreat()) && !latest.overcurrent && latest.battery > 6;
+  return !powerShutdown.blocksMotion() && uint32_t(now - latest.sensorsMs) <= 200 &&
+         uint32_t(now - latest.poseMs) <= 300 && uint32_t(now - latest.scanMs) <= 400 &&
+         latest.sensorsValid && latest.localized && latest.scanValid && !latest.cliff &&
+         !latest.wheelDrop && (!latest.bumper || navigator->wallRetreat()) && !latest.overcurrent &&
+         latest.battery > 6;
 }
 void updateFloorEstimate(uint32_t now) {
   const bool safe = healthy() && active() && !nativeDock && !undocking && appliedPwm > 0;
@@ -653,6 +754,10 @@ void updateFloorEstimate(uint32_t now) {
   carpet.update(s);
 }
 void request(const Request &r, uint32_t now) {
+  if (powerShutdown.blocksMotion() && strcmp(r.action, "init-storage")) {
+    lastError = "power guard holds motion; inspect power_state/power_reason";
+    return;
+  }
   if (!strcmp(r.action, "pause")) {
     assistance.operatorPause();
     undocking = false;
@@ -663,11 +768,12 @@ void request(const Request &r, uint32_t now) {
     return;
   }
   if (!strcmp(r.action, "init-storage")) {
-    if (movingSession()) {
-      lastError = "stop before formatting";
+    if (movingSession() || !powerShutdown.canInitializeStorage()) {
+      lastError = "stop before formatting; power intent must not be erased";
       return;
     }
     storageReady = LittleFS.format() && LittleFS.begin(false);
+    powerShutdown.begin(millis(), storageReady && LittleFS.exists(PowerIntentPath));
     return;
   }
   if (!ROO_COMMISSIONED || !ROO_ENCODERS_VERIFIED) {
@@ -830,6 +936,8 @@ void request(const Request &r, uint32_t now) {
     lastError = "unknown action";
 }
 void apply(roonav::Output out, uint32_t now) {
+  if (powerShutdown.blocksMotion())
+    return;
   now = millis();
   if (out.action == roonav::Action::SeekDock) {
     if (!nativeDock) {
@@ -985,6 +1093,47 @@ void tryAssistance(uint32_t now) {
   arbiter.owner = roonav::Owner::Local;
   lastError = "global pose unavailable; cleaning in separate local frame; help requested";
 }
+bool startRobotStream() {
+  roocore::Sensor ids[10] = {roocore::Sensor::Safety,          roocore::Sensor::Battery,
+                             roocore::Sensor::ChargingSources, roocore::Sensor::OiMode,
+                             roocore::Sensor::WallSignal,      roocore::Sensor::InfraredOmni};
+  unsigned count = 6;
+  if (ROO_ENCODERS_VERIFIED) {
+    ids[count++] = roocore::Sensor::LeftEncoder;
+    ids[count++] = roocore::Sensor::RightEncoder;
+  }
+  if (ROO_CARPET_CURRENT_VERIFIED)
+    ids[count++] = roocore::Sensor::MainBrushCurrent;
+  if (ROO_STASIS_VERIFIED)
+    ids[count++] = roocore::Sensor::Stasis;
+  return robot->startStream(ids, count) == roocore::Result::Ok;
+}
+
+roonav::PowerShutdown::Input powerInput(uint32_t now) {
+  roonav::PowerShutdown::Input in;
+  in.now = now;
+  const auto voltage = robot->sensor(roocore::Sensor::VoltageMv);
+  const auto charge = robot->sensor(roocore::Sensor::ChargingState);
+  const auto source = robot->sensor(roocore::Sensor::ChargingSources);
+  const auto mode = robot->sensor(roocore::Sensor::OiMode);
+  const auto left = robot->sensor(roocore::Sensor::LeftEncoder);
+  const auto right = robot->sensor(roocore::Sensor::RightEncoder);
+  in.valid = linkReady && !powerStreamResync && voltage.fresh(now, 200) && charge.fresh(now, 200) &&
+             source.fresh(now, 200) && mode.fresh(now, 200) && left.fresh(now, 200) &&
+             right.fresh(now, 200) && charge.generation == voltage.generation &&
+             source.generation == voltage.generation && mode.generation == voltage.generation &&
+             left.generation == voltage.generation && right.generation == voltage.generation;
+  in.stamp = voltage.timestampMs;
+  in.generation = voltage.generation;
+  in.millivolts = voltage.value;
+  in.left = left.value;
+  in.right = right.value;
+  in.mode = mode.value;
+  in.charging = charge.value;
+  in.sources = source.value;
+  return in;
+}
+
 void controlTask(void *) {
   robot->beginPassive();
   if (ROO_COMMISSIONED) {
@@ -993,26 +1142,22 @@ void controlTask(void *) {
     robot->beginPassive();
   }
   linkReady = robot->verifyConnection() == roocore::Result::Ok;
-  if (linkReady) {
-    roocore::Sensor ids[10] = {roocore::Sensor::Safety,          roocore::Sensor::Battery,
-                               roocore::Sensor::ChargingSources, roocore::Sensor::OiMode,
-                               roocore::Sensor::WallSignal,      roocore::Sensor::InfraredOmni};
-    unsigned count = 6;
-    if (ROO_ENCODERS_VERIFIED) {
-      ids[count++] = roocore::Sensor::LeftEncoder;
-      ids[count++] = roocore::Sensor::RightEncoder;
-    }
-    if (ROO_CARPET_CURRENT_VERIFIED)
-      ids[count++] = roocore::Sensor::MainBrushCurrent;
-    if (ROO_STASIS_VERIFIED)
-      ids[count++] = roocore::Sensor::Stasis;
-    linkReady = robot->startStream(ids, count) == roocore::Result::Ok;
-  }
+  if (linkReady)
+    linkReady = startRobotStream();
   storageReady = LittleFS.begin(false);
   loadMission();
+  powerShutdown.begin(millis(), storageReady && LittleFS.exists(PowerIntentPath));
   for (;;) {
     const uint32_t now = millis();
     robot->poll(now);
+    if (powerStreamResync && robot->inputReady()) {
+      linkReady = startRobotStream();
+      powerStreamResync = false;
+    }
+    if (powerStreamResync && uint32_t(now - powerStreamResyncAt) > 2000) {
+      powerStreamResync = false;
+      linkReady = false; // bounded failure, no stream restart loop
+    }
     if (enabledLidar && uint32_t(now - lidarOnMs) >= 500 && digitalRead(7) == LOW) {
       digitalWrite(7, HIGH);
       const uint8_t start[] = {0xa5, 0x60};
@@ -1022,95 +1167,98 @@ void controlTask(void *) {
       lidar.feed(uint8_t(lidarSerial.read()), now);
     if (uint32_t(now - lastControl) >= 50) {
       lastControl = now;
+      powerShutdown.tick(powerInput(now), powerPort);
       sample(now);
       collectDirt(now);
       updateFloorEstimate(now);
       Request req;
       for (unsigned i = 0; i < 4 && xQueueReceive(requests, &req, 0) == pdTRUE; ++i)
         request(req, now);
-      const auto before = navigator->state;
-      arbiter.poll(now, healthy(), active());
-      if (assistance.pending() && !assistance.allowLocal(latest)) {
-        navigator->pause(now);
-        stopMotion();
-      }
-      roonav::Output out;
-      if (undocking) {
-        const float remaining =
-            roonav::distance(latest.pose.x, latest.pose.y, navigator->dock.x, navigator->dock.y);
-        if (remaining < undockBest - .01f) {
-          undockBest = remaining;
-          undockProgressAt = now;
+      if (!powerShutdown.blocksMotion()) {
+        const auto before = navigator->state;
+        arbiter.poll(now, healthy(), active());
+        if (assistance.pending() && !assistance.allowLocal(latest)) {
+          navigator->pause(now);
+          stopMotion();
         }
-        if (!healthy() || !ROO_DOCK_EXIT_VERIFIED || uint32_t(now - undockAt) > 15000 ||
-            uint32_t(now - undockProgressAt) > 3000 ||
-            fabsf(roonav::wrap(latest.pose.yaw - navigator->dock.yaw)) > .25f) {
-          undocking = false;
-          navigator->fault(roonav::Reason::NoProgress);
-        } else if (remaining < .04f) {
-          undocking = false;
-          if (startAfterUndock) {
-            navigator->start(deepAfterUndock, navigator->dock, now);
-            startAfterUndock = false;
+        roonav::Output out;
+        if (undocking) {
+          const float remaining =
+              roonav::distance(latest.pose.x, latest.pose.y, navigator->dock.x, navigator->dock.y);
+          if (remaining < undockBest - .01f) {
+            undockBest = remaining;
+            undockProgressAt = now;
           }
-        } else {
-          out.action = roonav::Action::Drive;
-          out.speed = -.06f;
+          if (!healthy() || !ROO_DOCK_EXIT_VERIFIED || uint32_t(now - undockAt) > 15000 ||
+              uint32_t(now - undockProgressAt) > 3000 ||
+              fabsf(roonav::wrap(latest.pose.yaw - navigator->dock.yaw)) > .25f) {
+            undocking = false;
+            navigator->fault(roonav::Reason::NoProgress);
+          } else if (remaining < .04f) {
+            undocking = false;
+            if (startAfterUndock) {
+              navigator->start(deepAfterUndock, navigator->dock, now);
+              startAfterUndock = false;
+            }
+          } else {
+            out.action = roonav::Action::Drive;
+            out.speed = -.06f;
+          }
+        } else if (active()) {
+          // Always maintain a local map/mission during remote control for fallback.
+          out = navigator->tick(latest, arbiter.owner == roonav::Owner::Remote);
+          if (navigator->state != roonav::State::Cleaning && arbiter.owner == roonav::Owner::Remote)
+            arbiter.local(now);
+          if (arbiter.owner == roonav::Owner::Remote && healthy() &&
+              navigator->state == roonav::State::Cleaning) {
+            out.action = roonav::Action::Drive;
+            out.speed = (arbiter.left + arbiter.right) / 2000.f;
+            out.turn = (arbiter.right - arbiter.left) / (1000 * navigator->cfg.wheelSeparation);
+            out.pwm = arbiter.pwm;
+          }
+          if (arbiter.owner == roonav::Owner::Stopping || arbiter.owner == roonav::Owner::Held)
+            out = roonav::Output();
         }
-      } else if (active()) {
-        // Always maintain a local map/mission during remote control for fallback.
-        out = navigator->tick(latest, arbiter.owner == roonav::Owner::Remote);
-        if (navigator->state != roonav::State::Cleaning && arbiter.owner == roonav::Owner::Remote)
-          arbiter.local(now);
-        if (arbiter.owner == roonav::Owner::Remote && healthy() &&
-            navigator->state == roonav::State::Cleaning) {
-          out.action = roonav::Action::Drive;
-          out.speed = (arbiter.left + arbiter.right) / 2000.f;
-          out.turn = (arbiter.right - arbiter.left) / (1000 * navigator->cfg.wheelSeparation);
-          out.pwm = arbiter.pwm;
-        }
+        arbiter.poll(millis(), healthy(), movingSession());
         if (arbiter.owner == roonav::Owner::Stopping || arbiter.owner == roonav::Owner::Held)
           out = roonav::Output();
-      }
-      arbiter.poll(millis(), healthy(), movingSession());
-      if (arbiter.owner == roonav::Owner::Stopping || arbiter.owner == roonav::Owner::Held)
-        out = roonav::Output();
-      if (ROO_COMMISSIONED && ROO_ENCODERS_VERIFIED)
-        apply(out, now);
-      else
-        stopMotion();
-      if (navigator->state == roonav::State::Fault)
-        undocking = false;
-      if (before == roonav::State::Charging && navigator->state == roonav::State::Resuming) {
-        if (ROO_DOCK_EXIT_VERIFIED) {
-          undocking = true;
-          startAfterUndock = false;
-          undockAt = undockProgressAt = now;
-          undockBest = 1e9f;
-        } else
-          navigator->fault(roonav::Reason::NoRoute);
-      }
-      if (before != navigator->state) {
-        if (!saveMission()) {
+        if (ROO_COMMISSIONED && ROO_ENCODERS_VERIFIED)
+          apply(out, now);
+        else
+          stopMotion();
+        if (navigator->state == roonav::State::Fault)
+          undocking = false;
+        if (before == roonav::State::Charging && navigator->state == roonav::State::Resuming) {
+          if (ROO_DOCK_EXIT_VERIFIED) {
+            undocking = true;
+            startAfterUndock = false;
+            undockAt = undockProgressAt = now;
+            undockBest = 1e9f;
+          } else
+            navigator->fault(roonav::Reason::NoRoute);
+        }
+        if (before != navigator->state) {
+          if (!saveMission()) {
+            stopMotion();
+            navigator->fault(roonav::Reason::Telemetry);
+            lastError = "checkpoint write failed";
+          }
+        }
+        // Do not interrupt and restart the robot's native docking routine for a
+        // periodic save. Entering Docking was already checkpointed.
+        if (active() && !undocking && navigator->state != roonav::State::Docking &&
+            uint32_t(now - lastSaved) >= 30000 && !saveMission()) {
           stopMotion();
           navigator->fault(roonav::Reason::Telemetry);
           lastError = "checkpoint write failed";
         }
+        if (navigator->state == roonav::State::Charging)
+          lidarPower(latest.battery >= 78);
+        tryAssistance(now);
+        if (!assistance.pending() && !undocking && terminal(navigator->state) &&
+            uint32_t(now - anchorAt) > 10000)
+          lidarPower(false);
       }
-      // Do not interrupt and restart the robot's native docking routine for a
-      // periodic save. Entering Docking was already checkpointed.
-      if (active() && !undocking && navigator->state != roonav::State::Docking &&
-          uint32_t(now - lastSaved) >= 30000 && !saveMission()) {
-        stopMotion();
-        navigator->fault(roonav::Reason::Telemetry);
-        lastError = "checkpoint write failed";
-      }
-      if (navigator->state == roonav::State::Charging)
-        lidarPower(latest.battery >= 78);
-      tryAssistance(now);
-      if (!assistance.pending() && !undocking && terminal(navigator->state) &&
-          uint32_t(now - anchorAt) > 10000)
-        lidarPower(false);
     }
     if (uint32_t(now - lastPublish) >= 100) {
       lastPublish = now;
@@ -1291,6 +1439,13 @@ void setup() {
   }
   dirtBoot = esp_random();
   robot->setSampleObserver(observeDirt);
+  powerShutdown.cfg.verified =
+      ROO_POWER_CUTOFF_VERIFIED && ROO_COMMISSIONED && ROO_ENCODERS_VERIFIED;
+  powerShutdown.cfg.cutoffMv = ROO_POWER_CUTOFF_MV;
+  powerShutdown.cfg.recoverMv = ROO_POWER_RECOVER_MV;
+  powerShutdown.cfg.restartMinMv = ROO_POWER_RESTART_MIN_MV;
+  powerShutdown.cfg.reboundMarginMv = ROO_POWER_REBOUND_MARGIN_MV;
+  powerShutdown.cfg.saveMinMv = ROO_POWER_SAVE_MIN_MV;
   assistance.id = esp_random();
   navigator->cfg.brushWidth = ROO_BRUSH_WIDTH_METERS;
   navigator->cfg.brushDepth = ROO_BRUSH_DEPTH_METERS;
