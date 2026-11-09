@@ -94,3 +94,7 @@ The production control task now uses the tested `PowerShutdown` policy and share
 - The wiring SVG and rendered PNG now describe the implemented cutoff and its calibration requirement. The revised panel was visually inspected.
 
 No board was connected or flashed. Actual EN thresholds, battery rebound, OI voltage accuracy, stopping latency, LittleFS durability during supply decay and automatic voltage-based restart still require measurements on the installed circuit. The default configuration keeps D10 inactive and motion blocked until those calibration values are supplied; the code path itself is implemented.
+
+## LiDAR power integration — 2026-11-10
+
+Full RooCoreXiao builds passed on Arduino-ESP32 3.3.12: default 524259 bytes Flash / 151148 static RAM; synthetic commissioned 529531 / 151156. Both OI examples also compiled. `tests/run.sh` passed all native suites, including the new nonblocking LiDAR state/failure tests. No hardware was connected, flashed or measured. See [the integration record](assembly/FIRMWARE_INTEGRATION.md) for source hashes and the build log. Synthetic 25 ms rise time is test data, not calibration.

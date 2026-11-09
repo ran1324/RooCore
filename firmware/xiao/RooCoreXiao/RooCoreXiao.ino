@@ -6,6 +6,7 @@
 #include <NavigationHelp.h>
 #include <PowerShutdown.h>
 #include <PowerShutdownOI.h>
+#include <RooCoreLidarPower.h>
 #include <RooNavigation.h>
 #include <RoombaOIArduino.h>
 #include <TminiPlus.h>
@@ -18,6 +19,15 @@
 #else
 #include "config.example.h"
 #endif
+#ifndef ROO_LIDAR_POWER_VERIFIED
+#define ROO_LIDAR_POWER_VERIFIED false
+#endif
+#ifndef ROO_LIDAR_RISE_MS
+#define ROO_LIDAR_RISE_MS 0
+#endif
+static_assert(ROO_LIDAR_RISE_MS >= 0 && ROO_LIDAR_RISE_MS <= INT32_MAX,
+              "LiDAR rise time must fit a wrap-safe millis interval");
+constexpr bool LidarPowerConfigured = ROO_LIDAR_POWER_VERIFIED && ROO_LIDAR_RISE_MS > 0;
 
 // Older local configurations keep the optional feature disabled.
 #ifndef ROO_CARPET_CURRENT_VERIFIED
@@ -59,7 +69,8 @@
 static_assert(ROO_DIRT_THRESHOLD >= 0 && ROO_DIRT_THRESHOLD <= 255, "Dirt threshold range");
 
 // Real hardware UARTs. USB CDC is diagnostic only, never the Roomba UART.
-HardwareSerial roombaSerial(1), lidarSerial(2);
+HardwareSerial roombaSerial(1);
+RooCoreLidarPower lidarPort; // owns UART2, GPIO5 TX, GPIO6 RX and GPIO4 ON
 roocore::Esp32Transport robotLink(roombaSerial, UART_NUM_1, 8);
 roocore::Capabilities capabilities;
 roocore::Roomba *robot;
@@ -106,9 +117,8 @@ SavedMission saved;
 bool undocking = false, startAfterUndock = false, deepAfterUndock = false;
 uint32_t undockAt = 0, undockProgressAt = 0;
 float undockBest = 0;
-bool storageReady = false, anchored = false, nativeDock = false, enabledLidar = false,
-     linkReady = false;
-uint32_t lidarOnMs = 0, lastScan = 0, lastGeneration = 0, sequence = 0, armingSince = 0;
+bool storageReady = false, anchored = false, nativeDock = false, linkReady = false;
+uint32_t lastScan = 0, lastGeneration = 0, sequence = 0, armingSince = 0;
 uint32_t lastControl = 0, lastPublish = 0, lastSaved = 0, anchorAt = 0;
 float alignmentScore = 0;
 uint8_t appliedPwm = 0, appliedSidePwm = 0, appliedVacuumPwm = 0;
@@ -142,19 +152,53 @@ bool terminal(roonav::State s) {
 }
 bool active() { return !terminal(navigator->state); }
 bool movingSession() { return active() || undocking; }
-void lidarPower(bool on) {
-  if (on == enabledLidar)
-    return;
-  enabledLidar = on;
-  lidar.reset();
-  lastScan = 0;
-  if (on) {
-    digitalWrite(4, HIGH);
-    lidarOnMs = millis();
-  } else {
-    digitalWrite(7, LOW);
-    digitalWrite(4, LOW);
+bool lidarPower(bool on) {
+  if (!on) {
+    // Every deliberate power-off, including battery cutoff, uses this path.
+    // end UART -> TX LOW / RX input pulldown -> ON LOW. No OE pin or unplugging.
+    lidarPort.powerOff();
+    lidar.reset();
+    lastScan = 0;
+    latest.scanValid = false;
+    return true;
   }
+  if (!LidarPowerConfigured) {
+    lastError = "LiDAR power sequence requires hardware qualification and rise time";
+    return false;
+  }
+  const bool wasPowered = lidarPort.powered();
+  if (!lidarPort.requestOn(millis(), ROO_LIDAR_RISE_MS)) {
+    lastError = "LiDAR UART fault; request off before retrying";
+    return false;
+  }
+  if (!wasPowered) {
+    lidar.reset();
+    lastScan = 0;
+    latest.scanValid = false;
+  }
+  return true;
+}
+
+void serviceLidar(uint32_t now) {
+  const auto before = lidarPort.state();
+  if (lidarPort.poll(now)) {
+    const uint8_t start[] = {0xa5, 0x60};
+    if (lidarPort.write(start, sizeof start) != sizeof start) {
+      lidarPort.abort(); // latched fault, no automatic on/off retry loop
+      lastError = "LiDAR scan command failed; power off";
+    }
+  } else if (before == RooCoreLidarPower::State::Warming &&
+             lidarPort.state() == RooCoreLidarPower::State::Fault) {
+    lastError = "LiDAR UART initialization failed; power off";
+  }
+  if (!lidarPort.ready()) {
+    lidar.reset();
+    lastScan = 0;
+    latest.scanValid = false;
+    return;
+  }
+  for (unsigned i = 0; i < 2048 && lidarPort.available(); ++i)
+    lidar.feed(uint8_t(lidarPort.read()), now);
 }
 // Invoked by Roomba::poll after the whole validated frame is committed. No I/O/locks here.
 void observeDirt(void *, roocore::Sensor id, const roocore::Sample &reading) {
@@ -401,16 +445,7 @@ struct FirmwarePowerPort : roonav::PowerShutdown::Port {
       nativeDock = false;
     ownsRobot = false;
     armingSince = 0;
-    if (enabledLidar && digitalRead(7) == HIGH) {
-      const uint8_t stop[] = {0xa5, 0x25};
-      lidarSerial.write(stop, sizeof stop);
-      uart_wait_tx_done(UART_NUM_2, pdMS_TO_TICKS(50));
-    }
-    digitalWrite(7, LOW); // UART isolation BEFORE removing LiDAR power
-    digitalWrite(4, LOW);
-    enabledLidar = false;
-    lidar.reset();
-    lastScan = 0;
+    lidarPower(false);
     return stopped;
   }
   roonav::PowerShutdown::PersistResult persist() override {
@@ -464,7 +499,8 @@ void publish(uint32_t now) {
        ",\"reason\":" + String(uint8_t(navigator->reason));
   s += ",\"undocking\":" + String(undocking ? "true" : "false");
   s += ",\"commissioned\":" +
-       String(ROO_COMMISSIONED && ROO_ENCODERS_VERIFIED && powerShutdown.cfg.valid() ? "true"
+       String(ROO_COMMISSIONED && ROO_ENCODERS_VERIFIED && powerShutdown.cfg.valid() &&
+                      LidarPowerConfigured ? "true"
                                                                                      : "false");
   s += ",\"localized\":" + String(latest.localized ? "true" : "false") +
        ",\"x\":" + String(odometry.pose.x, 4) + ",\"y\":" + String(odometry.pose.y, 4) +
@@ -536,6 +572,11 @@ void publish(uint32_t now) {
   s += ",\"power_state\":\"" + String(powerStates[unsigned(powerShutdown.state)]) + "\"";
   s += ",\"power_reason\":\"" + String(powerReasons[unsigned(powerShutdown.reason)]) + "\"";
   s += ",\"power_configured\":" + String(powerShutdown.cfg.valid() ? "true" : "false");
+  const char *lidarStates[] = {"off", "warming", "ready", "fault"};
+  s += ",\"lidar_power_state\":\"" + String(lidarStates[unsigned(lidarPort.state())]) + "\"";
+  s += ",\"lidar_power_configured\":" + String(LidarPowerConfigured ? "true" : "false");
+  s += ",\"lidar_uart_ready\":" + String(lidarPort.ready() ? "true" : "false");
+  s += ",\"lidar_rise_ms\":" + String(ROO_LIDAR_RISE_MS);
   s += ",\"power_intent_pending\":" + String(powerShutdown.intentPending ? "true" : "false");
   s += ",\"power_d10_assertions\":" + String(powerShutdown.assertions);
   s += ",\"power_asserted_at_ms\":" + String(powerShutdown.assertedAt);
@@ -698,7 +739,7 @@ void sample(uint32_t now) {
     latest.pose = odometry.pose;
   }
   latest.scanMs = lidar.scanMs;
-  latest.scanValid = lidar.valid && uint32_t(now - lidar.scanMs) <= 400;
+  latest.scanValid = lidarPort.ready() && lidar.valid && uint32_t(now - lidar.scanMs) <= 400;
   latest.localized = anchored && odometry.valid;
   latest.retreatVerified = false;
   for (unsigned j = 0; j < 16; ++j)
@@ -825,7 +866,8 @@ void request(const Request &r, uint32_t now) {
       }
       stopMotion();
       navigator->pause(now);
-      lidarPower(true);
+      if (!lidarPower(true))
+        return;
       lastError = "checking candidate against three fresh scans";
       return;
     }
@@ -864,6 +906,8 @@ void request(const Request &r, uint32_t now) {
       lastError = "encoders missing";
       return;
     }
+    if (!lidarPower(true))
+      return;
     if (assistance.pending()) {
       navigator = primaryNavigator;
       assistance.operatorHeld = false;
@@ -877,7 +921,6 @@ void request(const Request &r, uint32_t now) {
     anchored = true;
     assistance.operatorResume();
     anchorAt = now;
-    lidarPower(true);
     lastError = "";
     return;
   }
@@ -887,7 +930,8 @@ void request(const Request &r, uint32_t now) {
     return;
   }
   if (!strcmp(r.action, "resume")) {
-    lidarPower(true);
+    if (!lidarPower(true))
+      return;
     anchorAt = now;
   }
   if (!healthy()) {
@@ -1062,7 +1106,10 @@ void tryAssistance(uint32_t now) {
   xSemaphoreTake(statusMutex, portMAX_DELAY);
   publishedHelpMap = map;
   xSemaphoreGive(statusMutex);
-  lidarPower(true);
+  if (!lidarPower(true)) {
+    assistance.hold();
+    return;
+  }
   anchorAt = now;
   if (!localSafe) {
     lastError = "help requested; waiting for healthy sensors";
@@ -1158,13 +1205,7 @@ void controlTask(void *) {
       powerStreamResync = false;
       linkReady = false; // bounded failure, no stream restart loop
     }
-    if (enabledLidar && uint32_t(now - lidarOnMs) >= 500 && digitalRead(7) == LOW) {
-      digitalWrite(7, HIGH);
-      const uint8_t start[] = {0xa5, 0x60};
-      lidarSerial.write(start, 2);
-    }
-    for (unsigned i = 0; i < 2048 && lidarSerial.available(); ++i)
-      lidar.feed(uint8_t(lidarSerial.read()), now);
+    serviceLidar(now);
     if (uint32_t(now - lastControl) >= 50) {
       lastControl = now;
       powerShutdown.tick(powerInput(now), powerPort);
@@ -1385,16 +1426,13 @@ void serveDirt() {
   web.send(200, "application/json", s);
 }
 void setup() {
+  lidarPort.begin(); // before allocations/network/tasks: UART detached, signals LOW, then ON LOW
   Serial.begin(115200);
-  for (int pin : {4, 7, 9}) {
-    digitalWrite(pin, LOW);
-    pinMode(pin, OUTPUT);
-  } // LiDAR ON, OE, power-off NPN
+  digitalWrite(9, LOW);
+  pinMode(9, OUTPUT); // project power-off NPN; GPIO7 is no longer a LiDAR OE output
   roombaSerial.setRxBufferSize(4096);
   roombaSerial.begin(115200, SERIAL_8N1, 2, 1);
   robotLink.beginBrc();
-  lidarSerial.setRxBufferSize(8192);
-  lidarSerial.begin(230400, SERIAL_8N1, 44, 43);
   capabilities.extendedSensors =
       ROO_ENCODERS_VERIFIED || ROO_CARPET_CURRENT_VERIFIED || ROO_STASIS_VERIFIED;
   carpet.cfg.enabled = ROO_CARPET_BOOST_ENABLED && ROO_CARPET_CURRENT_VERIFIED;
