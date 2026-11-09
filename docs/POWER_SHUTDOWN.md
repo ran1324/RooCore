@@ -1,8 +1,10 @@
 # Automatic shutdown through D10
 
-Implemented in the XIAO firmware on 2026-11-08. [Wiring diagram](diagrams/wiring-xiao.svg): D10/GPIO9 → 10k resistor → 2N3904 base → pull D36V28F5 EN to ground. Shutdown disconnects the add-on branch, including 5V and 3.3V; it does not disconnect the battery from the original Roomba. No new component is required for the software implementation.
+The shutdown sequence was implemented in the XIAO firmware on 2026-11-08. LiDAR shutdown was integrated on 2026-11-10, and the full firmware was built in two configurations and tested in software. See [the integration record](assembly/FIRMWARE_INTEGRATION.md). No firmware was flashed or measurements taken on the robot.
 
-**Code and tests are complete; calibration and validation on the robot have not been performed.** No physical voltage values have been approved. The default is therefore `unconfigured`: data reading is available, while motion and D10 HIGH are blocked. No further code is needed to activate the sequence after measurements and calibration configuration.
+The planned [circuit](diagrams/wiring-xiao.svg) connects D10/GPIO9 through a 10k resistor to the 2N3904 base to pull D36V28F5 EN to ground. It would disconnect the add-on 5V and 3.3V supplies while leaving the original Roomba connected to its battery. No new component is required for the software implementation, but the transistor connection is not yet approved for assembly. Q1/Q2 connections and battery thresholds still need physical verification. No physical voltage values have been approved, so the default is `unconfigured`: data reading is available, while motion and D10 HIGH are blocked. Before enabling the sequence, verify that the firmware and electrical interfaces match the installed modules. Entering voltage values alone is not enough.
+
+[LiDAR shutdown with fixed UART wiring](assembly/LIDAR_POWER_UART.md) uses D4/GPIO5, D5/GPIO6 and D3/ON. This sequence is used by the full application and during preparation for battery cutoff. D8/OE is unused.
 
 ## Operating sequence
 
@@ -54,4 +56,4 @@ Successful cutoff may remove power before an `asserted` report reaches the serve
 
 **Pending hardware validation:** VIN versus OI voltage, actual EN thresholds, off-state consumption, pack settling and rebound, stop timing, LittleFS writes during falling voltage, reboot/charging and absence of backfeeding. Before connecting USB, physically disconnect the XIAO 5V supply in the diode-free configuration. No firmware was flashed and no physical Roomba was tested as part of this change.
 
-LiDAR power sequencing is integrated into the full application; see [the integration record](assembly/FIRMWARE_INTEGRATION.md). Intentional shutdown is sequenced before D10; unexpected loss of controller power remains a physical qualification case.
+Intentional LiDAR shutdown is sequenced before D10. Unexpected loss of controller power still needs physical validation.

@@ -1,7 +1,7 @@
-# הקושחה המלאה — מיקום העבודה הנוכחי
+# מיקום הקושחה
 
-הקושחה עודכנה בענף `codex/lidar-power-sequence`, בעותק `/Volumes/T9/RooCore-worktrees/lidar-power-sequence`, על בסיס `origin/main` ב־033b90050f3deb9c03d79670bc8a90fa2b6590de.
+הקושחה המלאה נמצאת בענף `main`, בקובץ [RooCoreXiao.ino](firmware/xiao/RooCoreXiao/RooCoreXiao.ino). זה המקום להמשך העבודה.
 
-הקובץ הפעיל לעריכה הוא `firmware/xiao/RooCoreXiao/RooCoreXiao.ino` בתוך אותו עותק. הגרסה המקומית כוללת את רצף UART/הספק של הליידר. הפרסום בגיט נפרד מבדיקת החומרה; לא בוצעה צריבה.
+בקשת המיזוג [#1](https://github.com/ran1324/RooCore/pull/1) מוזגה בתאריך 2026-11-10, בקומיט `2032401435e096ae483c7ef5f9fccc6b60512dff`. העותק הראשי עודכן, והקבצים וההערות המקומיים נשמרו. עותק העבודה המקורי `codex/lidar-power-sequence` עדיין קיים. הקושחה לא נצרבה ולא נבדקה על הרובוט.
 
-המדריך הקנוני ממשיך להתעדכן כאן: [RooCore-assembly.html](docs/assembly/RooCore-assembly.html). [תיעוד השילוב והבדיקות](docs/assembly/FIRMWARE_INTEGRATION.md).
+[מדריך בעברית](docs/assembly/RooCore-assembly.html) · [English guide](docs/assembly/en/RooCore-assembly.html) · [תיעוד השילוב והבדיקות](docs/assembly/FIRMWARE_INTEGRATION.md).

@@ -12,6 +12,8 @@ The XIAO application adds daily/deep coverage, observation-only dirt logging, fi
 
 For the browser behavior prototype: `python3 -m navigation.server`, then open `http://127.0.0.1:8766`. It runs the actual C++ Navigator through a local ctypes adapter; physics/localization/charging are simulated. Install a C++ compiler (clang++) first. `tests/navigation_native_test.cpp` tests the actual C++ firmware planner with independent simulated physics, including charging/resume and bounded recovery. See the setup document for the distinction and limits.
 
+The [hardware inventory](HARDWARE_INVENTORY.md) and [purchase record](AMAZON_ORDER.md) list the project parts. Check the [module audit](docs/assembly/en/MODULE_AUDIT.md) and [electrical review](docs/assembly/en/ELECTRICAL_REVIEW.md) for verified connections and the physical checks still needed. The power-cutoff sequence is documented in [English](docs/POWER_SHUTDOWN.md) and [Hebrew](docs/POWER_SHUTDOWN-he.md).
+
 ## Roomba Open Interface library
 
 [API guide and protocol review](docs/OPEN_INTERFACE.md) · [Complete command/sensor map](docs/oi-map.json) · [Validation](docs/VALIDATION_XIAO.md) · [Library](lib/RoombaOI/src/RoombaOI.h)

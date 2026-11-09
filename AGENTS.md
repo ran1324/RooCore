@@ -45,13 +45,13 @@ Retain safe behavior on communication loss and distinguish host simulation from 
 
 ## Keep the user's assembly HTML synchronized
 
-The user explicitly requires wiring, module, power-sequence and relevant guide corrections to be reflected in `/Volumes/T9/RooCore/docs/assembly/RooCore-assembly.html`, as well as the inventory and Markdown. That is the canonical local assembly entry point; do not leave a correction only in chat or in a different worktree.
+Keep wiring, module, power-sequence and other assembly corrections in `docs/assembly/RooCore-assembly.html`, the inventory and the relevant Markdown. The HTML in the primary checkout is the user's assembly guide. A correction made in another worktree must reach that copy too.
 
 Edit the owning guide data/builders, regenerate with `python3 docs/assembly/build_guide.py`, and run `python3 docs/assembly/check_artifacts.py`. Keep the HTML, MD, photo views, schematic, CSV/JSON, draw.io and portable ZIP consistent. Preserve the distinction between preparation, a compiled example, integrated firmware and actual hardware validation. LiDAR routine shutdown uses the sequence in `docs/assembly/LIDAR_POWER_UART.md`; do not reintroduce an instruction to manually unplug TX/RX on every cycle.
 
 ## Current firmware checkout and low-height OI harness
 
-The full firmware is being edited in `/Volumes/T9/RooCore-worktrees/lidar-power-sequence`, branch `codex/lidar-power-sequence`, based on origin/main `033b90050f3deb9c03d79670bc8a90fa2b6590de`. The primary T9/RooCore worktree is older and holds the canonical assembly artifacts; inspect Git worktrees before saying the application is missing. Keep the library copies consistent until these working trees are consolidated. Do not overwrite unrelated changes or claim a local integration was pushed or flashed.
+PR #1 merged into `main` on 2026-11-10 at `2032401435e096ae483c7ef5f9fccc6b60512dff`. The primary checkout now contains the full firmware and the Hebrew and English assembly guides. Use it for subsequent work and preserve existing local changes. The original `codex/lidar-power-sequence` worktree is still available. No firmware has been flashed or tested on the robot.
 
 The user explicitly removed the Mini-DIN 7 cable/plug-body requirement: use the intended direct low-profile wires with adhesive retention to let the original robot cover close. Retain the OI socket contact map, insulation and strain relief requirements; do not list a Mini-DIN cable as a missing purchase. The purchased fuse exists and is planned in series with the positive branch near its source; distinguish missing rating/value evidence from a missing part. One NOYITO remains planned for the Roomba level interface pending module supply mapping; the other is spare and unnecessary for the direct 3.3V LiDAR path.
 

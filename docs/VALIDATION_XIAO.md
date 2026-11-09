@@ -1,4 +1,6 @@
-# RoombaOI validation — 2026-11-07
+# RoombaOI validation (2026-11-07)
+
+The [electrical review](assembly/ELECTRICAL_REVIEW.md) from 2026-11-09 covers the electronics and esp32-development review, confirmed module pads, transistor/package reference maps and remaining physical checks. LiDAR power sequencing was integrated into RooCoreXiao on 2026-11-10 and built in two configurations. See [the integration record](assembly/FIRMWARE_INTEGRATION.md) and [current results](assembly/VALIDATION.md). The dated results below include the earlier library and example tests. No hardware was flashed or measured.
 
 Library version: **0.2.0**. Target: **plain Seeed Studio XIAO ESP32S3**, 8 MB flash / 8 MB OPI PSRAM. No board was attached and nothing was flashed.
 
@@ -7,7 +9,7 @@ Library version: **0.2.0**. Target: **plain Seeed Studio XIAO ESP32S3**, 8 MB fl
 Compared the implementation with iRobot's 2021-04-13 Create 2 / Roomba 600 OI specification, including the rendered baud/group/bit tables and firmware errata. The machine-readable inventory is [oi-map.json](oi-map.json).
 
 - 30 command opcodes accounted for, including the 130 alias implemented through 131.
-- All 52 individual packet IDs (7–58), including reserved fields, and all 11 defined groups covered.
+- All 52 individual packet IDs (7 through 58), including reserved fields, and all 11 defined groups covered.
 - Checked big-endian order, signed values, right-before-left wire order, baud codes, group lengths and capability gates.
 - Implemented opcode 129 with TX completion followed by a full 100 ms guard before reconfiguring the host UART.
 - Kept a single wake pulse separate from the three-pulse 19200-baud sequence.
@@ -54,7 +56,7 @@ Actual Roomba firmware/baud, waking on the dock, NPN pinout/polarity, UART elect
 
 The existing ESP-01S recorder remains a separate legacy application. It has not been silently migrated to XIAO, and the library examples are not a complete Wi-Fi/OTA/navigation firmware.
 
-## Cleaning firmware, coverage and assistance — 2026-11-08
+## Cleaning firmware, coverage and assistance (2026-11-08)
 
 `firmware/xiao/RooCoreXiao` and the `lib/RooNavigation` C++ library build for the same XIAO target in telemetry-only and commissioned configurations. The latter uses 522,039 bytes (15%) application flash and 151,012 bytes (46%) static internal RAM; the large navigation maps and temporary checkpoint buffer are allocated in the board's 8 MB PSRAM. Runtime PSRAM availability, task timing, stack/heap peaks, Wi-Fi, flash persistence and UART/motor behavior still need hardware tests.
 
@@ -73,7 +75,7 @@ The browser now executes the production Navigator rather than the old Python pla
 
 Browser interactions are checked in Hebrew RTL at desktop and phone widths, including start/pause and injected LiDAR loss. The browser does not execute the full firmware assistance/UART/persistence orchestration. No robot or physical LiDAR was connected or flashed.
 
-## DirtDetect observation and Stasis — 2026-11-08
+## DirtDetect observation and Stasis (2026-11-08)
 
 [DIRT_DETECT.md](DIRT_DETECT.md) describes the collection API, configuration and physical validation plan. The default threshold is zero: collection only. The previous single-reading motor response was removed. Dirty-region detection can emit a bounded advisory plan and compare a natural revisit, but cannot command an extra cleaning pass.
 
@@ -84,7 +86,7 @@ Browser interactions are checked in Hebrew RTL at desktop and phone widths, incl
 
 No physical Roomba 620 readings were collected. Sensor availability, false positives, useful thresholds, timestamp/pose accuracy, runtime memory and timing, and the benefit of an extra pass remain unverified. Automatic dirt-triggered cleaning is intentionally deferred until that evidence exists.
 
-## Automatic D10 power cutoff — 2026-11-08
+## Automatic D10 power cutoff (2026-11-08)
 
 The production control task now uses the tested `PowerShutdown` policy and shared OI stop sequence. See [POWER_SHUTDOWN.md](POWER_SHUTDOWN.md) for the circuit, commissioning values and failure boundaries.
 
@@ -95,6 +97,6 @@ The production control task now uses the tested `PowerShutdown` policy and share
 
 No board was connected or flashed. Actual EN thresholds, battery rebound, OI voltage accuracy, stopping latency, LittleFS durability during supply decay and automatic voltage-based restart still require measurements on the installed circuit. The default configuration keeps D10 inactive and motion blocked until those calibration values are supplied; the code path itself is implemented.
 
-## LiDAR power integration — 2026-11-10
+## LiDAR power integration (2026-11-10)
 
 Full RooCoreXiao builds passed on Arduino-ESP32 3.3.12: default 524259 bytes Flash / 151148 static RAM; synthetic commissioned 529531 / 151156. Both OI examples also compiled. `tests/run.sh` passed all native suites, including the new nonblocking LiDAR state/failure tests. No hardware was connected, flashed or measured. See [the integration record](assembly/FIRMWARE_INTEGRATION.md) for source hashes and the build log. Synthetic 25 ms rise time is test data, not calibration.
