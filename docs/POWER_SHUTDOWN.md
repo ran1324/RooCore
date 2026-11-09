@@ -1,55 +1,55 @@
-# כיבוי אוטומטי דרך D10
+# Automatic shutdown through D10
 
-מומש בקושחת XIAO ב־2026-11-08. [מעגל החיווט](diagrams/wiring-xiao.svg): ‏D10/GPIO9 → נגד 10k → בסיס 2N3904 → משיכת EN של D36V28F5 לאדמה. הכיבוי מנתק את ענף התוספת, כולל 5V ו־3.3V; הוא אינו מנתק את הסוללה מהרומבה המקורית. לא נדרש רכיב חדש למימוש התוכנה.
+Implemented in the XIAO firmware on 2026-11-08. [Wiring diagram](diagrams/wiring-xiao.svg): D10/GPIO9 → 10k resistor → 2N3904 base → pull D36V28F5 EN to ground. Shutdown disconnects the add-on branch, including 5V and 3.3V; it does not disconnect the battery from the original Roomba. No new component is required for the software implementation.
 
-**הקוד והבדיקות הושלמו; הכיול והאימות על הרובוט טרם בוצעו.** אין ערכי מתח פיזיים מאושרים. לכן ברירת המחדל היא `unconfigured`: קריאת נתונים זמינה, תנועה ו־D10 HIGH חסומים. אין צורך להוסיף עוד קוד כדי להפעיל את הרצף לאחר המדידות והגדרת הכיול.
+**Code and tests are complete; calibration and validation on the robot have not been performed.** No physical voltage values have been approved. The default is therefore `unconfigured`: data reading is available, while motion and D10 HIGH are blocked. No further code is needed to activate the sequence after measurements and calibration configuration.
 
-## רצף הפעולה
+## Operating sequence
 
-1. מתח סוללה מתחת לסף התוכנה במשך שתי שניות ולפחות חמש מדידות שונות מתחיל כיבוי. הקריאות הן מחבילה 22 של OI, לא מאחוז הטעינה. פריים אחד שנשמר במטמון אינו נספר שוב.
-2. פקודות נסיעה, שליטה מרחוק, יציאה מהעמדה והתאוששות ניווט נחסמות. תור הפקודות מתרוקן ו־epoch של השליטה משתנה. נשלחים Safe, אפס לגלגלים ולמנועי הניקוי, ואז Passive כדי להשאיר טעינה מקורית זמינה. אין שימוש ב־Full או בפקודת כיבוי של הרומבה.
-3. נשלחת עצירת סריקת הליידר, ואז D8/OE יורד לפני D3/ON. שאר ההחלטה אינה דורשת ליידר או שרת.
-4. נדרשים פריימים טריים וקוהרנטיים של מתח, מצב טעינה, מקור טעינה, מצב OI ושני אנקודרים. נבדקים Passive ואנקודרים ללא שינוי במשך שנייה. לאחר מכן המתח צריך להישאר יציב במשך שתי שניות, בתוך טווח 100mV, ולפחות חמש מדידות.
-5. מותר להמשיך רק בלי מקור טעינה/מצב טעינה פעיל, כאשר `voltage + reboundMargin < restartMin`. המרווח צריך לכלול שגיאת מדידה וההתאוששות הנוספת אחרי כיבוי ה־XIAO עצמו.
-6. מעל סף כתיבה בטוחה ל־Flash נשמר checkpoint, ונכתב ונקרא בחזרה סמן `/power-cutoff`. כשל checkpoint מדווח אך אינו מבטל הגנת סוללה אם הסמן נשמר. כשל כתיבת הסמן חוסם D10. סמן פגום שנמצא באתחול מטופל כסמן פעיל.
-7. נתוני UART שהצטברו בזמן הכתיבה נפסלים: הזרם נעצר, המטמון והמפענח מתאפסים, נדרשות 100 מ״ש שקט, והזרם מתחיל מחדש. נדרשים שוב אישור עצירה ומתח יציב **אחרי** הכתיבה; לא מנתקים על סמך הקריאה שלפניה.
-8. D10 עולה HIGH פעם אחת ונשאר כך. אין פולסים חוזרים, deep sleep או reset יזום. אם הבקר ממשיך לפעול אחרי שתי שניות, `/status` מדווח `cutoff_not_observed`; המערכת נשארת מוחזקת והפין נשאר HIGH.
+1. Battery voltage below the software threshold for two seconds and at least five distinct measurements starts shutdown. Readings come from OI packet 22, not charge percentage. A single cached frame is not counted again.
+2. Driving, remote control, undocking and navigation recovery commands are blocked. The command queue is emptied and the control epoch changes. Safe is sent, followed by zero wheel and cleaning-motor commands, then Passive to keep native charging available. Neither Full nor the Roomba power-down command is used.
+3. A LiDAR scan-stop command is sent, then D8/OE goes low before D3/ON. The remaining decision requires neither LiDAR nor a server.
+4. Fresh, coherent frames are required for voltage, charging state, charging source, OI mode and both encoders. Passive mode and unchanged encoders must be confirmed for one second. Voltage must then remain stable for two seconds, within a 100mV range, with at least five measurements.
+5. Proceeding requires no charging source/active charging state and `voltage + reboundMargin < restartMin`. The margin must include measurement error and additional rebound after the XIAO itself shuts down.
+6. Above the safe Flash-write threshold, a checkpoint is saved and a `/power-cutoff` marker is written and read back. Checkpoint failure is reported but does not cancel battery protection if the marker was saved. Marker-write failure blocks D10. A corrupt marker found at boot is treated as active.
+7. UART data accumulated during writing is invalidated: the stream is stopped, cache and decoder are reset, 100 ms of silence is required, and the stream restarts. Stop confirmation and stable voltage are required again **after** writing; cutoff cannot use the pre-write reading.
+8. D10 goes HIGH once and stays there. There are no repeated pulses, deep sleep or deliberate reset. If the controller is still running after two seconds, `/status` reports `cutoff_not_observed`; the system remains held and the pin remains HIGH.
 
-הכנת הכיבוי מוגבלת ל־30 שניות. תנועה שלא נעצרה, נתונים חסרים או מתח לא יציב לא מתורגמים לאישור לנתק. כשל סופי עובר ל־`held`. אם המתח כבר נמוך מסף הכתיבה הבטוחה, אין כתיבת Flash או הפעלת D10; הגנת EN החומרתית נשארת שכבת הגיבוי העצמאית. זהו גבול מכוון של כיבוי שדורש סמן שמור, לא טענה שהמערכת יכולה להבטיח כיבוי בכל תקלה.
+Shutdown preparation is limited to 30 seconds. Motion that has not stopped, missing data or unstable voltage does not count as permission to cut power. Terminal failure transitions to `held`. If voltage is already below the safe-write threshold, neither Flash writing nor D10 assertion occurs; hardware EN protection remains the independent fallback. This is an intentional limit of shutdown requiring a stored marker, not a claim that shutdown is guaranteed under every fault.
 
-מטען שמתחבר או מתח שעולה קרוב מדי לסף ההדלקה מבטלים את הניתוק ועוברים להמתנה. גם שגיאת טעינה חוסמת ניתוק תוכנתי. באובדן נתוני הרומבה נעצרים ומכבים ליידר; לא מסיקים מתח מאחוז או מקריאה ישנה. ניתוק Wi-Fi לבדו אינו מבטל את הגנת המתח המקומית.
+Connecting a charger or voltage rising too close to the restart threshold cancels cutoff and enters a hold. A charging error also blocks software cutoff. Loss of Roomba data stops motion and turns off LiDAR; voltage is not inferred from percentage or an old reading. Wi-Fi loss alone does not disable local voltage protection.
 
-## חזרה לפעולה ומניעת חזרות
+## Restart and preventing repeated cycles
 
-הממיר נדלק מחדש באמצעות מחלק EN, גם כשה־XIAO כבוי. התוכנה אינה יכולה להעיר את עצמה ללא מתח. לפי [Pololu](https://www.pololu.com/product/3782), ספי EN הנומינליים הם 1.20V לכיבוי ו־1.35V להדלקה, עם 100k פנימי ל־VIN. במחלק המתוכנן, 100k חיצוני במקביל לפנימי ו־4.7k+470Ω לאדמה נותנים בקירוב 12.81V/14.41V. **החישוב אינו כיול ואינו סף בטיחות מאושר לסוללה.**
+The converter restarts through the EN divider even while the XIAO is off. Software cannot wake itself without power. According to [Pololu](https://www.pololu.com/product/3782), nominal EN thresholds are 1.20V off and 1.35V on, with an internal 100k pull-up to VIN. In the planned divider, an external 100k in parallel with the internal resistor and 4.7k+470Ω to ground give approximately 12.81V/14.41V. **This calculation is not calibration or an approved battery safety threshold.**
 
-כל אתחול מתחיל עם ליידר כבוי, D10 LOW ושליטה מוחזקת. אם נשאר סמן כיבוי, לא מתבצע ניסיון D10 נוסף עד מתח של לפחות `RESTART_MIN_MV`, יציב במשך חמש שניות אחרי אישור עצירה. רק אז הסמן נמחק. ללא סמן, משתמשים ב־`RECOVER_MV`. ההפעלה לפי מתח, ללא חובה לזהות מטען. ניקוי אינו מתחדש אוטומטית: נדרשת פקודה חדשה, ואחרי reboot גם עיגון מיקום לפי מנגנון השחזור הקיים.
+Every boot starts with LiDAR off, D10 LOW and control held. If a shutdown marker remains, no further D10 attempt occurs until voltage is at least `RESTART_MIN_MV`, stable for five seconds after stop confirmation. Only then is the marker cleared. Without a marker, `RECOVER_MV` is used. Activation is voltage-based and does not require charger detection. Cleaning does not resume automatically: a new command is required, and after reboot, position must also be anchored using the existing recovery mechanism.
 
-הסמן, המרווח ואי־חידוש הניקוי מצמצמים חזרות אחרי התאוששות מתח; הם אינם מבטיחים את התנהגות הסוללה הלא־מדודה. אם המתח אחרי הסרת העומס יכול לעבור את סף EN, יש לתקן את הכיול/יחס הנגדים. EN אינו latch, והצריכה במצב כבוי אינה אפס.
+The marker, margin and lack of automatic cleaning resumption reduce repeated cycles after voltage rebound; they do not guarantee the behavior of an unmeasured battery. If voltage after load removal can cross the EN threshold, calibration/resistor ratio must be corrected. EN is not a latch, and off-state consumption is not zero.
 
-## הגדרות אחרי מדידה
+## Configuration after measurement
 
-ב־`firmware/xiao/RooCoreXiao/config.local.h`, לפי התבנית המעודכנת:
+In `firmware/xiao/RooCoreXiao/config.local.h`, following the updated template:
 
-| הגדרה | משמעות |
+| Setting | Meaning |
 |---|---|
-| `ROO_POWER_CUTOFF_VERIFIED` | `true` רק לאחר אימות המעגל, החבילה והמתחים |
-| `ROO_POWER_CUTOFF_MV` | סף נמוך תחת עומס להתחלת הרצף, מעל סף הכיבוי החומרתי |
-| `ROO_POWER_RECOVER_MV` | מתח יציב שמאפשר בקשת תנועה חדשה לאחר המתנה ללא סמן |
-| `ROO_POWER_RESTART_MIN_MV` | סף ההדלקה **הנמוך ביותר שנמדד** בתנאי העבודה |
-| `ROO_POWER_REBOUND_MARGIN_MV` | התאוששות מרבית אחרי הניתוק הסופי, כולל שגיאת מדידת OI |
-| `ROO_POWER_SAVE_MIN_MV` | מתח שמאפשר כתיבת Flash יציבה, מעל סף EN החומרתי עם מרווח |
+| `ROO_POWER_CUTOFF_VERIFIED` | `true` only after verifying the circuit, battery pack and voltages |
+| `ROO_POWER_CUTOFF_MV` | Low threshold under load that starts the sequence, above the hardware cutoff threshold |
+| `ROO_POWER_RECOVER_MV` | Stable voltage permitting a new motion request after a hold without a marker |
+| `ROO_POWER_RESTART_MIN_MV` | **Lowest measured** restart threshold under operating conditions |
+| `ROO_POWER_REBOUND_MARGIN_MV` | Maximum rebound after final cutoff, including OI measurement error |
+| `ROO_POWER_SAVE_MIN_MV` | Voltage permitting stable Flash writes, above the hardware EN threshold with a margin |
 
-נדרשים גם `ROO_COMMISSIONED=true` ו־`ROO_ENCODERS_VERIFIED=true`. הכיול נדחה אם הערכים אפסיים או אינם עומדים ביחסים: `saveMin + 100 ≤ cutoff`, ‏`cutoff + 100 ≤ recover < restartMin`, ו־`cutoff + reboundMargin < restartMin`. כל הערכים ב־mV. קובץ מקומי ישן ללא בלוק ההגדרות אינו מאשר כיבוי או ניקוי בשקט.
+`ROO_COMMISSIONED=true` and `ROO_ENCODERS_VERIFIED=true` are also required. Calibration is rejected if values are zero or violate these relationships: `saveMin + 100 ≤ cutoff`, `cutoff + 100 ≤ recover < restartMin`, and `cutoff + reboundMargin < restartMin`. All values are in mV. An old local file without the settings block does not silently authorize cutoff or cleaning.
 
-**הערכים ב־`tests/build_xiao.sh` הם נתונים סינתטיים לקומפילציה בלבד; אין לצרוב אותם ככיול.** סוללה של 14.4V נומינלי אינה מספיקה לקביעת כימיה, סף פריקה, מתח טעינה או התאוששות.
+**Values in `tests/build_xiao.sh` are synthetic compilation data only; do not flash them as calibration.** A nominal 14.4V battery label does not establish chemistry, discharge threshold, charging voltage or rebound.
 
-## אבחון ובדיקות
+## Diagnostics and tests
 
-`GET /status` כולל `power_state`, ‏`power_reason`, ‏`power_configured`, ‏`power_intent_pending`, מספר הפעלות D10, זמן ומתח הניתוק, ותוצאת שמירת checkpoint. מצב `running` אומר שהשומר מתיר תנועה, לא שהרובוט כבר נוסע. פקודת `init-storage` אינה רשאית למחוק סמן כיבוי פעיל או להתבצע באמצע הכנה/ניתוק.
+`GET /status` includes `power_state`, `power_reason`, `power_configured`, `power_intent_pending`, the D10 assertion count, cutoff time and voltage, and checkpoint-save result. `running` means the guard permits motion, not that the robot is already moving. `init-storage` may not erase an active shutdown marker or run during preparation/cutoff.
 
-ניתוק תקין עשוי להפסיק את החשמל לפני שדוח `asserted` מגיע לשרת; היעדר דוח אחרון אינו הוכחת כשל. הסמן נשמר לפני העלאת D10 ונבדק באתחול הבא.
+Successful cutoff may remove power before an `asserted` report reaches the server; absence of a final report does not prove failure. The marker is saved before D10 assertion and checked at the next boot.
 
-`tests/power_shutdown_test.cpp` בודק תחת ASan/UBSan: ספי כיול, סינון נפילות קצרות, מדידות חוזרות/ישנות, מתח אפס, רצף תקין, ביטול בעלות שרת, מטען/תקלה/התאוששות באמצע, גלגלים בתנועה, timeout, כשל stop/שמירה/מחיקת סמן, כשל checkpoint בלבד, קריאות לפני/אחרי כתיבה, reboot עם סמן ו־millis rollover. תעבורה מדומה עוברת דרך ספריית OI האמיתית ומאמתת את רצף פקודות העצירה ואת פסילת הפריימים הישנים לפני חידוש הזרם.
+`tests/power_shutdown_test.cpp` checks under ASan/UBSan: calibration thresholds, filtering brief dips, repeated/stale measurements, zero voltage, the successful sequence, server-ownership cancellation, charger/fault/rebound mid-sequence, moving wheels, timeout, stop/save/marker-clear failure, checkpoint-only failure, readings before/after writing, reboot with a marker and millis rollover. Simulated traffic passes through the real OI library and verifies the stop-command sequence and invalidation of old frames before stream resumption.
 
-**ממתין לחומרה:** מתח ב־VIN לעומת OI, ספי EN בפועל, צריכה כבויה, התייצבות והתאוששות החבילה, זמני עצירה, כתיבת LittleFS תחת ירידת מתח, reboot/טעינה והיעדר הזנה חוזרת. לפני USB מנתקים פיזית את הזנת 5V ל־XIAO בתצורה ללא דיודה. לא נצרבה קושחה ולא נבדקה רומבה פיזית במסגרת השינוי.
+**Pending hardware validation:** VIN versus OI voltage, actual EN thresholds, off-state consumption, pack settling and rebound, stop timing, LittleFS writes during falling voltage, reboot/charging and absence of backfeeding. Before connecting USB, physically disconnect the XIAO 5V supply in the diode-free configuration. No firmware was flashed and no physical Roomba was tested as part of this change.

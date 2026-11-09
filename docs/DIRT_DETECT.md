@@ -1,37 +1,37 @@
-# DirtDetect: איסוף לפני הפעלה אוטומטית
+# DirtDetect: collect data before enabling automatic responses
 
-השלב הנוכחי הוא **איסוף וניתוח בלבד**. הסרנו את התגובה הישנה לקריאה בודדת מעל 90, גם מליבת ה־XIAO וגם ממנוע הייחוס. אין כרגע מתג שמפעיל ניקוי אוטומטי בעקבות לכלוך. לא נאספו נתונים מרומבה פיזית ולא בוצעה צריבה במסגרת השינוי.
+The current stage is **collection and analysis only**. The old response to a single reading above 90 has been removed from both the XIAO core and the reference engine. There is currently no switch that enables automatic cleaning in response to dirt. No physical Roomba data was collected and no firmware was flashed as part of this change.
 
-## מה נשמר
+## Stored data
 
-חבילה 15 מפוענחת כערך לא חתום בטווח 0–255; חבילה 16 היא בית נפרד שאינו מדידת לכלוך. הספרייה כבר שמרה את הקריאה האחרונה עם זמן קבלה ו־generation. כעת `setSampleObserver` מקבל כל מדידה מכל מסגרת תקינה לאחר שכל המסגרת פוענחה, כולל כמה מסגרות באותו `poll`. מסגרת עם checksum או תוכן לא תקינים אינה יוצרת קריאה. הקריאה אינה כמות לכלוך מכוילת.
+Packet 15 is decoded as an unsigned value from 0–255; packet 16 is a separate byte, not a dirt measurement. The library already stored the latest reading with its reception time and generation. `setSampleObserver` now receives every measurement from every valid frame after the entire frame has been decoded, including multiple frames in one `poll`. An invalid checksum or payload produces no reading. The reading is not a calibrated quantity of dirt.
 
-כל רשומה כוללת מספר סידורי, זמן קבלה ב־MCU, generation, סשן, ערך, הפעולה הרגילה שבוצעה ו־PWM. כש־RooCore מחזיק בשליטה ויש מיקום גלובלי מעוגן ותקף, מצורף מיקום משוער בסמיכות של עד 100 מ״ש לקריאה. אחרת `pose` ו־`frame` הם `null`: גם מפה מקומית זמנית בזמן אובדן מיקום אינה משויכת אוטומטית למפה הגלובלית. זמן הקבלה אינו זמן הדגימה הפנימי של החיישן. איפוס/תיקון עוגן מחליף frame; אין חיבור אוטומטי בין מסגרות. הקואורדינטות הן במסגרת `roocore_odom`: אודומטריה מעוגנת עם בדיקת התאמה מקומית לליידר, לא מיקום AMCL במפת השרת. הצגה על מפת SLAM דורשת טרנספורמציה תקפה לאותה מסגרת וזמן.
+Each record includes a sequence number, MCU reception time, generation, session, value, ordinary action being performed and PWM. When RooCore owns control and has a valid anchored global pose, an estimated pose within 100 ms of the reading is attached. Otherwise, `pose` and `frame` are `null`: a provisional local map during localization loss is not automatically associated with the global map either. Reception time is not the sensor's internal sampling time. Resetting/correcting the anchor changes the frame; frames are not automatically joined. Coordinates use `roocore_odom`: anchored odometry with local LiDAR matching, not AMCL localization in the server map. Displaying them on a SLAM map requires a valid transform for that frame and time.
 
-על ה־XIAO נשמרות 256 רשומות בטבעת RAM, לא היסטוריה בלתי מוגבלת ולא כתיבה לכל דגימה ל־Flash. תור הקבלה מחזיק 64 מדידות; אובדן בתור או מסגרות פגומות שוברים רצף זיהוי ומייצרים רישום פער. לקוח שלא מושך בזמן יקבל `lost_records` מפורש.
+The XIAO keeps 256 records in a RAM ring, rather than unlimited history or a Flash write per sample. The receive queue holds 64 measurements; queue loss or corrupt frames break detection continuity and generate a gap record. A client that does not fetch in time receives explicit `lost_records`.
 
-## זיהוי והצעה למעבר נוסף
+## Detection and proposed extra pass
 
-הגדרות ב־`firmware/xiao/RooCoreXiao/config.example.h` (העתקה ל־`config.local.h`):
+Settings in `firmware/xiao/RooCoreXiao/config.example.h` (copy to `config.local.h`):
 
-| הגדרה | ברירת מחדל | משמעות |
+| Setting | Default | Meaning |
 |---|---:|---|
-| `ROO_DIRT_THRESHOLD` | 0 | איסוף בלבד; 1–255 מפעיל זיהוי ניסיוני ללא שינוי תנועה |
-| `ROO_DIRT_CONSECUTIVE` | 5 | לפחות חמש קריאות גבוהות רצופות |
-| `ROO_DIRT_MIN_HIGH_MS` | 300 | הרצף חייב להימשך לפחות 300 מ״ש |
-| `ROO_DIRT_MAX_GAP_MS` | 200 | פער גדול יותר מבטל את הרצף |
-| `ROO_DIRT_REGION_RADIUS_M` | 0.30 | רצף מקומי וסביבת ההשוואה, במטרים |
-| `ROO_DIRT_REVISIT_BUDGET_MS` | 20000 | מגבלת זמן להצעה ולהשוואת ביקור חוזר |
+| `ROO_DIRT_THRESHOLD` | 0 | Collection only; 1–255 enables experimental detection without changing motion |
+| `ROO_DIRT_CONSECUTIVE` | 5 | At least five consecutive high readings |
+| `ROO_DIRT_MIN_HIGH_MS` | 300 | The sequence must last at least 300 ms |
+| `ROO_DIRT_MAX_GAP_MS` | 200 | A longer gap cancels the sequence |
+| `ROO_DIRT_REGION_RADIUS_M` | 0.30 | Local sequence and comparison region, in meters |
+| `ROO_DIRT_REVISIT_BUDGET_MS` | 20000 | Time limit for the proposal and revisit comparison |
 
-ערך נמוך, שינוי frame/PWM, התרחקות מהאזור, מידע לא תקף, אירוע בטיחות, סוללה של 25% ומטה או אובדן תקשורת קוטעים את הניתוח הפעיל. מיקום לא תקף אינו מוחק את הנתון הגולמי. ניתוק השרת נרשם בכלי האיסוף; אובדן תעבורת הרומבה או פקיעת בעלות שרת עוצרים את ההשוואה על ה־MCU. שליטת הבטיחות בתנועה נשארת קודמת לכל דבר.
+A low value, frame/PWM change, leaving the region, invalid information, safety event, battery at 25% or below, or communication loss interrupts active analysis. Invalid localization does not erase raw data. The collection tool records server disconnections; lost Roomba transport or expired server ownership stops comparison on the MCU. Motion safety always takes precedence.
 
-זיהוי יוצר `region_detected` עם `proposed_action=one_extra_pass`, מצב `deferred_calibration`, רדיוס, מגבלת 20 שניות ומעבר נוסף אחד לכל אזור. אין פקודת מנוע או מסלול שמבוצעת בעקבות ההצעה. לכל סשן עד 16 אזורים; אותו אזור אינו יוצר הצעות חוזרות.
+Detection creates `region_detected` with `proposed_action=one_extra_pass`, state `deferred_calibration`, a radius, a 20-second limit and one extra pass per region. The proposal executes no motor command or route. Each session supports up to 16 regions; the same region does not generate repeated proposals.
 
-כאשר המסלול **הרגיל** יוצא מהאזור וחוזר אליו, נרשמים התחלה ותוצאה של ביקור טבעי אחד. ההשוואה דורשת די קריאות וזמן דגימה, אותו frame ואותם ערכי PWM; אחרת התוצאה אינה מכריעה. נשמרים ממוצע הזיהוי, ממוצע הביקור והאם הקריאות נמוכות יותר. בטיחות/סוללה/תקשורת/מיקום קוטעים את ההשוואה עם סיבה. קריאות נמוכות יותר אינן הוכחה לניקיון: הממוצע הראשון נבחר מתוך רצף גבוה, ותנאי הרצפה, התנועה והחיישן יכולים להשתנות.
+When the **ordinary** route leaves the region and returns, the start and result of one natural revisit are recorded. Comparison requires enough readings and sampling time, the same frame and the same PWM values; otherwise the result is inconclusive. The detection average, revisit average and whether readings are lower are stored. Safety/battery/communication/localization interrupts comparison with a reason. Lower readings do not prove cleanliness: the first average was selected from a high sequence, and floor, motion and sensor conditions can change.
 
-## API ואיסוף מקומי
+## API and local collection
 
-`GET /dirt?after=0`, עם Bearer token הקיים, מחזיר עד 32 רשומות, `boot_id`, `oldest`, `latest`, `next`, `has_more`, מוני אובדן והגדרות הניתוח. ממשיכים מה־`next`; זוג `(boot_id, seq)` מזהה רשומה. ההצעה והסיבה מתארות מה לא בוצע אוטומטית; שדה `action` מתאר את הניקוי/הנסיעה הרגילים. במאורעות אזור, המיקום הוא מרכז האזור שנרשם בעבר ולא בהכרח מיקום הרובוט בזמן המאורע.
+`GET /dirt?after=0`, with the existing Bearer token, returns up to 32 records, `boot_id`, `oldest`, `latest`, `next`, `has_more`, loss counters and analysis settings. Continue from `next`; `(boot_id, seq)` identifies a record. The proposal and reason describe what was not performed automatically; `action` describes ordinary cleaning/driving. For region events, the position is the previously recorded region center, not necessarily the robot's position at event time.
 
 ```sh
 export ROOCORE_URL=http://ROBOT_IP
@@ -41,16 +41,16 @@ python3 -m navigation.dirt_capture --output recordings/dirt.jsonl --label clean-
 python3 -m navigation.dirt_capture --report recordings/dirt.jsonl
 ```
 
-הכלי שולח GET בלבד. הוא שומר JSONL עם זמן קבלה בשרת, נתוני המקור ופערי חיבור/רשומות, ושומר cursor לצד הקובץ להמשך אחרי הפעלה מחדש. נתונים נכתבים לפני קידום ה־cursor; כפילות בעקבות קריסה מזוהה לפי מזהה הרשומה. הסיכום כולל כמות קריאות, כמה מהן משויכות למיקום, חציון/p95 וטווח, זיהויים והשוואות. הוא אינו בוחר סף אוטומטית. הקבצים תחת `recordings/` אינם נכנסים ל־Git.
+The tool sends GET requests only. It saves JSONL with server reception time, source data and connection/record gaps, and stores a cursor beside the file to resume after restart. Data is written before advancing the cursor; duplicates after a crash are identified by record ID. The summary includes reading count, how many have associated positions, median/p95 and range, detections and comparisons. It does not choose a threshold automatically. Files under `recordings/` are excluded from Git.
 
-## Stasis ותחזוקה
+## Stasis and maintenance
 
-נוסף אבחון נפרד לחבילה 58, כבוי עד `ROO_STASIS_VERIFIED=true` לאחר אימות בדגם שלנו. `0` הוא היעדר התקדמות קדימה, ותקין גם בעצירה, סיבוב ונסיעה לאחור; `1` הוא התקדמות קדימה; `2` מצביע על גלגל קסטור מלוכלך מדי לקריאה; `3` או מדידה ישנה אינם מקור תקף להתקדמות. ערך 2 אינו תקיעה או החלקה. הספרייה מחזירה `usableForProgress=false` והקושחה מציגה הודעת תחזוקה ב־`/status` וברישום: לבדוק ולנקות את גלגל הקסטור ולייבש אותו לפני החזרתו. זו סיבה אפשרית לבדוק תחזוקה כללית, לא הוכחה שכל הרובוט מלוכלך. הניווט הנוכחי ממילא אינו משתמש ב־Stasis כמקור מיקום.
+Separate diagnostics were added for packet 58, disabled until `ROO_STASIS_VERIFIED=true` after verification on our model. `0` means no forward progress and is also valid while stopped, turning or reversing; `1` means forward progress; `2` indicates a caster wheel too dirty to read; `3` or a stale measurement is not a valid progress source. Value 2 does not mean stuck or slipping. The library returns `usableForProgress=false`, and firmware displays a maintenance message in `/status` and logs: inspect and clean the caster wheel, and dry it before reinstalling. This is a possible reason to check general maintenance, not proof that the entire robot is dirty. Current navigation does not use Stasis as a localization source anyway.
 
-## אימות והמשך
+## Validation and next steps
 
-נבדקו בתעבורה מדומה: טווח 0–255, שאילתה וזרם, רצף/סף/פערים, checksum, כמה מסגרות באותו poll, אי־שיוך במיקום לא תקף, rollover, השוואה טבעית, קדימות אירועי בטיחות/סוללה/תקשורת, מגבלות אזור וזמן, גלישת טבעת, פענוח Stasis ו־HTTP עם cursor/אתחול/פערים. בדיקת רגרסיה משווה מסלול ו־PWM עם ובלי לכלוך ומוודאת שלא נוספה תגובה אוטומטית. נדרשת גם בנייה לשתי תצורות XIAO; תוצאות הסבב מתועדות ב־`VALIDATION_XIAO.md`.
+Simulated transport tests cover: the 0–255 range, query and stream, sequence/threshold/gaps, checksum, multiple frames in one poll, no pose association with invalid localization, rollover, natural comparison, safety/battery/communication precedence, region and time limits, ring overflow, Stasis decoding and HTTP with cursor/restart/gaps. A regression compares route and PWM with and without dirt, ensuring no automatic response was added. Builds for both XIAO configurations are also required; results are recorded in `VALIDATION_XIAO.md`.
 
-**לא נבדק בחומרה:** זמינות/משמעות המדידה ב־620 הזה, קצב בפועל, התאמת זמן־מיקום, זיכרון בזמן Wi‑Fi, עמידות האיסוף, סף, שיעור תגובות שווא ויעילות מעבר נוסף. השלב הבא הוא הקלטות מתויגות על רצפה נקייה ומלוכלכת, בכמה תנאי עבודה. רק לאחר ניתוחן תתווסף התנהגות ניקוי אוטומטית ותיבדק עצירתה על הרובוט.
+**Not tested on hardware:** availability/meaning of the measurement on this 620, actual rate, time-to-position alignment, memory during Wi-Fi operation, collection resilience, threshold, false-positive rate and extra-pass effectiveness. Next come labeled recordings on clean and dirty floors under several operating conditions. Automatic cleaning behavior will only be added after analyzing them, and its stopping behavior will be tested on the robot.
 
-מקור: [מפרט iRobot, חבילה 15 בעמ׳ 24 וחבילה 58 בעמ׳ 32](https://cdn.hackaday.io/files/1835247851890816/2021-04-13_iRobot_Roomba_600_Open_Interface_Spec-3.pdf). זמינות הפרוטוקול אינה אימות חומרה של הרומבה שלנו.
+Source: [iRobot specification, packet 15 on p. 24 and packet 58 on p. 32](https://cdn.hackaday.io/files/1835247851890816/2021-04-13_iRobot_Roomba_600_Open_Interface_Spec-3.pdf). Protocol availability is not hardware validation of our Roomba.

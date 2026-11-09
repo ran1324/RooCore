@@ -9,15 +9,14 @@
 <marker id="arrow-rx" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#008c94"/></marker>
 <marker id="arrow-ctl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#8250ac"/></marker>
 </defs><style>
-text{font-family:Arial,"Arial Hebrew",Helvetica,sans-serif;fill:#183044}
+text{font-family:Arial,Helvetica,sans-serif;fill:#183044}
 .mono{font-family:Menlo,Consolas,monospace}
-.he{direction:rtl;unicode-bidi:plaintext}
 </style>
 <rect width="2000" height="3480" fill="#eef3f5"/>
 <text x="70" y="70" font-size="45" font-weight="700" text-anchor="start" class="" style="fill:#183044">RooCore</text>
-<text x="1920" y="70" font-size="40" font-weight="700" text-anchor="start" class="he" style="fill:#183044">מפת חיווט מלאה — בקר, ליידר ורומבה</text>
+<text x="1920" y="70" font-size="40" font-weight="700" text-anchor="end" class="" style="fill:#183044">Complete wiring — controller, LiDAR and Roomba</text>
 <text x="70" y="112" font-size="24" font-weight="400" text-anchor="start" class="" style="fill:#586b7c">XIAO ESP32S3 · D36V28F5 · T-mini Plus · Rev 2 / 2026-11-08</text>
-<text x="1920" y="153" font-size="24" font-weight="400" text-anchor="start" class="he" style="fill:#986300">תכנון לבדיקת שולחן • טרם נבדק על החומרה • פרטי ההרכבה המסומנים בכתום דורשים אימות</text>
+<text x="1920" y="153" font-size="24" font-weight="400" text-anchor="end" class="" style="fill:#986300">Bench plan • Not tested on hardware • Assembly details in amber require verification</text>
 <path d="M75,190 L125,190" fill="none" stroke="white" stroke-width="9" stroke-linejoin="round"/>
 <path d="M75,190 L125,190" fill="none" stroke="#b45a15" stroke-width="4" stroke-linejoin="round"/>
 <text x="140" y="197" font-size="22" font-weight="400" text-anchor="start" class="" style="fill:#b45a15">BAT+ fused</text>
@@ -42,7 +41,7 @@ text{font-family:Arial,"Arial Hebrew",Helvetica,sans-serif;fill:#183044}
 <rect x="40" y="220" width="1920" height="490" rx="14" fill="white" stroke="#d3dfe5" stroke-width="2"/>
 <rect x="1882" y="240" width="52" height="44" rx="10" fill="#183044" stroke="#183044" stroke-width="2"/>
 <text x="1908" y="271" font-size="26" font-weight="700" text-anchor="middle" class="" style="fill:white">1</text>
-<text x="1860" y="272" font-size="31" font-weight="700" text-anchor="start" class="he" style="fill:#183044">הספק — נתיך אחד בענף התוספת, סמוך לסוללה</text>
+<text x="1860" y="272" font-size="31" font-weight="700" text-anchor="end" class="" style="fill:#183044">Power — one fuse in the add-on branch, near the battery</text>
 <rect x="80" y="325" width="230" height="130" rx="10" fill="#f7fafb" stroke="#9bafbc" stroke-width="2"/>
 <text x="195.0" y="359" font-size="25" font-weight="700" text-anchor="middle" class="" style="fill:#183044">Roomba battery</text>
 <text x="195.0" y="390" font-size="20" font-weight="400" text-anchor="middle" class="" style="fill:#586b7c">branch point: VERIFY</text>
@@ -119,7 +118,7 @@ text{font-family:Arial,"Arial Hebrew",Helvetica,sans-serif;fill:#183044}
 <rect x="40" y="740" width="1920" height="535" rx="14" fill="white" stroke="#d3dfe5" stroke-width="2"/>
 <rect x="1882" y="760" width="52" height="44" rx="10" fill="#183044" stroke="#183044" stroke-width="2"/>
 <text x="1908" y="791" font-size="26" font-weight="700" text-anchor="middle" class="" style="fill:white">2</text>
-<text x="1860" y="792" font-size="31" font-weight="700" text-anchor="start" class="he" style="fill:#183044">תקשורת — משדר מתחבר למקלט, דרך שני המתאמים</text>
+<text x="1860" y="792" font-size="31" font-weight="700" text-anchor="end" class="" style="fill:#183044">Communication — transmitter to receiver through two translators</text>
 <rect x="80" y="845" width="230" height="200" rx="10" fill="#f7fafb" stroke="#9bafbc" stroke-width="2"/>
 <text x="195.0" y="879" font-size="25" font-weight="700" text-anchor="middle" class="" style="fill:#183044">Roomba OI</text>
 <text x="195.0" y="910" font-size="20" font-weight="400" text-anchor="middle" class="" style="fill:#586b7c">Mini-DIN 7 · 5V logic</text>
@@ -180,11 +179,11 @@ text{font-family:Arial,"Arial Hebrew",Helvetica,sans-serif;fill:#183044}
 <text x="80" y="1148" font-size="21" font-weight="700" text-anchor="start" class="" style="fill:#986300">1/2 · Vpwr: NOT CONNECTED</text>
 <text x="1690" y="1080" font-size="21" font-weight="700" text-anchor="start" class="" style="fill:#c13a40">VCC ← switched +5V_L</text>
 <text x="1690" y="1114" font-size="22" font-weight="400" text-anchor="start" class="" style="fill:#425267">GND → common</text>
-<text x="1910" y="1235" font-size="23" font-weight="400" text-anchor="start" class="he" style="fill:#586b7c">שמות רשת זהים הם אותו חיבור חשמלי • ערוצים לא בשימוש נשארים פנויים • קווי אות קצרים</text>
+<text x="1910" y="1235" font-size="23" font-weight="400" text-anchor="end" class="" style="fill:#586b7c">Matching net names share a connection • Unused channels stay disconnected • Keep signal wires short</text>
 <rect x="40" y="1305" width="1920" height="690" rx="14" fill="white" stroke="#d3dfe5" stroke-width="2"/>
 <rect x="1882" y="1325" width="52" height="44" rx="10" fill="#183044" stroke="#183044" stroke-width="2"/>
 <text x="1908" y="1356" font-size="26" font-weight="700" text-anchor="middle" class="" style="fill:white">3</text>
-<text x="1860" y="1357" font-size="31" font-weight="700" text-anchor="start" class="he" style="fill:#183044">מעגלי הבקרה — שני טרנזיסטורים ואחד־עשר נגדים</text>
+<text x="1860" y="1357" font-size="31" font-weight="700" text-anchor="end" class="" style="fill:#183044">Control circuits — two transistors and eleven resistors</text>
 <text x="80" y="1404" font-size="28" font-weight="700" text-anchor="start" class="" style="fill:#183044">A · Regulator EN / POWER_OFF</text>
 <text x="1050" y="1404" font-size="28" font-weight="700" text-anchor="start" class="" style="fill:#183044">B · Roomba BRC / WAKE</text>
 <rect x="85.0" y="1434" width="130" height="36" rx="7" fill="white" stroke="#b45a15" stroke-width="2"/>
@@ -311,7 +310,7 @@ text{font-family:Arial,"Arial Hebrew",Helvetica,sans-serif;fill:#183044}
 <rect x="40" y="2025" width="1920" height="470" rx="14" fill="white" stroke="#d3dfe5" stroke-width="2"/>
 <rect x="1882" y="2045" width="52" height="44" rx="10" fill="#183044" stroke="#183044" stroke-width="2"/>
 <text x="1908" y="2076" font-size="26" font-weight="700" text-anchor="middle" class="" style="fill:white">4</text>
-<text x="1860" y="2077" font-size="31" font-weight="700" text-anchor="start" class="he" style="fill:#183044">נגדי ברירת מחדל ומפת הפינים של הבקר</text>
+<text x="1860" y="2077" font-size="31" font-weight="700" text-anchor="end" class="" style="fill:#183044">Default-state resistors and controller pin map</text>
 <text x="80" y="2122" font-size="27" font-weight="700" text-anchor="start" class="" style="fill:#183044">C · LiDAR control</text>
 <rect x="80.0" y="2154" width="180" height="36" rx="7" fill="white" stroke="#8250ac" stroke-width="2"/>
 <text x="170" y="2180" font-size="21" font-weight="700" text-anchor="middle" class="mono" style="fill:#8250ac">D3 / GPIO4</text>
@@ -401,7 +400,7 @@ text{font-family:Arial,"Arial Hebrew",Helvetica,sans-serif;fill:#183044}
 <rect x="40" y="2525" width="1920" height="630" rx="14" fill="white" stroke="#d3dfe5" stroke-width="2"/>
 <rect x="1882" y="2545" width="52" height="44" rx="10" fill="#183044" stroke="#183044" stroke-width="2"/>
 <text x="1908" y="2576" font-size="26" font-weight="700" text-anchor="middle" class="" style="fill:white">5</text>
-<text x="1860" y="2577" font-size="31" font-weight="700" text-anchor="start" class="he" style="fill:#183044">זיהוי פינים — כיוון המבט חשוב</text>
+<text x="1860" y="2577" font-size="31" font-weight="700" text-anchor="end" class="" style="fill:#183044">Pin identification — viewing direction matters</text>
 <text x="90" y="2626" font-size="26" font-weight="700" text-anchor="start" class="" style="fill:#183044">XIAO · component side / USB at top</text>
 <rect x="295" y="2670" width="230" height="335" rx="25" fill="#52665c" stroke="#334a40" stroke-width="2"/>
 <rect x="365" y="2655" width="90" height="83" rx="9" fill="#cad2d5" stroke="#778993" stroke-width="2"/>
@@ -516,10 +515,10 @@ text{font-family:Arial,"Arial Hebrew",Helvetica,sans-serif;fill:#183044}
 <text x="1420" y="3065" font-size="22" font-weight="400" text-anchor="start" class="" style="fill:#586b7c">Match socket shape before mapping the cable.</text>
 <text x="1420" y="3100" font-size="23" font-weight="700" text-anchor="start" class="" style="fill:#986300">Wire colors are NOT a pinout.</text>
 <rect x="40" y="3185" width="1920" height="240" rx="14" fill="#fff8e8" stroke="#d9b66a" stroke-width="2"/>
-<text x="1920" y="3230" font-size="29" font-weight="700" text-anchor="start" class="he" style="fill:#986300">לפני הפעלה — ארבע נקודות שעדיין דורשות בדיקה</text>
-<text x="1920" y="3273" font-size="24" font-weight="400" text-anchor="start" class="he" style="fill:#986300">זיהוי נקודת הסוללה והמחברים; נתיך מתאים לזרם ולניתוק זרם ישר; ספי הכיבוי; מתח הליידר בהתנעה ובטעינה.</text>
-<text x="1920" y="3313" font-size="24" font-weight="400" text-anchor="start" class="he" style="fill:#986300">בתצורה ללא דיודה: לנתק פיזית את הזנת חמשת הוולט לבקר לפני חיבור כבל USB. כיבוי דרך EN אינו ניתוק החוט.</text>
-<text x="1920" y="3353" font-size="24" font-weight="400" text-anchor="start" class="he" style="fill:#586b7c">בחלקים 1–4 הפינים מסודרים לקריאות, לא לפי מיקום הפדים. בחלק 5 מוצגים מבטי היצרן. לא להסתמך על צבעי חוטים.</text>
-<text x="1920" y="3393" font-size="23" font-weight="400" text-anchor="start" class="he" style="fill:#586b7c">כבל Mini-DIN 7 לא נמצא ברשימת ההזמנות. קבלי סינון נוספים ייקבעו לפי הלוחות והמדידות; אינם מוצגים כאילו כבר נרכשו.</text>
+<text x="1920" y="3230" font-size="29" font-weight="700" text-anchor="end" class="" style="fill:#986300">Before power-on — four checks still required</text>
+<text x="1920" y="3273" font-size="24" font-weight="400" text-anchor="end" class="" style="fill:#986300">Identify battery tap/connectors; verify fuse current and DC breaking capacity, cutoff thresholds, and LiDAR voltage at startup/charging.</text>
+<text x="1920" y="3313" font-size="24" font-weight="400" text-anchor="end" class="" style="fill:#986300">Without a diode: physically disconnect the controller 5V supply before USB. EN shutdown does not disconnect the wire.</text>
+<text x="1920" y="3353" font-size="24" font-weight="400" text-anchor="end" class="" style="fill:#586b7c">Sections 1–4 arrange pins for readability, not pad position. Section 5 shows manufacturer views. Do not rely on wire colors.</text>
+<text x="1920" y="3393" font-size="23" font-weight="400" text-anchor="end" class="" style="fill:#586b7c">No Mini-DIN 7 cable found in orders. Extra filter capacitors depend on boards and measurements; purchase is not established.</text>
 <text x="70" y="3458" font-size="21" font-weight="400" text-anchor="start" class="" style="fill:#586b7c">Matching net names = same wire network · dots = junctions · arrows = signal / power flow · see docs/wiring-xiao.md</text>
 </svg>

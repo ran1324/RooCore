@@ -14,9 +14,8 @@ p = [f'''<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBo
 for k in ("bat", "v5", "v3", "tx", "rx", "ctl"):
     p.append(f'<marker id="arrow-{k}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="{C[k]}"/></marker>')
 p += ['''</defs><style>
-text{font-family:Arial,"Arial Hebrew",Helvetica,sans-serif;fill:#183044}
+text{font-family:Arial,Helvetica,sans-serif;fill:#183044}
 .mono{font-family:Menlo,Consolas,monospace}
-.he{direction:rtl;unicode-bidi:plaintext}
 </style>''', f'<rect width="{W}" height="{H}" fill="#eef3f5"/>']
 
 
@@ -24,8 +23,8 @@ def rect(x, y, w, h, fill="white", stroke=None, radius=14, dashed=False):
     p.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{radius}" fill="{fill}" stroke="{stroke or C["line"]}" stroke-width="2"'+(' stroke-dasharray="8 6"' if dashed else '')+'/>')
 
 
-def text(x, y, s, size=24, color="ink", bold=False, anchor="start", he=False, mono=False):
-    p.append(f'<text x="{x}" y="{y}" font-size="{size}" font-weight="{700 if bold else 400}" text-anchor="{anchor}" class="{"he" if he else "mono" if mono else ""}" style="fill:{C.get(color,color)}">{escape(s)}</text>')
+def text(x, y, s, size=24, color="ink", bold=False, anchor="start", right=False, mono=False):
+    p.append(f'<text x="{x}" y="{y}" font-size="{size}" font-weight="{700 if bold else 400}" text-anchor="{"end" if right else anchor}" class="{"mono" if mono else ""}" style="fill:{C.get(color,color)}">{escape(s)}</text>')
 
 
 def wire(points, color, arrow=False, dashed=False, width=4):
@@ -64,7 +63,7 @@ def panel(y, h, n, title):
     rect(40, y, 1920, h)
     rect(1882, y+20, 52, 44, "#183044", "#183044", 10)
     text(1908, y+51, n, 26, "white", True, "middle")
-    text(1860, y+52, title, 31, bold=True, he=True)
+    text(1860, y+52, title, 31, bold=True, right=True)
 
 
 def component(x, y, w, h, name, subtitle=""):
@@ -85,15 +84,15 @@ def npn(x, y, name):
 
 
 text(70, 70, "RooCore", 45, bold=True)
-text(1920, 70, "מפת חיווט מלאה — בקר, ליידר ורומבה", 40, bold=True, he=True)
+text(1920, 70, "Complete wiring — controller, LiDAR and Roomba", 40, bold=True, right=True)
 text(70, 112, "XIAO ESP32S3 · D36V28F5 · T-mini Plus · Rev 2 / 2026-11-08", 24, "muted")
-text(1920, 153, "תכנון לבדיקת שולחן • טרם נבדק על החומרה • פרטי ההרכבה המסומנים בכתום דורשים אימות", 24, "amber", he=True)
+text(1920, 153, "Bench plan • Not tested on hardware • Assembly details in amber require verification", 24, "amber", right=True)
 for x, k, s in ((100, "bat", "BAT+ fused"), (410, "v5", "+5V"), (660, "v3", "+3V3"), (910, "gnd", "GND"), (1160, "tx", "UART TX"), (1460, "rx", "UART RX"), (1750, "ctl", "Control")):
     wire([(x-25, 190), (x+25, 190)], k)
     text(x+40, 197, s, 22, k)
 
 # A — power. No current for the add-on flows through the Roomba OI power pins.
-panel(220, 490, "1", "הספק — נתיך אחד בענף התוספת, סמוך לסוללה")
+panel(220, 490, "1", "Power — one fuse in the add-on branch, near the battery")
 component(80, 325, 230, 130, "Roomba battery", "branch point: VERIFY")
 text(99, 420, "BAT+", 23, "bat", True)
 text(99, 446, "BAT−", 23, "gnd", True)
@@ -137,7 +136,7 @@ for x, label in ((150, "BAT− / XT30−"), (470, "D36 GND ×2"), (760, "XIAO GN
     text(x, 661, label, 20, "gnd", anchor="middle")
 
 # B — two independent UART paths with endpoint labels and direction arrows.
-panel(740, 535, "2", "תקשורת — משדר מתחבר למקלט, דרך שני המתאמים")
+panel(740, 535, "2", "Communication — transmitter to receiver through two translators")
 component(80, 845, 230, 200, "Roomba OI", "Mini-DIN 7 · 5V logic")
 component(440, 845, 260, 200, "U1 · TXB0104", "B side 5V · A side 3V3")
 component(850, 845, 300, 200, "XIAO ESP32S3", "3.3V GPIO only")
@@ -171,10 +170,10 @@ text(80,1114,"6/7 · GND → common",22,"gnd")
 text(80,1148,"1/2 · Vpwr: NOT CONNECTED",21,"amber",True)
 text(1690,1080,"VCC ← switched +5V_L",21,"v5",True)
 text(1690,1114,"GND → common",22,"gnd")
-text(1910,1235,"שמות רשת זהים הם אותו חיבור חשמלי • ערוצים לא בשימוש נשארים פנויים • קווי אות קצרים",23,"muted",he=True)
+text(1910,1235,"Matching net names share a connection • Unused channels stay disconnected • Keep signal wires short",23,"muted",right=True)
 
 # C — control circuits with all discrete resistors.
-panel(1305, 690, "3", "מעגלי הבקרה — שני טרנזיסטורים ואחד־עשר נגדים")
+panel(1305, 690, "3", "Control circuits — two transistors and eleven resistors")
 text(80,1404,"A · Regulator EN / POWER_OFF",28,bold=True)
 text(1050,1404,"B · Roomba BRC / WAKE",28,bold=True)
 tag(150,1455,"BAT_F","bat",130)
@@ -218,7 +217,7 @@ text(1050,1910,"VERIFY actual BOJACK pin order before soldering.",23,"amber",Tru
 text(1050,1945,"These are NPN 2N3904, not the legacy PNP 2N3906.",22,"muted")
 
 # D — pulls and a compact full pin assignment table.
-panel(2025, 470, "4", "נגדי ברירת מחדל ומפת הפינים של הבקר")
+panel(2025, 470, "4", "Default-state resistors and controller pin map")
 text(80,2122,"C · LiDAR control",27,bold=True)
 tag(170,2175,"D3 / GPIO4","ctl",180)
 wire([(260,2175),(475,2175)],"ctl",True)
@@ -251,7 +250,7 @@ for i,row in enumerate(rows):
         text(x,2172+i*32,s,22,"ink" if i<6 else "muted")
 
 # E — connector orientation, redrawn from manufacturer views rather than wire colors.
-panel(2525,630,"5","זיהוי פינים — כיוון המבט חשוב")
+panel(2525,630,"5","Pin identification — viewing direction matters")
 text(90,2626,"XIAO · component side / USB at top",26,bold=True)
 rect(295,2670,230,335,"#52665c","#334a40",25)
 rect(365,2655,90,83,"#cad2d5","#778993",9)
@@ -301,11 +300,11 @@ text(1420,3100,"Wire colors are NOT a pinout.",23,"amber",True)
 
 # F — pre-power gates and navigation legend.
 rect(40,3185,1920,240,"#fff8e8","#d9b66a")
-text(1920,3230,"לפני הפעלה — ארבע נקודות שעדיין דורשות בדיקה",29,"amber",True,he=True)
-text(1920,3273,"זיהוי נקודת הסוללה והמחברים; נתיך מתאים לזרם ולניתוק זרם ישר; ספי הכיבוי; מתח הליידר בהתנעה ובטעינה.",24,"amber",he=True)
-text(1920,3313,"בתצורה ללא דיודה: לנתק פיזית את הזנת חמשת הוולט לבקר לפני חיבור כבל USB. כיבוי דרך EN אינו ניתוק החוט.",24,"amber",he=True)
-text(1920,3353,"בחלקים 1–4 הפינים מסודרים לקריאות, לא לפי מיקום הפדים. בחלק 5 מוצגים מבטי היצרן. לא להסתמך על צבעי חוטים.",24,"muted",he=True)
-text(1920,3393,"כבל Mini-DIN 7 לא נמצא ברשימת ההזמנות. קבלי סינון נוספים ייקבעו לפי הלוחות והמדידות; אינם מוצגים כאילו כבר נרכשו.",23,"muted",he=True)
+text(1920,3230,"Before power-on — four checks still required",29,"amber",True,right=True)
+text(1920,3273,"Identify battery tap/connectors; verify fuse current and DC breaking capacity, cutoff thresholds, and LiDAR voltage at startup/charging.",24,"amber",right=True)
+text(1920,3313,"Without a diode: physically disconnect the controller 5V supply before USB. EN shutdown does not disconnect the wire.",24,"amber",right=True)
+text(1920,3353,"Sections 1–4 arrange pins for readability, not pad position. Section 5 shows manufacturer views. Do not rely on wire colors.",24,"muted",right=True)
+text(1920,3393,"No Mini-DIN 7 cable found in orders. Extra filter capacitors depend on boards and measurements; purchase is not established.",23,"muted",right=True)
 text(70,3458,"Matching net names = same wire network · dots = junctions · arrows = signal / power flow · see docs/wiring-xiao.md",21,"muted")
 p.append("</svg>")
 OUT.parent.mkdir(parents=True,exist_ok=True)
