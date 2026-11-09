@@ -1,0 +1,9 @@
+# Preserve source documents and packaged/image artifacts byte for byte.
+*.pdf binary
+*.zip binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+
+# CSV writers use the standard CRLF record separator.
+*.csv whitespace=cr-at-eol

@@ -1,0 +1,123 @@
+# RooCore — קובץ הפריטים שלנו
+
+עודכן בעקבות ביקורת electronics ו־esp32-development: **2026-11-10**. לפני עצת חיווט או קנייה יש לקרוא את הקובץ הזה ואת [ביקורת המודולים](docs/assembly/MODULE_AUDIT.md). זהו הרישום הפעיל; הצעות וסלי קניות ישנים אינם הוראות הרכבה או קנייה.
+
+[המדריך עם תמונות וחוטים](docs/assembly/RooCore-assembly.html) · [תרשים משולב של התמונות וכל 13 חוטי הצמה](docs/assembly/combined-wiring.html) · [הוראות Markdown](docs/assembly/README.md) · [רשימת הרכש](AMAZON_ORDER.md) · [הביקורת החשמלית ומפות הרגליים](docs/assembly/ELECTRICAL_REVIEW.md)
+
+**מצב:** נבדקו מסמכים ותמונות הדגמים, לא היחידות הפיזיות. רכישה מתועדת אינה קבלה. אין עדיין הוראות מאושרות לחיבור לסוללת הרומבה. בחוברת יש שבעה שלבי הכנה מותנים ו־13 חוטים; החיבורים שלא הוכרעו הוצאו מהוראות הביצוע.
+
+## הרכיבים בתצורה הנוכחית
+
+רכישות אמזון של 7 בנובמבר מבוססות על בדיקת החשבון שכבר תועדה; מצב מסירה לא נבדק מחדש בביקורת הזאת. זיהוי המפסק הושלם מקישור הרכישה שסיפק המשתמש.
+
+| פריט | דגם וכמות מתועדת | מצב ותנאי שימוש |
+|---|---|---|
+| בקר | [Seeed XIAO ESP32S3 רגיל, B0DJ6NQFKX](https://www.amazon.com/dp/B0DJ6NQFKX), מארז 3 — אחד למערכת ושניים לספייר | נרכש 7 בנובמבר. פיני ההזנה ו־D3/D4/D5 אומתו מול Seeed; D4=GPIO5 משדר לליידר, D5=GPIO6 קולט ממנו. 5V/VBUS להזנה; 3V3 יציאה, BAT אינו בשימוש. אין מצלמה או Sense בתצורה. |
+| ממיר 5V | [Pololu D36V28F5, #3782](https://www.pololu.com/product/3782); הכמות לא נמסרה | נרכש בארץ לפי המשתמש. VIN/VOUT, שני GND, EN ו־PG זוהו. הדיוק 4% נותן 4.8–5.2V בממיר; אין מרווח מובטח לנפילה עד הליידר בקצה התחתון. אין סף פריקת Roomba מכויל. אין להחליף ב־#4872 או לקנות ממיר נוסף על סמך מסמך ישן. |
+| מפסק הליידר | [4project 5274](https://www.4project.co.il/product/5274), מספר POL-2810 — [Pololu Mini MOSFET Slide Switch LV](https://www.pololu.com/product/2810); הכמות לא נמסרה | **זה הדגם שקנה המשתמש.** מותקן אחרי ממיר 5V. בקרת ON מ־D3; המתג המכני OFF. SW אינו כניסת GPIO. נגדי הבקרה כבר על הלוח; **R8 החיצוני בוטל**. 6A בכותרת אינו דירוג עבודה קרה: היצרן מציג 3A ב־55°C ו־6A ב־150°C. |
+| שני מודולי מתאם | [NOYITO TXB0104, B07GMF3BWR](https://www.amazon.com/dp/B07GMF3BWR), זוג, גב WCMCU-401 | נרכשו 7 בנובמבר. הפדים VCC/3V3/GND ו־A1–A4/B1–B4; אין OE מסומן במחברים. נראים שלושה קבלים קרמיים מולחמים בכל לוח; ערכיהם לא פורסמו. שבב בתקריב בעל 12 מגעים, תואם גאומטריית RUT; אין להעתיק מספור 14 רגליים. **מודול אחד מיועד להתאמת רמות מול הרומבה לאחר מיפוי ההזנה; השני ספייר ואינו נדרש לליידר.** |
+| ליידר | [YDLIDAR T-mini Plus, B0BJ2LWDM9](https://www.amazon.com/dp/B0BJ2LWDM9), אחד | נרכש 7 בנובמבר בנפרד. הזנה 4.8–5.2V, UART ‏3.3V, התנעה עד 1A לפי מסמך היצרן. הספק ותקשורת הם פינים שונים. TX/RX הם פיני תקשורת בתוך מחבר GH. חוטים 12–13: D4→RX ו־TX→D5, ברמת 3.3V. החיבור קבוע; הקושחה מעבירה את האותות למצב כבוי לפני כיבוי S1. אין רכיב נוסף לנתיב הזה. הרצף כבר משולב בקושחה המלאה; נותרו צריבה ובדיקות חומרה. |
+| מחבר הליידר | [EGSCST GH1.25, B0H3Q98C58](https://www.amazon.com/dp/B0H3Q98C58), מארז | נרכש 7 בנובמבר. זנבות 28AWG, אורך 15 ס״מ לפי דף המוצר; דירוג מוצג 1A. נדרש תקע 4 מקומות, התאמה פיזית ומיפוי מול מבט שקע החיישן. אין להניח סדר צבעים. |
+| מחבר הספק | [Yiqigou/Amass XT30U, B0CFJKK6BX](https://www.amazon.com/dp/B0CFJKK6BX), שני זוגות | נרכש 7 בנובמבר. חוטים 18AWG, ‏15 ס״מ. מכינים רק צד עומס; צד המקור העתידי עם מגעי מתכת שקועים. מאמתים +/− ורציפות. |
+| נגדים | [ELEGOO 525 / 17 ערכים, B072BL2VX1](https://www.amazon.com/dp/B072BL2VX1), מארז | נרכש 7 בנובמבר. 0.25W, ‏1% לפי רישום הרכש. אין רשימת חובה של 11 נגדים: R8–R11 הוסרו; R1–R7 ממתינים לתכנון/בדיקות Q1/Q2. לא מוסיפים כרגע נגד חיצוני בשלבי ההכנה. |
+| טרנזיסטורים | [BOJACK 250 / 10 דגמים, B07T61SY9Y](https://www.amazon.com/dp/B07T61SY9Y), מארז | בהזמנת 31 באוקטובר; כולל 2N3904 NPN. שניים מיועדים ל־EN/BRC. נמצאה מפת ייחוס onsemi: E–B–C מול הפנים השטוחות. חסרה התאמת המפה לחלק BOJACK שסופק; מפורט להלן. |
+| נתיכים ובתים | [QBGTFAK 5×20, B07BC8DW3L](https://www.amazon.com/dp/B07BC8DW3L), ‏12 בתים ו־110 נתיכים | רכישה תועדה ל־7 בנובמבר. רישום היסטורי: 16AWG, נתיכים מסומנים 250V. בית הנתיך מתחבר בטור לפלוס ענף הפרויקט, סמוך למקור ולפני XT30/הממיר. הנתיך קיים; ערכו הסופי, דירוג DC וכושר ניתוק עדיין לא אומתו; 2A הוא מועמד, לא ערך התקנה מאושר. 13A שבפרסום אינו ערך הנתיך שנבחר לפרויקט. |
+| חוטים, בידוד ולוח הלחמה | 18AWG ו־22AWG, כיווץ חום ולוחות מהזמנת אוקטובר | אין צורך בהזמנה כפולה. מפצלי 5V/GND נפרדים; אין מפת חורים בלי לזהות את הלוח ולבדוק רציפות כשהוא ריק. לא להעביר הספק דרך Dupont או breadboard. |
+
+## תיקונים מחייבים מהמדריך הקודם
+
+- **VCC/3V3/VCCA/VCCB אינם אדמה.** לא מחברים אותם ישירות ל־GND. השמות VCCA/VCCB/OE מתארים את שבב TXB0104 ואינם מפת המחברים של NOYITO שנרכש.
+- C1–C4 של 100nF אינם רכיבים חיצוניים שיש לקנות או להלחים כרגע. אין להחליף קבל שהוסר בחוט. שלושת הקבלים הנראים על כל NOYITO אינם הוכחה לערך 100nF.
+- הוסרו חיבור 3V3 בין XIAO ל־NOYITO, שליטת D8→OE וחיבורי U1/U2. כיוון פד 3V3 וניתוב OE אינם מאומתים; ייתכן שחיבור ה־3V3 יחבר שתי יציאות מייצבים.
+- במפסק #2810 קיימים נגדי הבקרה: R4/R5 **בסכמה הפנימית של המפסק**, לא נגדי R4/R5 בתכנון EN שלנו. R8 חיצוני אינו נדרש. אין נגד נוסף בטור לחוט D3→ON בשלב המאומת.
+- EN של D36V28F5 אינו חיבור GPIO ישיר. המעגל הישן עם Q1 והספים 12.81/14.41V הוא תכנון לא מכויל, ולא הוראת הרכבה פעילה.
+- תצורת מקור יחיד, לפי החלטת המשתמש שלא לקנות דיודות. לפני USB מוציאים את XIAO **מכל הצמה החיצונית, כולל אותות**, ולא רק מנתקים 5V או מורידים EN.
+- ההזנה לפרויקט נועדה לבוא מענף הסוללה, לא מפיני ההספק 1/2 של OI. בסכמת R3 שסופקה יש שנט בין מינוס הסוללה J14 לבין SYS_RTN של OI. אסור להניח ששתי הנקודות ניתנות לגישור. המטרה העקרונית היא חזרת מערכת בצד SYS_RTN, אם סכמת החזרה הזו תאומת ללוח ה־620. פד פיזי טרם נבחר; צפצוף אינו מבדיל בין צדדי השנט.
+- תמונות היצרן משמשות למיקום החוטים על הדגם. אין לטעון שהן צילום של ההרכבה שלנו או הוכחה שהחומרה נבדקה.
+
+## חיבור UART קבוע וכיבוי אוטומטי
+
+חוט 12: XIAO D4/GPIO5 אל LiDAR RX. חוט 13: LiDAR TX אל XIAO D5/GPIO6. D3/GPIO4 נשאר מחובר ל־S1 ON. בכיבוי יזום: עצירת כתיבות וניתוק UART → D4 LOW ו־D5 כניסה עם pull-down פנימי ללא pull-up → D3 LOW. אין ניתוק חוטים ידני ואין רכיב חיצוני נוסף. בהדלקה מפעילים הספק לפני חיבור UART; זמן התייצבות נותר למדידה.
+
+[החיבור המדויק, הקוד והבדיקות](docs/assembly/LIDAR_POWER_UART.md). הרצף משולב ב־RooCoreXiao המלא: UART2, ‏D4/D5 וללא OE. הקושחה נבנתה בתצורת ברירת מחדל ובתצורת בדיקה, ומודל תוכנה בדק 100 מחזורים ומקרי שגיאה. ברירת המחדל false/0 עד כיול; לא נצרב ולא נבדק פיזית. זה פתרון לכיבוי ליידר כשהבקר נשאר מוזן, לא בידוד לתקלות או אובדן הזנת הבקר. ניתוק XIAO מכל הצמה לפני USB נשאר נוהל שירות נפרד.
+
+**הוראת המשתמש הקבועה:** כל תיקון רלוונטי לחיבור/מדריך מתעדכן גם ב־`/Volumes/T9/RooCore/docs/assembly/RooCore-assembly.html`, יחד עם MD, התמונות והטבלאות. אין להשאיר תיקון רק בשיחה.
+
+## זיהוי Q1/Q2 — ההסבר המתוקן
+
+אלה **שני טרנזיסטורים מאותו דגם 2N3904 NPN**, מתוך ערכת BOJACK; Q1 מיועד ל־EN ו־Q2 ל־BRC. נמצאה מפת ייחוס מפורשת ב־[מפרט onsemi, TO-92 CASE 29 STYLE 1](https://www.onsemi.com/pdf/datasheet/2n3903-d.pdf): פנים שטוחות אליך, רגליים למטה — **משמאל E, באמצע B, מימין C**; מספרים 1/2/3 בהתאמה.
+
+המפה קיימת; מה שלא נמצא הוא מפרט BOJACK הקושר אותה לחלק המסופק בערכה. צריך להתאים סימון/יצרן/מארז או לזהות E/B/C בבדיקה מתאימה. בדיקת שתי דיודות מזהה בסיס ואינה מבחינה בוודאות בין E ל־C. אין צורך להמציא דגם אחר או להזמין טרנזיסטורים חדשים על סמך הפער הזה. מעגלי EN/BRC אינם משוחררים להרכבה רק בזכות מציאת מפת רגליים.
+
+**U1/U2 הם עניין נפרד:** אלה שני מודולי NOYITO. בתמונת המוצר יש שבב בעל 12 מגעים; נוסף מיפוי הייחוס של TXB0104RUT. עבור המודול המיועד לרומבה חסר ניתוב מסילות VCC/3V3 ו־OE בלוח; השני ספייר ואינו דורש השלמת חיווט לליידר. זו אינה בעיה של מפת TXB0104 כללית. אין לחבר לפי דוגמת TI של 14 רגליים.
+
+## ביקורת באמצעות הסקילים — בוצעה
+
+ב־2026-11-09 נטענו ונקראו [electronics](https://github.com/magnus919/agent-skills/blob/main/electronics/SKILL.md) ו־[esp32-development](https://github.com/magnus919/agent-skills/blob/main/esp32-development/SKILL.md) מהקישורים שב־AGENTS.md, עם חומרי הייחוס הרלוונטיים. ההודעה הקודמת שהסקילים חסרים ושלא בוצעה ביקורת באמצעותם הוחלפה.
+
+מפות U3/S1/XIAO ושקע הליידר אומתו במסמכי יצרן. נבדקו גם נפילת מתח, זרם התנעה, בקרת ON, חזרת הזרם, USB/UART בזמן כיבוי וטולרנס מחלק EN. זו ביקורת מסמכים ותכנון; אין מדידות פיזיות. הטבלה המלאה מפרידה בין **נתון שאומת**, **מפרט שחסר** ו־**בדיקת הרכבה שנותרה**.
+
+## מה עוד צריך לזהות או למדוד
+
+1. NOYITO המיועד לרומבה בלבד: בדיקות המסילות והניתוב ל־OE מפורטות בביקורת החשמלית, כולל מפת שבב RUT בעל 12 מגעים. תמונות הדגם כבר נבדקו; החסר הוא סכמה של הלוח או בדיקת רציפות מתועדת שלו.
+2. BOJACK: התאמת מפת הייחוס E–B–C לסימון/אריזה של 2N3904 מהערכה, או זיהוי בבדיקה מתאימה. אין לומר שלא קיימת מפת 2N3904 ברשת.
+3. דגם ודירוג נתיך מתאים ל־DC ולזרם הקצר האפשרי; אין לעקוף בנתיך או חוט שנבחרו בניחוש.
+4. תווית הסוללה ונקודות פלוס וחזרת הספק על לוח ה־620, תוך שמירת שנט המדידה המקורי.
+- **חיבור OI ללא גוף תקע:** לפי החלטת המשתמש משתמשים בחוטים ישירים עם קיבוע בדבק כדי לסגור את הכיסוי המקורי בגובה נמוך. אין צורך לקנות כבל Mini-DIN 7. מפת מגעי השקע נשארת לצורך זיהוי, רציפות ובידוד; פינים 1/2 אינם מקור הזנת הפרויקט.
+6. בדיקות אחרי הרכבה: 4.8–5.2V במגעי הליידר תחת עומס; ספי EN והתאוששות הסוללה. פיני המודולים ידועים. טולרנס 1% של נגדי EN החיצוניים לבדו נותן כ־12.633–12.981V וכ־14.212–14.604V בהנחת ספים ונגד פנימי מדויקים — לכן 12.81/14.41V אינם הבטחה.
+7. ספק מעבדה מוגבל זרם: לא נמצא ברכש שנבדק. בדיקת ההפעלה הראשונה המוגדרת בחוברת היא של הממיר לבדו; אם אין ספק מתאים, נשארים בבדיקות ללא מתח.
+
+פירוט נקודות המדידה, תנאי המעבר ומקורות הנתונים נמצא ב־[ELECTRICAL_REVIEW.md](docs/assembly/ELECTRICAL_REVIEW.md). יישום RooCoreXiao נמצא בעותק הקושחה המתועד להלן; הרצף שולב ושתי תצורות נבנו. לא בוצעה צריבה או בדיקת חומרה. אלה משימות השלמה מוגדרות, לא הוראת קנייה חדשה. לא נוספו לסל ולא נרכשו פריטים בביקורת הזאת.
+
+## פריטים שאינם מתחברים בתצורה הנוכחית
+
+- ארבעת ESP-01S וחמשת ממירי 3.3V מהזמנת אוקטובר נשמרים כספיירים/לשימוש אחר. ממירי 3.3V מוגדרים בפרסום עד 23V וללא ניתוק פריקה מאומת.
+- מצלמה, Sense, microSD, חיישני גובה ומפצל I²C הם דיונים/הרחבות, לא רכיבים שאושרו להרכבה הזאת.
+- הצעות Pololu #4872 וכבלי Adafruit #2438 מהמסמכים הישנים לא תועדו כרכישה. אין להזמין אותם אוטומטית.
+- סל 6 בנובמבר, $109.07, הוא צילום היסטורי בלבד. הרכישות המאוחרות בטבלה לעיל גוברות עליו. INA226, ערכת דיודות, ממירי I²C, MP1584EN ולוחות פלסטיק הועברו אז ל־Saved for later; זו אינה רשימת רכישה פעילה.
+
+## הזמנת 2026-10-31 — רישום הרכש המקורי
+
+The locally retained Amazon order record lists 23 product lines and 24 purchased units; the solder wire line has quantity 2. As checked, packages showed estimated arrival on November 15–17, 2026, and some showed “Arrived at customs.” None was verified as delivered or physically received.
+
+| Product | Order quantity | Listing contents or specification | Amazon |
+| --- | ---: | --- | --- |
+| 3M SJ3560 clear Dual Lock fastener | 1 | 1 in × 10 ft roll | [B00AQ6IS1G](https://www.amazon.com/dp/B00AQ6IS1G) |
+| KAIWEETS flush wire cutters | 1 | 6 in | [B097SZRNJV](https://www.amazon.com/dp/B097SZRNJV) |
+| Mini 3.3 V buck converter boards | 1 | 5 boards; 4.75–23 V input, 1.8 A output | [B0B779CGJQ](https://www.amazon.com/dp/B0B779CGJQ) |
+| TUOFENG silicone wire | 1 | 18 AWG, six colors, 13.2 ft per color | [B07G744V5Z](https://www.amazon.com/dp/B07G744V5Z) |
+| Adhesive lined heat shrink tubing kit | 1 | 5:1 shrink ratio | [B0FRNLQZJC](https://www.amazon.com/dp/B0FRNLQZJC) |
+| KOTTO helping hands | 1 | Four arms, weighted base | [B07MDKXNPC](https://www.amazon.com/dp/B07MDKXNPC) |
+| Breadboard and jumper wire kit | 1 | Two 830 point boards, two 400 point boards, 126 jumpers | [B0H17GR4S5](https://www.amazon.com/dp/B0H17GR4S5) |
+| Black cable zip ties | 1 | 400 assorted ties | [B08TVLYB3Q](https://www.amazon.com/dp/B08TVLYB3Q) |
+| Double sided PCB prototype kit | 1 | 164 pieces, six board sizes, headers and terminals | [B0HGY3TJ74](https://www.amazon.com/dp/B0HGY3TJ74) |
+| Nettbe reusable cable ties | 1 | 60 hook and loop ties, 8 in | [B0CNWW1MK8](https://www.amazon.com/dp/B0CNWW1MK8) |
+| BOJACK transistor assortment | 1 | 250 pieces, 10 values | [B07T61SY9Y](https://www.amazon.com/dp/B07T61SY9Y) |
+| Slipdrive SSD sleeve | 1 | Small, black | [B09L558LRC](https://www.amazon.com/dp/B09L558LRC) |
+| Kaisi silicone repair mat | 1 | 17.7 × 11.8 in | [B07DGVRYL3](https://www.amazon.com/dp/B07DGVRYL3) |
+| MG Chemicals 8341 no clean flux paste dispenser | 1 | 10 mL, plunger and tip | [B00425FUW2](https://www.amazon.com/dp/B00425FUW2) |
+| CERRXIAN OBD2 male connector to open wires | 1 | 16 pin, 5 ft / 1.5 m pigtail | [B0CXHLG31Q](https://www.amazon.com/dp/B0CXHLG31Q) |
+| MAIYUM 63/37 rosin core solder wire | **2** | Each: 0.6 mm, 100 g | [B076QD1W9X](https://www.amazon.com/dp/B076QD1W9X) |
+| USB4 USB-C cable | 1 | 1 ft, 40 Gbps, 240 W | [B0G23JRR86](https://www.amazon.com/dp/B0G23JRR86) |
+| ENERJOUR silicone hookup wire | 1 | 22 AWG, six 26 ft spools, 156 ft total | [B0DWJSB65V](https://www.amazon.com/dp/B0DWJSB65V) |
+| AstroAI DM130B multimeter | 1 | 4000 count, auto ranging | [B0842HTN8C](https://www.amazon.com/dp/B0842HTN8C) |
+| TODOELEC Dupont jumper wire kit | 1 | 120 wires, 10 cm | [B0D56V6S8M](https://www.amazon.com/dp/B0D56V6S8M) |
+| No clean liquid soldering flux and wick | 1 | Two 50 mL bottles plus desoldering wick | [B0D9KMYJ6R](https://www.amazon.com/dp/B0D9KMYJ6R) |
+| ESP8266 ESP-01S Wi-Fi modules | 1 | Pack of four modules | [B09J2KPHTN](https://www.amazon.com/dp/B09J2KPHTN) |
+| MG Chemicals 8341 no clean flux paste jar | 1 | 49 g / 50 mL | [B09FWB6L5L](https://www.amazon.com/dp/B09FWB6L5L) |
+
+The current order details show **₪1,372.13**. The [original confirmation email](https://mail.google.com/mail/u/?authuser=thfcxv%40gmail.com#all/1a19394e96da3eac) showed **₪1,556.15**. The reason for this difference was not established; use the live order details for the current displayed total.
+
+## הזמנה שאינה מלאי לפרויקט
+
+- 2026-09-24: Yubico Security Key C NFC, marked **cancelled** by Amazon. It is not RooCore stock.
+
+## תחזוקת הרישום
+
+לבקשת המשתמש, לרשום כאן דגם, קישור, כמות, מה כבר מובנה במודול, מפת פינים ומגבלות שנתגלו. לא להחזיר טבלת חיווט גנרית במקום בדיקת המודול שנקנה. עם קבלת חלק יש לתעד תאריך, סימון וגרסה; עד אז להשאיר את מצב הקבלה לא מאומת. לפני המלצת קנייה בודקים את הטבלה והזמנות חדשות למניעת כפילויות.
+
+כל המקורות והתיקונים מפורטים ב־[MODULE_AUDIT.md](docs/assembly/MODULE_AUDIT.md). הרישום והתרשימים הישנים נשמרו ב־[ארכיון שבוטל לשימוש](docs/assembly-history/2026-11-09-withdrawn-before-module-audit.zip), לצורך מעקב בלבד.
+
+## מיקום הקושחה ששולבה
+
+RooCoreXiao המלא עודכן בעותק `/Volumes/T9/RooCore-worktrees/lidar-power-sequence`, בענף `codex/lidar-power-sequence`. [פרטי שילוב ותוצאות](docs/assembly/FIRMWARE_INTEGRATION.md). קובץ המדריך הקנוני נשאר ב־T9/RooCore/docs/assembly, ועותק הספרייה שבו מסונכרן למימוש שבקושחה.

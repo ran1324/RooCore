@@ -1,9 +1,9 @@
 name: RooCore firmware and navigation
 on:
   push:
-    paths: ['lib/RoombaOI/**', 'lib/RooNavigation/**', 'firmware/xiao/**', 'navigation/**', 'ros2/**', 'tests/**', 'docs/oi-map.json', '.github/workflows/roomba-oi.yml']
+    paths: ['lib/RoombaOI/**', 'lib/RooNavigation/**', 'lib/RooCoreLidarPower/**', 'firmware/xiao/**', 'navigation/**', 'ros2/**', 'tests/**', 'docs/oi-map.json', '.github/workflows/roomba-oi.yml']
   pull_request:
-    paths: ['lib/RoombaOI/**', 'lib/RooNavigation/**', 'firmware/xiao/**', 'navigation/**', 'ros2/**', 'tests/**', 'docs/oi-map.json', '.github/workflows/roomba-oi.yml']
+    paths: ['lib/RoombaOI/**', 'lib/RooNavigation/**', 'lib/RooCoreLidarPower/**', 'firmware/xiao/**', 'navigation/**', 'ros2/**', 'tests/**', 'docs/oi-map.json', '.github/workflows/roomba-oi.yml']
 permissions:
   contents: read
 jobs:

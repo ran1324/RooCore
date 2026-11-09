@@ -1,0 +1,16 @@
+name: Assembly documentation
+on:
+  push:
+    paths: ['docs/assembly/**', 'docs/assembly-history/**', 'HARDWARE_INVENTORY.md', 'AMAZON_ORDER.md', 'WIRING_GUIDE.md', 'POWER_DESIGN.md', 'POWER_SHUTDOWN.md', 'lib/RooCoreLidarPower/**', 'firmware/xiao/RooCoreXiao/**', 'tests/**', '.github/workflows/assembly.yml']
+  pull_request:
+    paths: ['docs/assembly/**', 'docs/assembly-history/**', 'HARDWARE_INVENTORY.md', 'AMAZON_ORDER.md', 'WIRING_GUIDE.md', 'POWER_DESIGN.md', 'POWER_SHUTDOWN.md', 'lib/RooCoreLidarPower/**', 'firmware/xiao/RooCoreXiao/**', 'tests/**', '.github/workflows/assembly.yml']
+permissions:
+  contents: read
+jobs:
+  bilingual-guide:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - run: python3 docs/assembly/build_guide.py
+      - run: python3 docs/assembly/check_artifacts.py

@@ -15,7 +15,7 @@ for example in BatteryMonitor LinkSetup; do
 done
 
 "$cli" compile --fqbn "$fqbn" --warnings all \
-  --library "$PWD/lib/RoombaOI" --library "$PWD/lib/RooNavigation" \
+  --library "$PWD/lib/RoombaOI" --library "$PWD/lib/RooNavigation" --library "$PWD/lib/RooCoreLidarPower" \
   --build-path "$build_root/RooCoreXiao" firmware/xiao/RooCoreXiao
 
 # Compile the real actuator and power-policy paths too. Synthetic power/dirt/carpet thresholds
@@ -26,6 +26,8 @@ cp firmware/xiao/RooCoreXiao/RooCoreXiao.ino "$staged/"
 cp firmware/xiao/RooCoreXiao/config.example.h "$staged/config.example.h"
 sed -e 's/ROO_COMMISSIONED false/ROO_COMMISSIONED true/' \
     -e 's/ROO_ENCODERS_VERIFIED false/ROO_ENCODERS_VERIFIED true/' \
+    -e 's/ROO_LIDAR_POWER_VERIFIED false/ROO_LIDAR_POWER_VERIFIED true/' \
+    -e 's/ROO_LIDAR_RISE_MS 0/ROO_LIDAR_RISE_MS 25/' \
     -e 's/ROO_POWER_CUTOFF_VERIFIED false/ROO_POWER_CUTOFF_VERIFIED true/' \
     -e 's/ROO_POWER_CUTOFF_MV 0/ROO_POWER_CUTOFF_MV 13200/' \
     -e 's/ROO_POWER_RECOVER_MV 0/ROO_POWER_RECOVER_MV 13800/' \
@@ -49,5 +51,5 @@ sed -e 's/ROO_COMMISSIONED false/ROO_COMMISSIONED true/' \
     -e 's/ROO_CARPET_127_MAX_MA 0/ROO_CARPET_127_MAX_MA 900/' \
     firmware/xiao/RooCoreXiao/config.example.h > "$staged/config.local.h"
 "$cli" compile --fqbn "$fqbn" --warnings all \
-  --library "$PWD/lib/RoombaOI" --library "$PWD/lib/RooNavigation" \
+  --library "$PWD/lib/RoombaOI" --library "$PWD/lib/RooNavigation" --library "$PWD/lib/RooCoreLidarPower" \
   --build-path "$build_root/RooCoreXiao-commissioned" "$staged"

@@ -1,0 +1,16 @@
+{
+  "source_root": "/Volumes/T9/RooCore-worktrees/lidar-power-sequence",
+  "branch": "codex/lidar-power-sequence",
+  "base_commit": "033b90050f3deb9c03d79670bc8a90fa2b6590de",
+  "arduino_core": "3.3.12",
+  "physical_validation": false,
+  "sha256": {
+    "firmware/xiao/RooCoreXiao/RooCoreXiao.ino": "29d2b356d952f1f9c0a8029631f46d859ec3f4d20b5e13c9a4ddeef1d41ecc04",
+    "firmware/xiao/RooCoreXiao/config.example.h": "21b1c8044dfead5eaf779ad4bd996f03e37f4f1d36ac938b1bf05a0fea7e83fa",
+    "lib/RooCoreLidarPower/src/LidarPowerSequence.h": "9c21fc5eddc39f0d40a102f202f6d79b474ddf1909b2f7bbfcd856e0fed0ca40",
+    "lib/RooCoreLidarPower/src/RooCoreLidarPower.h": "5eda1bbee756031107779be45b0d3691d6abace3808d8e72b9fcb6de9a1f661d",
+    "tests/lidar_power_test.cpp": "4781257febeb1f79daf673a37c96f1d144a369f01fc462ada287f49d18e55edd",
+    "tests/build_xiao.sh": "3a5f9ae1e6db1a79e67203417253ca73b549f9c936eb2416377e684c5059d85e",
+    "tests/run.sh": "208d9f69d4175b4622e4002b0273c37217c59216593b3d95851ce4902a810eee"
+  }
+}

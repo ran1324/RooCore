@@ -5,6 +5,11 @@
 #define ROO_API_TOKEN "" // at least 24 random characters; trusted LAN only
 #define ROO_COMMISSIONED false // true ONLY after the checks in docs/XIAO_NAVIGATION.md
 #define ROO_ENCODERS_VERIFIED false // packets 43/44 verified on this Roomba 620
+// Permanent 3.3V UART: D4/GPIO5 -> LiDAR RX, D5/GPIO6 <- LiDAR TX; D3/GPIO4 -> S1 ON.
+// Firmware integration is complete; only actual bench qualification may set these.
+// Zero / older configs keep the rail OFF. No guessed 500 ms startup delay.
+#define ROO_LIDAR_POWER_VERIFIED false
+#define ROO_LIDAR_RISE_MS 0 // measured rail rise + margin, before UART connects (milliseconds)
 #define ROO_LIDAR_YAW_DEGREES 0.0f // measure mounting orientation, CCW from robot forward
 #define ROO_LIDAR_CLOCKWISE true
 #define ROO_LIDAR_X_METERS 0.0f // measured offset from wheel axle midpoint

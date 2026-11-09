@@ -1,0 +1,62 @@
+[
+  {
+    "path": "electronics/references/component-selection.md",
+    "source": "https://github.com/magnus919/agent-skills/blob/main/electronics/references/component-selection.md",
+    "sha256": "16b0e4757679860b62ecc8cd403c6524c3684d836fddcf5875ee203b5beb6797",
+    "retrieved": "2026-11-09"
+  },
+  {
+    "path": "electronics/references/measurement-and-instrumentation.md",
+    "source": "https://github.com/magnus919/agent-skills/blob/main/electronics/references/measurement-and-instrumentation.md",
+    "sha256": "7295af303871b069a81d774c55669e5176770d0a98d19884685022c0e0e17ca0",
+    "retrieved": "2026-11-09"
+  },
+  {
+    "path": "electronics/references/power-thermal-and-protection.md",
+    "source": "https://github.com/magnus919/agent-skills/blob/main/electronics/references/power-thermal-and-protection.md",
+    "sha256": "24827b405b180e5174e955deb6d926ac915a1c43a4821c72e2fba8ac0e7b3424",
+    "retrieved": "2026-11-09"
+  },
+  {
+    "path": "electronics/references/schematic-to-bench.md",
+    "source": "https://github.com/magnus919/agent-skills/blob/main/electronics/references/schematic-to-bench.md",
+    "sha256": "0a1e0d76e3c84250565e7850d3df2146bba6c82641662af162b5690740e57d10",
+    "retrieved": "2026-11-09"
+  },
+  {
+    "path": "electronics/templates/schematic-review.md",
+    "source": "https://github.com/magnus919/agent-skills/blob/main/electronics/templates/schematic-review.md",
+    "sha256": "368936076822fe5fe123b754d263507f1b7efa64872c0130741c7d0fc3f173e0",
+    "retrieved": "2026-11-09"
+  },
+  {
+    "path": "electronics/SKILL.md",
+    "source": "https://github.com/magnus919/agent-skills/blob/main/electronics/SKILL.md",
+    "sha256": "3be28cb66bf313628e1260c7c74b291a3bfa3610b7ea26c18f61079323b76d97",
+    "retrieved": "2026-11-09"
+  },
+  {
+    "path": "esp32-development/references/hardware-and-electrical-safety.md",
+    "source": "https://github.com/magnus919/agent-skills/blob/main/esp32-development/references/hardware-and-electrical-safety.md",
+    "sha256": "8e1983c854da1a364952cc7862ad21cc4370ed4fd4bc0df0db056b063239f069",
+    "retrieved": "2026-11-09"
+  },
+  {
+    "path": "esp32-development/references/peripherals-and-buses.md",
+    "source": "https://github.com/magnus919/agent-skills/blob/main/esp32-development/references/peripherals-and-buses.md",
+    "sha256": "73730cc94a0e2a9d833012731c46297cc92dceca3a451d3df6bd076530700aba",
+    "retrieved": "2026-11-09"
+  },
+  {
+    "path": "esp32-development/templates/hardware-bringup.md",
+    "source": "https://github.com/magnus919/agent-skills/blob/main/esp32-development/templates/hardware-bringup.md",
+    "sha256": "8bc9eb3540837011ac26c37607a8279210b91b6a584cfe4e3495fc2156511933",
+    "retrieved": "2026-11-09"
+  },
+  {
+    "path": "esp32-development/SKILL.md",
+    "source": "https://github.com/magnus919/agent-skills/blob/main/esp32-development/SKILL.md",
+    "sha256": "7359851f8ba8ecf6c4d5389fba8aed69e76132a10589c7115ce3a0d0e64ad01c",
+    "retrieved": "2026-11-09"
+  }
+]
