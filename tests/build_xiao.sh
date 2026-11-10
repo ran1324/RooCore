@@ -50,6 +50,32 @@ sed -e 's/ROO_COMMISSIONED false/ROO_COMMISSIONED true/' \
     -e 's/ROO_CARPET_127_ENTER_MA 0/ROO_CARPET_127_ENTER_MA 500/' \
     -e 's/ROO_CARPET_127_MAX_MA 0/ROO_CARPET_127_MAX_MA 900/' \
     firmware/xiao/RooCoreXiao/config.example.h > "$staged/config.local.h"
+
+# Exercise the new charger and dock-guard branches too. These dimensions and
+# temperatures are synthetic compiler fixtures, not measurements or pack limits.
+python3 - "$staged/config.local.h" <<'PY'
+from pathlib import Path
+import re
+import sys
+p = Path(sys.argv[1])
+text = p.read_text()
+values = {
+    'ROO_CHARGE_DEPARTURE_VERIFIED': 'true',
+    'ROO_CHARGE_MIN_C': '10', 'ROO_CHARGE_MAX_C': '40',
+    'ROO_BRUSH_GEOMETRY_CALIBRATED': 'true',
+    'ROO_DOCK_GEOMETRY_VERIFIED': 'true',
+    'ROO_DOCK_FRONT_X_M': '.18f', 'ROO_DOCK_OUTWARD_YAW_RAD': '3.14159265f',
+    'ROO_DOCK_DEPTH_M': '.20f', 'ROO_DOCK_HALF_WIDTH_M': '.16f',
+    'ROO_DOCK_MARGIN_M': '.03f', 'ROO_DOCK_BODY_RADIUS_M': '.17f',
+    'ROO_DOCK_CORRIDOR_MIN_M': '.10f', 'ROO_DOCK_CORRIDOR_MAX_M': '1.20f',
+    'ROO_DOCK_CORRIDOR_HALF_WIDTH_M': '.12f', 'ROO_DOCK_HEADING_TOLERANCE_RAD': '.12f',
+    'ROO_DOCK_MAX_LINEAR_MPS': '.30f', 'ROO_DOCK_MAX_ANGULAR_RPS': '1.5f',
+}
+for key, value in values.items():
+    text, count = re.subn(r'(?m)^(#define ' + key + r')\s+\S+', r'\g<1> ' + value, text)
+    assert count == 1, key
+p.write_text(text)
+PY
 "$cli" compile --fqbn "$fqbn" --warnings all \
   --library "$PWD/lib/RoombaOI" --library "$PWD/lib/RooNavigation" --library "$PWD/lib/RooCoreLidarPower" \
   --build-path "$build_root/RooCoreXiao-commissioned" "$staged"

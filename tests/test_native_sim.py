@@ -5,6 +5,104 @@ from navigation.sim import Simulation
 
 
 class NativeSimulatorTests(unittest.TestCase):
+    def charging_fixture(self):
+        sim = Simulation("battery")
+        sim.mission.start()
+        for _ in range(800):
+            sim.step()
+            if sim.mission.state in ("CHARGING", "FAULT"):
+                break
+        self.assertEqual(sim.mission.state, "CHARGING", sim.mission.reason)
+        self.assertEqual(sim.collisions, 0)
+        self.assertEqual(sim.dock_brush_contacts, 0)
+        return sim
+
+    def test_real_core_charge_return_resume_and_cause(self):
+        sim = self.charging_fixture()
+        self.assertEqual(sim.mission.return_cause, "battery")
+        before = set(sim.mission.fine_covered[0])
+        active = sim.mission.active_ms
+        sim.step(50)
+        self.assertEqual(sim.mission.state, "CHARGING")
+        self.assertEqual(sim.mission.active_ms, active)
+        for _ in range(600):
+            sim.step()
+            if sim.mission.state in ("CLEANING", "FAULT"):
+                break
+        self.assertEqual(sim.mission.state, "CLEANING", sim.mission.reason)
+        self.assertTrue(before <= set(sim.mission.fine_covered[0]))
+        self.assertGreater(sim.battery, 95)
+        self.assertEqual(sim.collisions, 0)
+        self.assertEqual(sim.dock_brush_contacts, 0)
+
+    def test_long_charging_does_not_exhaust_active_budget(self):
+        sim = self.charging_fixture()
+        sim.charge_rate = 0
+        active = sim.mission.active_ms
+        sim.time += 3 * 60 * 60
+        sim.step()
+        self.assertEqual(sim.mission.state, "CHARGING")
+        self.assertEqual(sim.mission.active_ms, active)
+        self.assertEqual(sim.command.speed, 0)
+
+    def test_pause_during_reverse_exit_cancels_motion(self):
+        sim = self.charging_fixture()
+        sim.battery = 100
+        sim.step(3)
+        self.assertEqual(sim.mission.state, "RESUMING")
+        self.assertLess(sim.command.speed, 0)
+        sim.mission.pause()
+        pose = sim.pose
+        sim.step(5)
+        self.assertEqual(sim.mission.state, "PAUSED")
+        self.assertEqual(sim.pose, pose)
+        self.assertEqual(sim.command.speed, 0)
+
+    def test_full_percentage_cannot_override_waiting_or_reconditioning(self):
+        for field in ("charger_waiting", "charger_reconditioning"):
+            with self.subTest(field=field):
+                sim = self.charging_fixture()
+                sim.battery = 100
+                setattr(sim, field, True)
+                sim.step(10)
+                self.assertEqual(sim.mission.state, "CHARGING")
+                self.assertEqual(sim.command.speed, 0)
+
+    def test_charger_fault_and_missing_packet_hold_motion(self):
+        for field in ("charger_fault", "charger_valid"):
+            with self.subTest(field=field):
+                sim = self.charging_fixture()
+                sim.inject(field)
+                sim.step()
+                self.assertEqual(sim.mission.state, "FAULT")
+                self.assertEqual(sim.command.speed, 0)
+                self.assertEqual(sim.command.cleaning_pwm, 0)
+
+    def test_unexpected_charge_and_moved_base_stop(self):
+        for event in ("accidental_charge", "dock_moved"):
+            with self.subTest(event=event):
+                sim = Simulation("room")
+                sim.mission.start()
+                sim.step(10)
+                sim.inject(event)
+                sim.step()
+                self.assertEqual(sim.mission.state, "FAULT")
+                self.assertEqual(sim.command.speed, 0)
+                self.assertEqual(sim.command.cleaning_pwm, 0)
+
+    def test_manual_return_is_explicit_and_new_mission_reuses_occupancy(self):
+        sim = Simulation("room")
+        sim.mission.start()
+        sim.step(20)
+        cells = list(sim.mission.grid.cells)
+        self.assertTrue(sim.mission.fine_covered[0])
+        sim.mission.return_home(sim.pose)
+        self.assertEqual(sim.mission.return_cause, "manual")
+        self.assertGreater(sim.mission.return_at_ms, 0)
+        sim.mission.start()
+        self.assertEqual(sim.mission.grid.cells, cells)
+        self.assertFalse(sim.mission.fine_covered[0])
+
     def test_ui_runs_production_core_and_does_not_count_body_disk(self):
         sim = Simulation("room")
         self.assertEqual(sim.state()["engine"], "native C++")

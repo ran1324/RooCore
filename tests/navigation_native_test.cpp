@@ -17,7 +17,14 @@ static Input healthy(uint32_t now = 100) {
     r = 2;
   return i;
 }
-static void clockAt(Input &i, uint32_t now) { i.now = i.poseMs = i.scanMs = i.sensorsMs = now; }
+static void clockAt(Input &i, uint32_t now) {
+  i.now = i.poseMs = i.scanMs = i.sensorsMs = i.chargerMs = now;
+  i.chargerValid = true; // explicit synthetic telemetry, never supplied by a physical robot
+  i.chargerSources = i.docked ? 2 : 0;
+  i.chargerState = i.charging ? (i.battery >= 100 ? 3 : 2) : 0;
+  i.chargeContactConfirmed = i.docked;
+  i.chargeReady = i.docked && i.charging && i.battery >= 100;
+}
 static void safety() {
   Navigator n;
   Input i = healthy();
@@ -531,6 +538,7 @@ static void assistancePolicy() {
   n.start(false, i.pose, i.now);
   n.goHome(i);
   i.docked = i.charging = true;
+  clockAt(i, i.now);
   n.tick(i);
   assert(n.state == State::Complete); // never guesses a global resume pose after docking
 }

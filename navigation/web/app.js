@@ -45,7 +45,7 @@ async function api(action, body = {}) {
   });
   const data = await r.json();
   if (!r.ok) throw Error(data.error);
-  render(data);
+  if (data.state) render(data);
   return data;
 }
 function clock(t) {
@@ -55,19 +55,72 @@ function clock(t) {
     .toString()
     .padStart(2, "0")}`;
 }
+const healthLabels = {unconfigured: "ממתין להגדרת מדיניות השוואה", insufficient_data: "עדיין אין מספיק משימות להשוואה", suspected_degradation: "נמצאה ירידה מתמשכת בזמן העבודה", needs_measurement: "נמצא שינוי שדורש בדיקה", no_decline_detected: "לא זוהתה ירידה במשימות שנבדקו"};
+const frequencyLabels = {after_use: "אחרי כל שימוש", weekly: "פעם בשבוע", twice_weekly: "פעמיים בשבוע", fortnightly: "כל שבועיים", monthly: "פעם בחודש"};
+function textNode(tag, content) { const node = document.createElement(tag); node.textContent = content; return node; }
+function renderInsights(s) {
+  const health = s.battery_health || {classification: "insufficient_data"};
+  $("health-status").textContent = healthLabels[health.classification] || "ממתינים לנתונים";
+  $("health-status").classList.toggle("warning", ["suspected_degradation", "needs_measurement"].includes(health.classification));
+  $("health-detail").textContent = s.source === "simulation" || !s.source ? "נתונים מדומים אינם יוצרים אבחון או התראה על הסוללה האמיתית." :
+    health.classification === "unconfigured" ? "נדרשים זיהוי סוללה ומדיניות השוואה לפני הסקת מסקנות." : "חזרה ידנית לעמדה, פערי תקשורת ופרופילים שונים נשמרים בנפרד מהשוואת זמן העבודה.";
+  $("health-evidence").replaceChildren(...(health.comparisons || []).slice(-3).map(c => textNode("li",
+    Number.isFinite(c.latest_runtime_s) ? `זמן עבודה אחרון: ${clock(c.latest_runtime_s)} · בסיס השוואה: ${clock(c.baseline_runtime_s)} · ${Math.round(c.latest_to_baseline_ratio * 100)}% מזמן הבסיס` : `${c.comparable_missions || 0} משימות מתאימות להשוואה`)));
+  const missions = s.history?.missions || [];
+  $("history").replaceChildren(...(missions.length ? missions.slice(0, 8).map(m => {
+    const day = new Date(m.last_seen || m.first_seen);
+    const date = Number.isNaN(day.getTime()) ? "" : day.toLocaleString("he-IL", {timeZone: "Asia/Jerusalem", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"});
+    return textNode("li", `${date} · ${phases[m.state] || m.state || "דיווח משימה"}${m.coverage != null ? ` · כיסוי מוכר ${m.coverage}%` : ""}`);
+  }) : [textNode("li", "עדיין אין משימות שמורות ממקור זה")]));
+  const care = s.maintenance;
+  if (!care) return;
+  $("pets").checked = !!care.settings?.pets;
+  $("usage").textContent = `זמן מברשות מתועד ${clock(care.usage?.brush_s || 0)} · ${care.usage?.gaps || 0} פערים בדיווח. לא כולל שימוש שלא תועד.`;
+  $("parts").replaceChildren(...care.parts.map(part => {
+    const row = document.createElement("div"); row.className = "part";
+    row.append(textNode("strong", part.label));
+    const content = document.createElement("div");
+    content.append(textNode("p", `התקנה: ${part.installed || "לא ידוע"} · ניקוי אחרון: ${part.last_cleaned || "לא ידוע"}`));
+    content.append(textNode("p", `ניקוי ${frequencyLabels[part.clean_frequency] || part.clean_frequency}${part.clean_due ? ` · הבא: ${part.clean_due}` : ""}`));
+    content.append(textNode("p", part.replacement_window ? `חלון החלפה לפי גיל: ${[...new Set(part.replacement_window)].join(" עד ")}` : "מועד החלפה: אין תאריך התקנה או מרווח יצרן קבוע"));
+    const reminder = part.snoozed ? `התזכורת נדחתה עד ${part.snoozed_until}` : part.replacement_review_due ? "הגיע מועד לבדוק החלפה לפי גיל החלק" : part.cleaning_due ? "הגיע מועד הניקוי" : "";
+    if (reminder) { const note = textNode("p", reminder); note.className = "warning"; content.append(note); }
+    if (part.note) content.append(textNode("p", part.note));
+    row.append(content); return row;
+  }));
+  if (!$("service-part").options.length) $("service-part").replaceChildren(...care.parts.map(part => { const option = textNode("option", part.label); option.value = part.part; return option; }));
+}
 function render(s) {
   state = s;
+  const simulated = (s.source || "simulation") === "simulation";
+  const readonly = s.read_only || !simulated;
+  $("simulation-controls").hidden = readonly;
+  $("readonly-note").hidden = !readonly;
+  $("truth").closest("label").hidden = !simulated;
+  if (!simulated) $("truth").checked = false;
+  $("source-tag").textContent = { simulation: "סימולציה בלבד", robot: "דיווחי הרובוט · צפייה בלבד", replay: "הקלטה · אינה בזמן אמת" }[s.source || "simulation"];
+  $("battery-label").textContent = simulated ? "סוללה מדומה" : "סוללה מדווחת";
+  $("map-note").textContent = simulated ? "ליבת XIAO ב־C++ · גאומטריה וטעינה מדומות" : "מפה מדיווחים · כיסוי אינו אישור לאיסוף לכלוך";
+  const fresh = s.freshness || {};
+  $("freshness").textContent = simulated ? "נתוני הסימולציה נשמרים בנפרד מנתוני הרובוט." :
+    ({fresh: "דיווח עדכני", stale: "הדיווח ישן — מוצג המצב האחרון", disconnected: "החיבור נותק — מוצג המצב האחרון", waiting: "ממתינים לדיווח ראשון", replay: "שחזור הקלטה"}[fresh.status] || "דיווח מוקלט") +
+    (Number.isFinite(fresh.age_s) ? ` · התקבל לפני ${Math.round(fresh.age_s)} שניות` : "") +
+    (s.pose?.valid === false ? " · המיקום אינו מאומת" : "");
+  $("freshness").classList.toggle("warning", !simulated && fresh.status !== "fresh");
+  $("limits").textContent = simulated ? "הדמיית תנועה וחיישנים עם ליבת הניווט של XIAO. מידות המברשות והעמדה הן נתוני בדיקה, והטעינה מואצת. אין כאן מודל פיזיקלי לאבק או לזרימת אוויר." : "השרת אוסף דיווחים בלבד. תאים שלא נצפו אינם נחשבים נקיים. תנועה, טעינה ובטיחות מנוהלות מקומית ברובוט; ניתוק האתר אינו אישור לתנועה.";
+  renderInsights(s);
   $("profile").value = s.profile;
   $("scenario").value = s.scenario;
-  $("phase").textContent = phases[s.state];
-  $("coverage").innerHTML = `${s.coverage}<span>%</span>`;
-  $("battery").innerHTML = `${s.battery}<span>%</span>`;
+  $("phase").textContent = phases[s.state] || "ממתינים לדיווח";
+  $("coverage").innerHTML = `${s.coverage ?? "—"}<span>${s.coverage == null ? "" : "%"}</span>`;
+  $("battery").innerHTML = `${s.battery ?? "—"}<span>${s.battery == null ? "" : "%"}</span>`;
   $("pass").textContent =
     `${s.pass} / ${s.passes} ${s.pass_axis === "horizontal" ? "↔" : "↕"}`;
   $("clock").textContent = clock(s.time);
-  $("stats").textContent =
-    `מרחק ${s.distance} מ׳ · התנגשויות ${s.collisions} · מברשות מרכזיות ${s.truth_coverage}% מהרצפה · כולל צד ${s.truth_combined}%`;
+  $("stats").textContent = simulated ?
+    `מרחק ${s.distance} מ׳ · התנגשויות ${s.collisions} · מברשות מרכזיות ${s.truth_coverage}% מהרצפה · כולל צד ${s.truth_combined}%` : `זמן ניקיון שדווח ${clock(s.progress?.reported_cleaning_s || 0)} · פערים בדיווח ${s.progress?.gaps || 0}`;
   $("reason").textContent =
+    (s.dock_guard?.anchor_valid === false ? "מיקום העמדה אינו מאומת או זוהה מגע לא צפוי. התנועה עצרה ונדרשת בדיקה." : "") ||
     (s.state === "COMPLETE"
       ? `התוכנית הסתיימה. ${s.pending_main_m2} מ״ר מהרצפה המוכרת לא קיבלו מעבר מרכזי במעבר הזה; צהוב מציין מברשת צד בלבד.`
       : "") ||
@@ -98,7 +151,7 @@ function render(s) {
   $("profile").disabled = running;
   $("scenario").disabled = running;
   $("events").replaceChildren(
-    ...s.events
+    ...(s.events || [])
       .slice()
       .reverse()
       .map((e) => {
@@ -120,7 +173,7 @@ function render(s) {
   );
   for (const b of document.querySelectorAll("[data-fault]")) {
     const f = b.dataset.fault;
-    if (f in s.flags)
+    if (f in (s.flags || {}))
       b.setAttribute(
         "aria-pressed",
         String(f === "cliff" ? s.flags[f] : !s.flags[f]),
@@ -137,13 +190,15 @@ function draw() {
     W = 870,
     H = 630,
     scale = Math.min(W / (s.cols * s.resolution), H / (s.rows * s.resolution));
-  const p = (x, y) => [margin + x * scale, c.height - margin - y * scale];
+  const ox = s.map_origin?.x || 0, oy = s.map_origin?.y || 0;
+  const gridPoint = (x, y) => [margin + x * scale, c.height - margin - y * scale];
+  const p = (x, y) => gridPoint(x - ox, y - oy);
   ctx.clearRect(0, 0, c.width, c.height);
   ctx.fillStyle = "#e4eae8";
   ctx.fillRect(0, 0, c.width, c.height);
 
   s.cells.forEach((v, i) => {
-    const [x, y] = p(
+    const [x, y] = gridPoint(
       (i % s.cols) * s.resolution,
       (Math.floor(i / s.cols) + 1) * s.resolution,
     );
@@ -158,7 +213,7 @@ function draw() {
       const x = ((cell % s.cols) + (sub & 1) / 2) * s.resolution;
       const y =
         (Math.floor(cell / s.cols) + (sub >> 1) / 2 + 0.5) * s.resolution;
-      const point = p(x, y);
+      const point = gridPoint(x, y);
       ctx.fillRect(
         ...point,
         (scale * s.resolution) / 2 + 0.1,
@@ -171,7 +226,7 @@ function draw() {
   ctx.strokeStyle = "#b4462b";
   ctx.lineWidth = 2;
   for (const cell of s.contacts || []) {
-    const [x, y] = p(
+    const [x, y] = gridPoint(
       ((cell % s.cols) + 0.5) * s.resolution,
       (Math.floor(cell / s.cols) + 0.5) * s.resolution,
     );
@@ -186,7 +241,7 @@ function draw() {
     ctx.strokeStyle = "#c76832";
     ctx.lineWidth = 2;
     ctx.setLineDash([5, 4]);
-    for (const [a, b, d, e] of s.obstacles) {
+    for (const [a, b, d, e] of s.obstacles || []) {
       const [x, y] = p(a, e);
       ctx.strokeRect(x, y, (d - a) * scale, (e - b) * scale);
     }
@@ -205,8 +260,8 @@ function draw() {
     ctx.stroke();
     ctx.setLineDash([]);
   }
-  line(s.trace, "#7fbaa2", 2);
-  line([[s.pose.x, s.pose.y], ...s.path], "#00a6ac", 3, [6, 4]);
+  for (const segment of s.trace_segments || [s.trace || []]) line(segment, "#7fbaa2", 2);
+  if (s.pose && s.pose.valid !== false) line([[s.pose.x, s.pose.y], ...(s.path || [])], "#00a6ac", 3, [6, 4]);
   if (s.dirt) {
     const [x, y] = p(...s.dirt);
     ctx.strokeStyle = "#dca658";
@@ -216,6 +271,16 @@ function draw() {
     ctx.stroke();
     ctx.setLineDash([]);
   }
+  ctx.fillStyle = "#d98b4e55";
+  for (const cell of s.excluded || []) {
+    const [x, y] = gridPoint((cell % s.cols) * s.resolution, (Math.floor(cell / s.cols) + 1) * s.resolution);
+    ctx.fillRect(x, y, scale * s.resolution, scale * s.resolution);
+  }
+  ctx.fillStyle = "#526d69";
+  for (const [a,b,d,e] of s.dock_footprint || []) {
+    const [x,y] = p(a,e); ctx.fillRect(x,y,(d-a)*scale,(e-b)*scale);
+  }
+  if (s.dock && s.dock.valid !== false) {
   const [dx, dy] = p(s.dock.x, s.dock.y);
   ctx.fillStyle = "#00786d";
   ctx.fillRect(dx - 14, dy - 14, 28, 28);
@@ -223,6 +288,7 @@ function draw() {
   ctx.font = "20px Arial";
   ctx.textAlign = "center";
   ctx.fillText("ϟ", dx, dy + 7);
+  }
   if (s.checkpoint) {
     const [x, y] = p(...s.checkpoint);
     ctx.strokeStyle = "#c77735";
@@ -231,8 +297,10 @@ function draw() {
     ctx.arc(x, y, 9, 0, Math.PI * 2);
     ctx.stroke();
   }
+  if (s.pose && Number.isFinite(s.pose.x)) {
   const [rx, ry] = p(s.pose.x, s.pose.y);
   ctx.save();
+  ctx.globalAlpha = s.pose.valid === false ? 0.3 : 1;
   ctx.translate(rx, ry);
   ctx.rotate(-s.pose.yaw);
   ctx.shadowColor = "#203a4533";
@@ -256,6 +324,7 @@ function draw() {
   ctx.lineTo(0.15 * scale, 0);
   ctx.stroke();
   ctx.restore();
+  }
   ctx.strokeStyle = "#203a45";
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -323,7 +392,7 @@ async function reset() {
   $("profile-description").textContent =
     $("profile").value === "deep"
       ? "תנועה איטית, פקודת ניקוי גבוהה ושני מעברים."
-      : "תנועה רגילה וניקוי נוסף באזורים מלוכלכים.";
+      : "מעבר שיטתי אחד, עם השלמת קצוות בשטח שנצפה.";
 }
 $("reset").onclick = reset;
 $("profile").onchange = reset;
@@ -347,7 +416,25 @@ $("export").onclick = async () => {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
-fetch("/api/state")
-  .then((r) => r.json())
-  .then(render)
-  .catch((e) => ($("reason").textContent = e.message));
+$("service-date").value = new Date().toLocaleDateString("sv-SE", {timeZone: "Asia/Jerusalem"});
+$("service-form").onsubmit = async (e) => {
+  e.preventDefault();
+  try {
+    await api("maintenance/event", {part: $("service-part").value, action: $("service-action").value, date: $("service-date").value});
+    $("service-result").textContent = "הדיווח נשמר בהיסטוריה של מקור הנתונים הנוכחי.";
+    await refreshState();
+  } catch (error) { $("service-result").textContent = error.message; }
+};
+$("pets").onchange = async () => {
+  try { await api("maintenance/settings", {pets: $("pets").checked}); await refreshState(); }
+  catch (error) { $("service-result").textContent = error.message; }
+};
+async function refreshState() {
+  try {
+    const response = await fetch("/api/state", {cache: "no-store"});
+    if (!response.ok) throw Error("לא ניתן לקבל דיווח מהשרת");
+    render(await response.json());
+  } catch (e) { $("freshness").textContent = "אין חיבור לשרת · " + e.message; $("freshness").classList.add("warning"); }
+}
+refreshState();
+setInterval(() => { if (!running && !pending) refreshState(); }, 1000);

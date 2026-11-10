@@ -12,6 +12,10 @@ The XIAO application adds daily/deep coverage, observation-only dirt logging, fi
 
 For the browser behavior prototype: `python3 -m navigation.server`, then open `http://127.0.0.1:8766`. It runs the actual C++ Navigator through a local ctypes adapter; physics/localization/charging are simulated. Install a C++ compiler (clang++) first. `tests/navigation_native_test.cpp` tests the actual C++ firmware planner with independent simulated physics, including charging/resume and bounded recovery. See the setup document for the distinction and limits.
 
+The [dashboard](docs/DASHBOARD.md) ([Hebrew](docs/DASHBOARD-he.md)) now supports the simulator, read-only robot `/progress` reports and recorded replay, with source-separated SQLite history, maintenance dates and advisory battery analysis. Robot credentials stay on the server. Viewing the dashboard never starts the robot. Firmware now preserves a reusable occupancy map when starting a new mission, separates charging from active mission time, records explicit home-return causes and uses qualified local charging and [dock protection](docs/DOCK_GUARD.md). These are software implementations; physical calibration and commissioning remain required.
+
+The [smart cleaning plan](docs/SMART_CLEANING_PLAN.md) ([Hebrew](docs/SMART_CLEANING_PLAN-he.md)) tracks the implemented stages and remaining work. History/dirt-driven extra passes, complete edge-segment accounting and the rear-exhaust experiment remain separate pending stages; observation-only dirt logging does not activate them.
+
 The [hardware inventory](HARDWARE_INVENTORY.md) and [purchase record](AMAZON_ORDER.md) list the project parts. Check the [module audit](docs/assembly/en/MODULE_AUDIT.md) and [electrical review](docs/assembly/en/ELECTRICAL_REVIEW.md) for verified connections and the physical checks still needed. The power-cutoff sequence is documented in [English](docs/POWER_SHUTDOWN.md) and [Hebrew](docs/POWER_SHUTDOWN-he.md).
 
 ## Roomba Open Interface library

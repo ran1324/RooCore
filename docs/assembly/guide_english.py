@@ -3,7 +3,7 @@
 from copy import deepcopy
 import guide_content as source
 
-REVISION = '2026-11-10 • electronics + esp32-development • Revision 5 — integrated power sequencing'
+REVISION = '2026-11-10 • electronics + esp32-development • Revision 6 — charging, dock protection and progress reporting'
 SOURCES = deepcopy(source.SOURCES)
 source_titles = [
     'Pololu D36V28F5 — model and pins', 'Pololu #2810 — operation and schematic',
@@ -98,6 +98,7 @@ texts = {
       'On a normal shutdown, software stops accepting writes, finishes or cancels transmission, and detaches UART from the pins. D4 then drives LOW and D5 becomes an input with an internal pulldown. Only then does D3 go LOW to turn S1 off. No wire is unplugged.',
       'At startup, software holds the signals in their off state, raises D3 and continues polling robot sensors during rail settling. Only after the configured interval does it enable UART2 at 230400, 8N1, without an RX pullup. ROO_LIDAR_POWER_VERIFIED=false and ROO_LIDAR_RISE_MS=0 prevent operation before hardware qualification. The settling interval has not been measured.',
       'The same sequence handles normal shutdown, charging policy and battery cutoff. D8/OE control has been removed. Failure to open UART or send the scan command turns LiDAR off and latches a fault; there are no automatic repeated power-on attempts.',
+      'During charging, the local controller requires valid charger state before preparing LiDAR for departure. Preparation stays latched during warm-up; battery percentage alone is not a departure command. Charging does not consume the active cleaning budget. Dock geometry, departure and temperature remain unqualified until physical calibration; the server receives read-only progress reports.',
       'This handles intentional LiDAR shutdown while XIAO remains powered. It does not isolate signals during an unexpected rail collapse, switch failure or total controller shutdown. Reset and whole-system power-loss qualification remain separate requirements before robot use.'
     ], image_note='Seeed map: D4/GPIO5 and D5/GPIO6 are fifth and sixth down the left edge. Software routes UART to these pins, not D6/D7 printed TX/RX.',
     after='The harness defines 13 wires. TX/RX stay connected through every ordinary LiDAR shutdown. The sequence is integrated into the full RooCoreXiao application; it remains disabled by default pending hardware qualification. No flashing has been performed.')

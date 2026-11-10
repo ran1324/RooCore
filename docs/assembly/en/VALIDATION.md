@@ -1,6 +1,6 @@
 # Guide and firmware validation
 
-2026-11-10 · Revision 5. File, browser, host-model and compilation checks only. No flashing, robot operation, physical power cycles or LiDAR measurements.
+2026-11-10 · Revision 6. File, browser, host-model and compilation checks only. No flashing, robot operation, physical power cycles or LiDAR measurements.
 
 | Check | Scope / result |
 |---|---|
@@ -11,7 +11,7 @@
 | English version | Translated text over the same source geometry and wire IDs; English HTML/MD/CSV/JSON/SVG/draw.io; reciprocal language navigation |
 | Local links and kit | Link targets, ZIP CRC, current document/code entries and source snapshots checked by `check_artifacts.py` |
 | Browser | Desktop/mobile layout, images and interactive route highlighting checked; wide diagrams scroll inside their own container |
-| Firmware | Full XIAO defaults: 524259 Flash / 151148 static RAM bytes; enabled fixture: 529531 / 151156. BatteryMonitor and LinkSetup also built |
+| Firmware | Full XIAO defaults: 536135 Flash / 151708 static RAM bytes; enabled fixture: 544411 / 151716. BatteryMonitor and LinkSetup also built |
 | Host model | ASan/UBSan tests include 100 modeled LiDAR cycles, nonblocking startup, cancellation, timer wrap, stale RX, busy TX and latched partial-UART failure |
 
 The model enforces no positive controller signal source while LiDAR is commanded off. It does not model semiconductor leakage, capacitors, physical reset or brownout. `powerOff()` is shared by normal and battery-cutoff paths; it is not a hardware isolation guarantee.
@@ -36,3 +36,5 @@ The portable kit includes review snapshots, not the full build dependencies. Use
 The guide preserves the user corrections: no Mini-DIN cable purchase requirement; the fuse already exists and belongs in the positive branch near its source; one NOYITO is planned for Roomba, the other is spare.
 
 [English guide](RooCore-assembly.html) · [Electrical review](ELECTRICAL_REVIEW.md) · [Hebrew validation](../VALIDATION.md).
+
+Revision 6: all 92 Python tests, C++ ASan/UBSan checks and both full-firmware builds passed. Added charge/resume, dock guard, live map, history and maintenance tests. Earlier browser layout checks above describe the guide layout; this revision updated its content and checked artifact consistency. No hardware experiment was performed.

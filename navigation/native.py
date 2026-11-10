@@ -50,10 +50,9 @@ def library():
     global LIB
     if LIB is not None:
         return LIB
-    sources = [
-        ROOT / "navigation/native_bridge.cpp",
-        ROOT / "lib/RooNavigation/src/RooNavigation.h",
-    ]
+    sources = [ROOT / "navigation/native_bridge.cpp"] + sorted(
+        (ROOT / "lib/RooNavigation/src").glob("*.h")
+    )
     digest = hashlib.sha256(b"".join(p.read_bytes() for p in sources)).hexdigest()[:16]
     folder = ROOT / ".roocore-build"
     folder.mkdir(exist_ok=True)
@@ -150,13 +149,18 @@ class NativeMission:
         self.passes = v[3]
         self.cleared_obstacles = v[11]
         self.obstacle_waits = v[12]
+        self.active_ms = v[13]
+        self.return_cause = ("unknown", "manual", "battery", "completed")[v[14]]
+        self.return_at_ms = v[15]
         self.contacts = [c for c, m in enumerate(self._map[7::8]) if m]
+        self.excluded = [c for c, m in enumerate(self._map[6::8]) if m]
         self.skipped = v[4]
         self.rooms = v[5]
         self.edge_segments = v[6]
         self.edge_incomplete = v[7]
         self.target = (self._f[0], self._f[1]) if v[8] >= 0 else None
         self.checkpoint = self.grid.cell(self._f[2], self._f[3])
+        self.dock_guard = {"issue": int(self._f[4]), "mode": int(self._f[5]), "anchor_valid": bool(self._f[6]), "synthetic_geometry": True}
         self.grid.cells = list(self._map[0::8])
         self.grid.safe = {i for i, x in enumerate(self._map[3::8]) if x}
         masks = self._map[1::8]
@@ -215,11 +219,14 @@ class NativeMission:
         self._command(2, pose)
 
     def _input(self, obs):
-        values = (C.c_float * 185)()
+        values = (C.c_float * 191)()
         values[0:4] = [obs.pose.x, obs.pose.y, obs.pose.yaw, obs.battery]
         for angle, r in obs.scan:
             values[4 + round(angle * 90 / 3.141592653589793) % 180] = r
         values[184] = obs.dirt
+        values[185:191] = [obs.charger_state, obs.charger_sources,
+                          obs.charger_time, obs.battery_valid,
+                          obs.charge_contact_confirmed, obs.charge_ready]
         flags = (
             int(obs.localized)
             | (2 if obs.time - obs.scan_time <= 0.4 and len(obs.scan) >= 90 else 0)
@@ -231,6 +238,8 @@ class NativeMission:
             | (128 if obs.charging else 0)
             | (512 if self.command.cleaning_pwm else 0)
             | (1024 if self.command.side_pwm else 0)
+            | (2048 if obs.charger_valid else 0)
+            | (4096 if obs.dock_moved else 0)
         )
         return values, flags
 

@@ -20,6 +20,31 @@
 #define ROO_DOCK_EXIT_VERIFIED false // known clear, level floor corridor behind the dock
 #define ROO_DOCK_EXIT_METERS 0.60f // measure approach/exit distance on the real base
 
+// Native charger remains responsible for the battery. These qualify departure only.
+#define ROO_CHARGE_DEPARTURE_VERIFIED false
+#define ROO_CHARGE_MISSION_READY false // false = native completion; true = mission energy policy
+#define ROO_CHARGE_RESUME_PERCENT 80.0f // mission policy, NOT a battery longevity ceiling
+#define ROO_CHARGE_NATIVE_MIN_PERCENT 100.0f // qualify with native maintenance state on actual pack
+#define ROO_CHARGE_MIN_C 0 // actual pack-temperature operating bounds require validation
+#define ROO_CHARGE_MAX_C 0 // equal bounds deliberately prevent departure
+#define ROO_PROGRESS_INTERVAL_MS 1000 // initial telemetry cadence, not a physical timing guarantee
+
+// Measured Home Base/cable footprint and swept body clearance. Zero = motion held.
+#define ROO_DOCK_GEOMETRY_VERIFIED false
+#define ROO_DOCK_FRONT_X_M 0.0f
+#define ROO_DOCK_FRONT_Y_M 0.0f
+#define ROO_DOCK_OUTWARD_YAW_RAD 0.0f
+#define ROO_DOCK_DEPTH_M 0.0f
+#define ROO_DOCK_HALF_WIDTH_M 0.0f
+#define ROO_DOCK_MARGIN_M 0.0f
+#define ROO_DOCK_BODY_RADIUS_M 0.0f // bounds body and fixed additions
+#define ROO_DOCK_CORRIDOR_MIN_M 0.0f
+#define ROO_DOCK_CORRIDOR_MAX_M 0.0f
+#define ROO_DOCK_CORRIDOR_HALF_WIDTH_M 0.0f
+#define ROO_DOCK_HEADING_TOLERANCE_RAD 0.0f
+#define ROO_DOCK_MAX_LINEAR_MPS 0.0f
+#define ROO_DOCK_MAX_ANGULAR_RPS 0.0f
+
 // Provisional geometry accepted for development; replace after measuring the robot.
 #define ROO_BRUSH_GEOMETRY_CALIBRATED false
 #define ROO_BRUSH_WIDTH_METERS 0.16f

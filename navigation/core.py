@@ -34,6 +34,16 @@ class Observation:
     charging: bool = False
     dirt: int = 0
     frame: str = "home"
+    # Explicit simulated charger packets. The reference Python planner ignores
+    # these; the production C++ planner requires them before charge/resume.
+    battery_valid: bool = True
+    charger_valid: bool = True
+    charger_state: int = 0
+    charger_sources: int = 0
+    charger_time: float = 0
+    charge_contact_confirmed: bool = False
+    charge_ready: bool = False
+    dock_moved: bool = False
 
 
 @dataclass(frozen=True)

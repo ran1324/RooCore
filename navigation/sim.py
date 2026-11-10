@@ -15,6 +15,7 @@ class World:
             raise ValueError("unknown scenario")
         self.width, self.height = 4.8, 3.6
         self.obstacles = []
+        self.low_obstacles = []  # Collision truth below the simulated LiDAR plane.
         if scenario in ("furniture", "battery", "dirt"):
             self.obstacles = [(1.8, 1.4, 2.4, 2.1), (3.5, 0.6, 4.1, 1.2)]
         if scenario == "doorway":
@@ -31,7 +32,7 @@ class World:
             return True
         return any(
             math.hypot(x - max(a, min(c, x)), y - max(b, min(d, y))) < radius
-            for a, b, c, d in self.obstacles
+            for a, b, c, d in self.obstacles + self.low_obstacles
         )
 
     def ray(self, x, y, angle):
@@ -74,10 +75,20 @@ class Simulation:
         self.mission = (
             NativeMission(profile) if engine == "native" else Mission(profile)
         )
+        if isinstance(self.mission, NativeMission):
+            self.world.low_obstacles = [(0.05, 0.515, 0.25, 0.835)]
         self.pose = self.mission.dock
         self.battery = 26.0 if scenario == "battery" else 90.0
         self.time, self.distance, self.collisions = 0.0, 0.0, 0
+        self.brush_s = self.vacuum_s = 0.0
+        self.dock_brush_contacts = 0
         self.docked, self.charging = False, False
+        self.charger_valid = True
+        self.charger_fault = False
+        self.charger_reconditioning = False
+        self.charger_waiting = False
+        self.dock_moved = False
+        self.charge_rate = 3.0  # Percent/s: accelerated synthetic fixture only.
         self.lidar_ok, self.localized = True, True
         self.cliff, self.bumper = False, False
         self.trace = []
@@ -121,6 +132,17 @@ class Simulation:
             docked=self.docked,
             charging=self.charging,
             dirt=dirt,
+            charger_valid=self.charger_valid,
+            charger_state=(5 if self.charger_fault else 4 if self.charger_waiting
+                           else 1 if self.charger_reconditioning else
+                           2 if self.charging and self.battery < 100 else
+                           3 if self.docked and self.battery >= 100 else 0),
+            charger_sources=2 if self.docked else 0,
+            charger_time=self.time,
+            charge_contact_confirmed=self.docked and self.charger_valid,
+            charge_ready=(self.docked and self.charger_valid and self.battery >= 100
+                          and not (self.charger_fault or self.charger_reconditioning or self.charger_waiting)),
+            dock_moved=self.dock_moved,
         )
 
     def step(self, count=1):
@@ -133,8 +155,9 @@ class Simulation:
                     self.temporary_obstacles.remove((box, expiry))
             self.command = self.mission.tick(self.observation())
             cmd = self.command
-            if cmd.action == "drive":
-                self.docked, self.charging = False, False
+            if cmd.action in ("drive", "seek_dock"):
+                if not isinstance(self.mission, NativeMission) or self.pose.x > .45:
+                    self.docked, self.charging = False, False
                 # Integrate at 20 ms, collision geometry independent of planner.
                 for _ in range(10):
                     yaw = wrap(self.pose.yaw + cmd.turn * dt / 10)
@@ -157,13 +180,25 @@ class Simulation:
                         self.bumper = True
                         break
                     self.pose = Pose(x, y, yaw)
+                    if isinstance(self.mission, NativeMission) and self.mission.dock_guard["mode"] == 0:
+                        bx = x + .10 * math.cos(yaw) + .13 * math.sin(yaw)
+                        by = y + .10 * math.sin(yaw) - .13 * math.cos(yaw)
+                        if any(math.hypot(bx - max(a, min(c, bx)), by - max(b, min(d, by))) < .10
+                               for a, b, c, d in self.world.low_obstacles):
+                            self.dock_brush_contacts += 1
                     self.distance += abs(cmd.speed) * dt / 10
+                    if cmd.cleaning_pwm:
+                        self.brush_s += dt / 10
+                        self.vacuum_s += dt / 10
                     if cmd.cleaning_pwm or getattr(cmd, "side_pwm", 0):
                         self.mark_truth(cmd)
                 self.battery = max(
                     0, self.battery - dt * 0.004 - abs(cmd.speed) * dt * 0.18
                 )
-            if cmd.action == "seek_dock":
+            if cmd.action == "seek_dock" and isinstance(self.mission, NativeMission):
+                if self.pose.x <= .44 and abs(self.pose.y - .675) < .08:
+                    self.docked = self.charging = True
+            elif cmd.action == "seek_dock":
                 self.dock_time += dt
                 if (
                     self.dock_time >= 2
@@ -176,9 +211,9 @@ class Simulation:
                     self.docked = self.charging = True
             else:
                 self.dock_time = 0
-            if self.docked and self.charging:
+            if self.docked and self.charging and not (self.charger_fault or self.charger_waiting):
                 self.battery = min(
-                    100, self.battery + dt * 3
+                    100, self.battery + dt * self.charge_rate
                 )  # accelerated test charger
             if (
                 len(self.trace) == 0
@@ -224,6 +259,12 @@ class Simulation:
             self.localized = not self.localized
         elif name == "cliff":
             self.cliff = not self.cliff
+        elif name in ("charger_fault", "charger_waiting", "charger_reconditioning", "charger_valid"):
+            setattr(self, name, not getattr(self, name))
+        elif name == "dock_moved":
+            self.dock_moved = True
+        elif name == "accidental_charge":
+            self.docked = self.charging = True
         elif name in ("obstacle", "moving_obstacle"):
             # Place a 30 cm object ahead, outside the robot footprint.
             x = self.pose.x + 0.65 * math.cos(self.pose.yaw)
@@ -253,10 +294,15 @@ class Simulation:
             "state": m.state,
             "reason": m.reason,
             "time": round(self.time, 1),
+            "active_ms": getattr(m, "active_ms", round(self.time * 1000)),
+            "brush_s": round(self.brush_s, 3),
+            "vacuum_s": round(self.vacuum_s, 3),
+            "return_cause": getattr(m, "return_cause", "unknown"),
             "pose": vars(self.pose),
             "battery": round(self.battery, 1),
             "distance": round(self.distance, 2),
             "collisions": self.collisions,
+            "dock_brush_contacts": self.dock_brush_contacts,
             "pass": m.pass_index + 1,
             "passes": len(m.covered),
             "coverage": (
@@ -301,6 +347,7 @@ class Simulation:
             ),
             "side_covered": getattr(m, "side_covered", []),
             "contacts": getattr(m, "contacts", []),
+            "excluded": getattr(m, "excluded", []),
             "cleared_obstacles": getattr(m, "cleared_obstacles", 0),
             "obstacle_waits": getattr(m, "obstacle_waits", 0),
             "temporary_obstacles": len(self.temporary_obstacles),
@@ -333,6 +380,8 @@ class Simulation:
                 "side_radius": 0.10,
                 "calibrated": False,
             },
+            "charger": {"valid": self.charger_valid, "state": self.observation().charger_state,
+                        "source": "synthetic", "accelerated": True, "charge_rate_pct_s": self.charge_rate},
             "cells": m.grid.cells,
             "cols": m.grid.cols,
             "rows": m.grid.rows,
@@ -347,6 +396,8 @@ class Simulation:
             "events": m.events,
             "trace": self.trace,
             "obstacles": self.world.obstacles,
+            "dock_footprint": self.world.low_obstacles,
+            "dock_guard": getattr(m, "dock_guard", None),
             "dirt": self.world.dirt,
             "flags": {
                 "lidar": self.lidar_ok,

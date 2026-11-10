@@ -54,6 +54,7 @@ enum class Reason : uint8_t {
   Operator,
   Restore
 };
+enum class ReturnCause : uint8_t { None, Manual, Battery, Completed };
 enum class Action : uint8_t { Stop, Drive, SeekDock, Charge };
 struct Input {
   uint32_t now = 0, poseMs = 0, scanMs = 0, sensorsMs = 0;
@@ -63,6 +64,10 @@ struct Input {
   bool localized = false, scanValid = false, sensorsValid = false;
   bool cliff = false, wheelDrop = false, bumper = false, overcurrent = false;
   bool docked = false, charging = false;
+  bool batteryValid = true;
+  bool chargerValid = false, chargeContactConfirmed = false, chargeReady = false;
+  uint8_t chargerState = 0, chargerSources = 0;
+  uint32_t chargerMs = 0;
   bool cleaningActive = false, sideBrushActive = false;
   bool retreatVerified = false; // rear corridor was recently traversed with valid floor sensors
   uint8_t dirt = 0;
@@ -74,6 +79,19 @@ struct Output {
   uint8_t pwm = 0, sidePwm = 255; // 255 means follow main-brush PWM
   Action action = Action::Stop;
 };
+// Authorize the trajectory corresponding to the integer wheel command, including saturation.
+inline bool quantizeMotion(Output &out, float separation, int &left, int &right) {
+  if (!isfinite(out.speed) || !isfinite(out.turn) || !isfinite(separation) || separation <= 0)
+    return false;
+  const float l = (out.speed - out.turn * separation / 2) * 1000;
+  const float r = (out.speed + out.turn * separation / 2) * 1000;
+  if (!isfinite(l) || !isfinite(r)) return false;
+  left = int(lroundf(fmaxf(-250, fminf(250, l))));
+  right = int(lroundf(fmaxf(-250, fminf(250, r))));
+  out.speed = (left + right) / 2000.f;
+  out.turn = (right - left) / (1000 * separation);
+  return true;
+}
 struct Config {
   int cols = 128, rows = 128;
   float resolution = .1f;
@@ -91,6 +109,14 @@ struct Config {
   uint32_t targetTimeoutMs = 120000, missionTimeoutMs = 7200000;
   unsigned maxSkipped = 8;
 };
+inline bool sameMapConfiguration(const Config &a, const Config &b) {
+  return a.cols == b.cols && a.rows == b.rows && a.resolution == b.resolution &&
+      a.originX == b.originX && a.originY == b.originY && a.radius == b.radius &&
+      a.margin == b.margin && a.metersPerTick == b.metersPerTick &&
+      a.wheelSeparation == b.wheelSeparation && a.brushWidth == b.brushWidth &&
+      a.brushDepth == b.brushDepth && a.brushOffset == b.brushOffset &&
+      a.sideX == b.sideX && a.sideY == b.sideY && a.sideRadius == b.sideRadius;
+}
 
 // No runtime allocations or unbounded retries. Allocate this object in PSRAM on ESP32.
 class Navigator {
@@ -112,6 +138,10 @@ public:
   uint8_t pass = 0, passes = 1, recoveries = 0;
   unsigned skipped = 0, completedCells = 0;
   bool finished = false;
+  uint32_t activeMs = 0, returnAt = 0, returnSequence = 0;
+  ReturnCause returnCause = ReturnCause::None;
+  bool (*ordinaryCenterAllowed)(void *, float, float) = nullptr;
+  void *ordinaryGuardContext = nullptr;
   explicit Navigator(Config config = Config()) : cfg(config) {}
   int count() const { return cfg.cols * cfg.rows; }
   int cell(float x, float y) const {
@@ -137,12 +167,19 @@ public:
            cfg.sideX >= 0 && cfg.sideX <= .2f && cfg.sideY < 0 && cfg.sideY >= -.2f &&
            cfg.sideRadius >= .05f && cfg.sideRadius <= .15f;
   }
-  void start(bool deep, Pose home, uint32_t now) {
+  void start(bool deep, Pose home, uint32_t now, bool reuseMap = false) {
     if (!configureValid()) {
       fault(Reason::MapBoundary);
       return;
     }
-    memset(cells, 0, sizeof cells);
+    if (reuseMap && mapConfigKnown_ && !sameMapConfiguration(mapConfig_, cfg)) {
+      fault(Reason::Restore);
+      return;
+    }
+    mapConfig_ = cfg;
+    mapConfigKnown_ = true;
+    if (!reuseMap)
+      memset(cells, 0, sizeof cells);
     memset(covered, 0, sizeof covered);
     memset(sideCovered, 0, sizeof sideCovered);
     memset(edgeSeen, 0, sizeof edgeSeen);
@@ -180,7 +217,11 @@ public:
     skipped = 0;
     completedCells = 0;
     finished = false;
-    missionStart_ = now;
+    activeMs = 0;
+    clockAt_ = now;
+    returnCause = ReturnCause::None;
+    returnAt = 0;
+    dockAligning_ = false;
     switchState(State::Cleaning, now);
     reason = Reason::None;
   }
@@ -198,11 +239,18 @@ public:
     if (reason == Reason::RecoveryExhausted || reason == Reason::NoProgress)
       return false;
     // No reset of recovery budget. A new mission is an explicit operator action.
-    switchState(resume_, in.now);
+    switchState(in.chargerValid && (in.chargerSources & 2) && resume_ == State::Resuming
+                    ? State::Charging : resume_, in.now);
     reason = Reason::None;
     return true;
   }
-  void goHome(const Input &in, bool done = false) {
+  void goHome(const Input &in, bool done = false, ReturnCause cause = ReturnCause::Manual) {
+    if (state == State::Returning || state == State::Docking || state == State::Charging)
+      return; // an HTTP retry must not overwrite the original event or checkpoint
+    returnCause = done ? ReturnCause::Completed : cause;
+    returnAt = in.now;
+    ++returnSequence;
+    dockAligning_ = false;
     if (!cfg.homeKnown) {
       finished = done;
       switchState(State::Docking, in.now);
@@ -214,6 +262,13 @@ public:
     finished = done;
     switchState(State::Returning, in.now);
   }
+  void waitOnDock(uint32_t now) { switchState(State::Charging, now); }
+  void clearMap(uint32_t now) {
+    if (!configureValid()) { fault(Reason::MapBoundary); return; }
+    start(false, dock, now, false);
+    switchState(State::Idle, now);
+  }
+  void restoredMapConfiguration() { mapConfig_ = cfg; mapConfigKnown_ = true; }
   void fault(Reason why) {
     if (state != State::Fault)
       resume_ = state;
@@ -226,7 +281,16 @@ public:
   bool wallRetreat() const { return state == State::Edging && edgePhase_ == 7; }
   bool wallApproach() const { return state == State::Edging && edgePhase_ == 6; }
   bool roomTransit() const { return roomTransit_; }
-  bool allowsMotion(Pose p, float speed, float turn) const {
+  bool allowsMotion(Pose p, float speed, float turn, bool qualifiedDockAccess = false) const {
+    Pose checked = p;
+    if (ordinaryCenterAllowed && !qualifiedDockAccess)
+      for (int j = 0; j <= 5; ++j) {
+        if (!ordinaryCenterAllowed(ordinaryGuardContext, checked.x, checked.y))
+          return false;
+        checked.x += speed * cosf(checked.yaw) * .1f;
+        checked.y += speed * sinf(checked.yaw) * .1f;
+        checked.yaw += turn * .1f;
+      }
     if (state != State::Cleaning || roomTransit_ || !roomReady_)
       return true;
     for (int j = 0; j < 5; ++j) {
@@ -319,6 +383,7 @@ public:
     State s = state == State::Fault || state == State::Paused ? resume_ : state;
     return s == State::Yielding ? waitResume_ : s;
   }
+  State savedCleaningPhase() const { return cleaningReturn_; }
   void yieldForObstacle(const Input &in) { beginYield(in, target_); }
   bool nearbyContact(Pose pose) const {
     for (int c = 0; c < count(); ++c) {
@@ -330,22 +395,26 @@ public:
     }
     return false;
   }
-  void restorePaused(State prior, uint32_t now) {
+  void restorePaused(State prior, uint32_t now, uint32_t elapsed = 0,
+                     State cleaningPhase = State::Cleaning) {
     resume_ = prior == State::Docking ? State::Returning : prior;
-    if (prior == State::Edging) {
+    if (prior == State::Edging || cleaningPhase == State::Edging) {
       edgePhase_ = 0;
       edgeStarted_ = now;
     }
-    cleaningReturn_ = prior == State::Edging ? State::Edging : State::Cleaning;
+    cleaningReturn_ = prior == State::Edging ? State::Edging
+        : cleaningPhase == State::Edging || cleaningPhase == State::Touchup ? cleaningPhase : State::Cleaning;
     switchState(State::Paused, now);
     reason = Reason::Restore;
-    missionStart_ = now;
+    activeMs = elapsed;
+    clockAt_ = now;
     roomSeed_ = checkpoint;
     roomReady_ = false;
   }
 
   Output tick(const Input &in, bool remote = false) {
     Output stop;
+    accountTime(in.now);
     if (state == State::Idle || state == State::Paused || state == State::Fault ||
         state == State::Complete)
       return stop;
@@ -354,7 +423,7 @@ public:
       fault(bad);
       return stop;
     }
-    if (uint32_t(in.now - missionStart_) > cfg.missionTimeoutMs) {
+    if (activeMs > cfg.missionTimeoutMs) {
       fault(Reason::NoProgress);
       return stop;
     }
@@ -426,7 +495,13 @@ public:
       return out;
     }
     if (state == State::Docking) {
-      if (in.docked && in.charging) {
+      if (in.chargerValid && uint32_t(in.now - in.chargerMs) <= 200 &&
+          (in.chargerSources & 2) && in.chargerState == 5) {
+        fault(Reason::ChargeLost);
+        return stop;
+      }
+      if (in.chargerValid && uint32_t(in.now - in.chargerMs) <= 200 &&
+          in.chargeContactConfirmed && (in.chargerSources & 2)) {
         switchState(finished || !cfg.homeKnown ? State::Complete : State::Charging, in.now);
         return stop;
       }
@@ -439,11 +514,16 @@ public:
       return out;
     }
     if (state == State::Charging) {
-      if (!in.docked || !in.charging) {
+      if (!in.chargerValid || uint32_t(in.now - in.chargerMs) > 200) {
+        fault(Reason::Telemetry);
+        return stop;
+      }
+      if (!(in.chargerSources & 2) || in.chargerState == 5) {
         fault(Reason::ChargeLost);
         return stop;
       }
-      if (in.battery >= 80 && in.localized && in.scanValid && uint32_t(in.now - in.scanMs) <= 400 &&
+      if (in.chargeReady && in.batteryValid && (in.chargerState == 2 || in.chargerState == 3) &&
+          in.localized && in.scanValid && uint32_t(in.now - in.scanMs) <= 400 &&
           uint32_t(in.now - in.poseMs) <= 300) {
         switchState(State::Resuming, in.now);
         return stop;
@@ -498,7 +578,7 @@ public:
     if ((state == State::Cleaning || state == State::Edging || state == State::Touchup ||
          state == State::Resuming) &&
         in.battery <= 25 && safe[current])
-      goHome(in);
+      goHome(in, false, ReturnCause::Battery);
     if (state == State::Returning || state == State::Resuming) {
       const int goal = state == State::Returning ? home : cell(checkpoint.x, checkpoint.y);
       if (goal < 0 || !safe[goal]) {
@@ -508,6 +588,17 @@ public:
       bool reached = false;
       Output out = follow(in, goal, reached, 0);
       if (reached) {
+        if (state == State::Returning && fabsf(wrap(dock.yaw - in.pose.yaw)) > .08f) {
+          if (!dockAligning_) { dockAligning_ = true; dockAlignAt_ = in.now; }
+          if (uint32_t(in.now - dockAlignAt_) >= 15000) {
+            fault(Reason::NoProgress);
+            return stop;
+          }
+          out.action = Action::Drive;
+          out.speed = 0;
+          out.turn = wrap(dock.yaw - in.pose.yaw) > 0 ? .4f : -.4f;
+          return out;
+        }
         switchState(state == State::Returning ? State::Docking : cleaningReturn_, in.now);
         return stop;
       }
@@ -702,11 +793,17 @@ public:
               break;
             }
           }
-        safe[c] = ok;
+        const Pose candidate = center(c);
+        safe[c] = ok && (!ordinaryCenterAllowed ||
+            ordinaryCenterAllowed(ordinaryGuardContext, candidate.x, candidate.y));
       }
   }
 
 private:
+  Config mapConfig_;
+  bool mapConfigKnown_ = false;
+  bool dockAligning_ = false;
+  uint32_t dockAlignAt_ = 0;
   int16_t parent_[MaxCells]{}, queue_[MaxCells]{}, path_[MaxCells]{};
   uint8_t hits_[MaxCells]{}, free_[MaxCells]{}, centerFree_[MaxCells]{}, freeVotes_[MaxCells]{},
       clearBits_[MaxCells]{};
@@ -737,12 +834,20 @@ private:
   Pose edgeStart_, edgePrevious_, edgeExit_;
   float edgeHeading_ = 0, edgeTravel_ = 0, cornerYaw_ = 0;
   bool edgeClosing_ = false;
-  uint32_t stateSince_ = 0, targetSince_ = 0, progressSince_ = 0, missionStart_ = 0,
+  uint32_t stateSince_ = 0, targetSince_ = 0, progressSince_ = 0, clockAt_ = 0,
            stableSince_ = 0;
   float bestDistance_ = 1e9f;
   State resume_ = State::Cleaning;
   Pose recoveryOrigin_;
+  void accountTime(uint32_t now) {
+    const uint32_t elapsed = uint32_t(now - clockAt_);
+    clockAt_ = now;
+    if (state != State::Idle && state != State::Paused && state != State::Fault &&
+        state != State::Complete && state != State::Charging)
+      activeMs = UINT32_MAX - activeMs < elapsed ? UINT32_MAX : activeMs + elapsed;
+  }
   void switchState(State s, uint32_t now) {
+    accountTime(now);
     state = s;
     sweepValid_ = false;
     stateSince_ = now;
@@ -753,7 +858,8 @@ private:
   }
   Reason invalid(const Input &in) const {
     if (!isfinite(in.pose.x) || !isfinite(in.pose.y) || !isfinite(in.pose.yaw) ||
-        !isfinite(in.battery) || in.battery < 0 || in.battery > 100)
+        (state != State::Charging &&
+         (!in.batteryValid || !isfinite(in.battery) || in.battery < 0 || in.battery > 100)))
       return Reason::Telemetry;
     if (!in.sensorsValid || uint32_t(in.now - in.sensorsMs) > 200)
       return Reason::Telemetry;
@@ -761,7 +867,7 @@ private:
       return Reason::Cliff;
     if (in.overcurrent)
       return Reason::Overcurrent;
-    if (in.battery <= 6 && !(in.docked && in.charging))
+    if (in.battery <= 6 && !(in.chargerValid && (in.chargerSources & 2)))
       return Reason::Battery;
     if (state == State::Charging)
       return Reason::None;

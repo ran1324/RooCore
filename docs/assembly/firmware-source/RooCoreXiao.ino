@@ -1,7 +1,9 @@
 #include <Arduino.h>
 #include <CarpetBoost.h>
+#include <ChargeSupervisor.h>
 #include <ControlArbiter.h>
 #include <DirtMonitor.h>
+#include <DockGuard.h>
 #include <LittleFS.h>
 #include <NavigationHelp.h>
 #include <PowerShutdown.h>
@@ -18,6 +20,35 @@
 #include "config.local.h"
 #else
 #include "config.example.h"
+#endif
+#ifndef ROO_CHARGE_DEPARTURE_VERIFIED
+#define ROO_CHARGE_DEPARTURE_VERIFIED false
+#define ROO_CHARGE_MISSION_READY false
+#define ROO_CHARGE_RESUME_PERCENT 80.0f
+#define ROO_CHARGE_NATIVE_MIN_PERCENT 100.0f
+#define ROO_CHARGE_MIN_C 0
+#define ROO_CHARGE_MAX_C 0
+#endif
+#ifndef ROO_PROGRESS_INTERVAL_MS
+#define ROO_PROGRESS_INTERVAL_MS 1000
+#endif
+static_assert(ROO_PROGRESS_INTERVAL_MS >= 500 && ROO_PROGRESS_INTERVAL_MS <= 60000,
+              "Progress cadence must be bounded");
+#ifndef ROO_DOCK_GEOMETRY_VERIFIED
+#define ROO_DOCK_GEOMETRY_VERIFIED false
+#define ROO_DOCK_FRONT_X_M 0.0f
+#define ROO_DOCK_FRONT_Y_M 0.0f
+#define ROO_DOCK_OUTWARD_YAW_RAD 0.0f
+#define ROO_DOCK_DEPTH_M 0.0f
+#define ROO_DOCK_HALF_WIDTH_M 0.0f
+#define ROO_DOCK_MARGIN_M 0.0f
+#define ROO_DOCK_BODY_RADIUS_M 0.0f
+#define ROO_DOCK_CORRIDOR_MIN_M 0.0f
+#define ROO_DOCK_CORRIDOR_MAX_M 0.0f
+#define ROO_DOCK_CORRIDOR_HALF_WIDTH_M 0.0f
+#define ROO_DOCK_HEADING_TOLERANCE_RAD 0.0f
+#define ROO_DOCK_MAX_LINEAR_MPS 0.0f
+#define ROO_DOCK_MAX_ANGULAR_RPS 0.0f
 #endif
 #ifndef ROO_LIDAR_POWER_VERIFIED
 #define ROO_LIDAR_POWER_VERIFIED false
@@ -86,6 +117,12 @@ roonav::Odometry odometry;
 roonav::TminiPlus lidar;
 roonav::ControlArbiter arbiter;
 roonav::PowerShutdown powerShutdown;
+roonav::ChargeSupervisor chargeSupervisor;
+roonav::DockGuard dockGuard;
+uint32_t dockCalibrationKey = 0;
+uint32_t chargeWheelAt = 0, chargeWheelGeneration = 0;
+uint16_t chargeLeft = 0, chargeRight = 0;
+bool chargeWheelsKnown = false;
 bool powerStreamResync = false;
 uint32_t powerStreamResyncAt = 0;
 constexpr char PowerIntentPath[] = "/power-cutoff";
@@ -93,6 +130,22 @@ WebServer web(80);
 QueueHandle_t requests;
 SemaphoreHandle_t statusMutex;
 String publishedStatus, publishedHelpMap;
+char bootId[17]{}, missionId[40]{}, mapId[40]{}, missionStartBoot[17]{}, returnBoot[17]{};
+uint32_t missionCounter = 0, missionStartedAt = 0, mapRevision = 0, dockAnchorRevision = 0;
+uint32_t observedReturnSequence = 0, progressSequence = 0, lastProgress = 0;
+struct ProgressSnapshot {
+  bool valid = false, localized = false, anchored = false;
+  uint32_t at = 0, sequence = 0, revision = 0, anchorRevision = 0;
+  roonav::Config config;
+  roonav::Pose pose, staging;
+  roonav::DockGuard::Config dockConfig;
+  char boot[17]{}, mission[40]{}, map[80]{}, status[12000]{};
+  int8_t cells[roonav::Navigator::MaxCells];
+  uint8_t covered[roonav::Navigator::MaxCells], side[roonav::Navigator::MaxCells];
+  uint8_t excluded[roonav::Navigator::MaxCells];
+};
+ProgressSnapshot *progressPublished = nullptr, *progressServing = nullptr;
+SemaphoreHandle_t progressMutex;
 
 struct Request {
   char action[24];
@@ -101,7 +154,7 @@ struct Request {
   roonav::Pose candidate, reference;
 };
 struct SavedMission {
-  uint32_t magic = 0x524f4f31, version = 4, sequence = 0, crc = 0;
+  uint32_t magic = 0x524f4f31, version = 5, sequence = 0, crc = 0;
   roonav::Config config;
   roonav::Pose dock, checkpoint, pose;
   uint8_t state, pass, passes, recoveries;
@@ -112,6 +165,11 @@ struct SavedMission {
   uint8_t sideCovered[roonav::Navigator::MaxCells], edgeSeen[roonav::Navigator::MaxCells];
   uint8_t contacts[roonav::Navigator::MaxCells], retries[roonav::Navigator::MaxCells];
   uint32_t edgeSegments, edgeIncomplete;
+  uint32_t activeMs = 0, mapRevision = 0, dockAnchorRevision = 0;
+  uint32_t missionStartedAt = 0, returnAt = 0, returnSequence = 0;
+  uint8_t returnCause = 0, cleaningPhase = 0;
+  uint32_t dockCalibration = 0;
+  char missionId[40]{}, mapId[40]{}, missionStartBoot[17]{}, returnBoot[17]{};
 };
 SavedMission saved;
 bool undocking = false, startAfterUndock = false, deepAfterUndock = false;
@@ -146,6 +204,56 @@ uint32_t dirtRejected = 0;
 bool stasisMaintenance = false;
 uint32_t stasisMaintenanceAt = 0, lastStasisGeneration = 0;
 
+bool ordinaryCenterAllowed(void *context, float x, float y) {
+  const auto *guard = static_cast<roonav::DockGuard *>(context);
+  return !guard->blocksOrdinaryCell(x, y, primaryNavigator->cfg.resolution * .5f);
+}
+void configureDockGuard(uint32_t revision) {
+  roonav::DockGuard::Config cfg;
+  cfg.configured = cfg.verified = ROO_DOCK_GEOMETRY_VERIFIED && ROO_BRUSH_GEOMETRY_CALIBRATED;
+  cfg.anchorRevision = revision;
+  cfg.frontX = ROO_DOCK_FRONT_X_M; cfg.frontY = ROO_DOCK_FRONT_Y_M;
+  cfg.yaw = ROO_DOCK_OUTWARD_YAW_RAD;
+  cfg.depth = ROO_DOCK_DEPTH_M; cfg.halfWidth = ROO_DOCK_HALF_WIDTH_M;
+  cfg.margin = ROO_DOCK_MARGIN_M; cfg.bodyRadius = ROO_DOCK_BODY_RADIUS_M;
+  cfg.sideX = ROO_SIDE_BRUSH_X_METERS; cfg.sideY = ROO_SIDE_BRUSH_Y_METERS;
+  cfg.sideRadius = ROO_SIDE_BRUSH_RADIUS_METERS;
+  cfg.corridorMinX = ROO_DOCK_CORRIDOR_MIN_M; cfg.corridorMaxX = ROO_DOCK_CORRIDOR_MAX_M;
+  cfg.corridorHalfWidth = ROO_DOCK_CORRIDOR_HALF_WIDTH_M;
+  cfg.headingTolerance = ROO_DOCK_HEADING_TOLERANCE_RAD;
+  cfg.maxLinearSpeed = ROO_DOCK_MAX_LINEAR_MPS; cfg.maxAngularSpeed = ROO_DOCK_MAX_ANGULAR_RPS;
+  cfg.maxHorizonMs = 500; cfg.maxAccessMs = 60000;
+  cfg.poseMaxAgeMs = 300; cfg.sensorsMaxAgeMs = cfg.irMaxAgeMs = 200;
+  cfg.stepMeters = .01f; cfg.stepRadians = .03f;
+  cfg.map.minX = primaryNavigator->cfg.originX; cfg.map.minY = primaryNavigator->cfg.originY;
+  cfg.map.maxX = cfg.map.minX + primaryNavigator->cfg.cols * primaryNavigator->cfg.resolution;
+  cfg.map.maxY = cfg.map.minY + primaryNavigator->cfg.rows * primaryNavigator->cfg.resolution;
+  cfg.map.valid = true;
+  const float calibration[] = {cfg.frontX, cfg.frontY, cfg.yaw, cfg.depth, cfg.halfWidth,
+      cfg.margin, cfg.bodyRadius, cfg.sideX, cfg.sideY, cfg.sideRadius, cfg.corridorMinX,
+      cfg.corridorMaxX, cfg.corridorHalfWidth, cfg.headingTolerance, cfg.maxLinearSpeed,
+      cfg.maxAngularSpeed, ROO_DOCK_EXIT_METERS, float(cfg.verified)};
+  dockCalibrationKey = 2166136261u;
+  const uint8_t *bytes = reinterpret_cast<const uint8_t *>(calibration);
+  for (size_t i = 0; i < sizeof calibration; ++i)
+    dockCalibrationKey = (dockCalibrationKey ^ bytes[i]) * 16777619u;
+  dockGuard.configure(cfg); // simulationOnly is false; no synthetic dimensions in firmware
+  if (dockGuard.configured() &&
+      fabsf(roonav::wrap(primaryNavigator->dock.yaw - (cfg.yaw + roonav::Pi))) >
+          fminf(.08f, cfg.headingTolerance))
+    dockGuard.invalidate(); // staging heading and measured contact face must agree
+}
+roonav::DockGuard::Observation dockObservation(uint32_t now) {
+  roonav::DockGuard::Observation o;
+  o.now = now; o.poseMs = latest.poseMs; o.sensorsMs = latest.sensorsMs;
+  o.pose = roonav::DockGuard::Pose(latest.pose.x, latest.pose.y, latest.pose.yaw);
+  o.localized = latest.localized && navigator == primaryNavigator;
+  o.sensorsValid = latest.sensorsValid && latest.chargerValid;
+  o.dockContact = latest.docked; o.bumper = latest.bumper;
+  const auto ir = robot->sensor(roocore::Sensor::InfraredOmni);
+  o.irMs = ir.timestampMs; o.irValid = ir.fresh(now, 200); o.irRaw = ir.value;
+  return o;
+}
 bool terminal(roonav::State s) {
   return s == roonav::State::Idle || s == roonav::State::Fault || s == roonav::State::Paused ||
          s == roonav::State::Complete;
@@ -340,6 +448,19 @@ bool saveMission() {
   saved.finished = navigator->finished;
   saved.edgeSegments = navigator->edgeSegments;
   saved.edgeIncomplete = navigator->edgeIncomplete;
+  saved.activeMs = navigator->activeMs;
+  saved.mapRevision = mapRevision;
+  saved.dockAnchorRevision = dockAnchorRevision;
+  saved.missionStartedAt = missionStartedAt;
+  saved.returnAt = navigator->returnAt;
+  saved.returnSequence = navigator->returnSequence;
+  saved.returnCause = uint8_t(navigator->returnCause);
+  saved.cleaningPhase = uint8_t(navigator->savedCleaningPhase());
+  saved.dockCalibration = dockCalibrationKey;
+  memcpy(saved.missionId, missionId, sizeof missionId);
+  memcpy(saved.mapId, mapId, sizeof mapId);
+  memcpy(saved.missionStartBoot, missionStartBoot, sizeof missionStartBoot);
+  memcpy(saved.returnBoot, returnBoot, sizeof returnBoot);
   memcpy(saved.contacts, navigator->contacts, sizeof saved.contacts);
   memcpy(saved.retries, navigator->retries, sizeof saved.retries);
   memcpy(saved.sideCovered, navigator->sideCovered, sizeof saved.sideCovered);
@@ -368,7 +489,15 @@ bool readSlot(const char *path, SavedMission &out) {
     return false;
   bool ok = file.read(reinterpret_cast<uint8_t *>(&out), sizeof out) == sizeof out;
   file.close();
-  return ok && out.magic == 0x524f4f31 && out.version == 4 && out.crc == checksum(out) &&
+  return ok && out.magic == 0x524f4f31 && out.version == 5 && out.crc == checksum(out) &&
+         out.returnCause <= uint8_t(roonav::ReturnCause::Completed) &&
+         (out.cleaningPhase == uint8_t(roonav::State::Cleaning) ||
+          out.cleaningPhase == uint8_t(roonav::State::Edging) ||
+          out.cleaningPhase == uint8_t(roonav::State::Touchup)) &&
+         out.missionId[sizeof out.missionId - 1] == 0 &&
+         out.mapId[sizeof out.mapId - 1] == 0 &&
+         out.missionStartBoot[sizeof out.missionStartBoot - 1] == 0 &&
+         out.returnBoot[sizeof out.returnBoot - 1] == 0 &&
          out.pass < out.passes && out.passes >= 1 && out.passes <= 2 &&
          out.state <= uint8_t(roonav::State::Yielding);
 }
@@ -391,6 +520,7 @@ void loadMission() {
     return;
   // Reject checkpoint after geometry/calibration changes.
   if (saved.config.cols != navigator->cfg.cols || saved.config.rows != navigator->cfg.rows ||
+      saved.dockCalibration != dockCalibrationKey ||
       saved.config.resolution != navigator->cfg.resolution ||
       saved.config.metersPerTick != navigator->cfg.metersPerTick ||
       saved.config.wheelSeparation != navigator->cfg.wheelSeparation ||
@@ -423,7 +553,19 @@ void loadMission() {
   memcpy(navigator->cells, saved.cells, sizeof saved.cells);
   memcpy(navigator->covered, saved.covered, sizeof saved.covered);
   memcpy(navigator->excluded, saved.excluded, sizeof saved.excluded);
-  navigator->restorePaused(roonav::State(saved.state), millis());
+  navigator->restorePaused(roonav::State(saved.state), millis(), saved.activeMs,
+                           roonav::State(saved.cleaningPhase));
+  navigator->restoredMapConfiguration();
+  navigator->returnCause = roonav::ReturnCause(saved.returnCause);
+  navigator->returnAt = saved.returnAt;
+  navigator->returnSequence = observedReturnSequence = saved.returnSequence;
+  mapRevision = saved.mapRevision;
+  dockAnchorRevision = saved.dockAnchorRevision;
+  missionStartedAt = saved.missionStartedAt;
+  memcpy(missionId, saved.missionId, sizeof missionId);
+  memcpy(mapId, saved.mapId, sizeof mapId);
+  memcpy(missionStartBoot, saved.missionStartBoot, sizeof missionStartBoot);
+  memcpy(returnBoot, saved.returnBoot, sizeof returnBoot);
   anchored = false;
   arbiter.hold();
   lastError = "checkpoint restored; physical dock reanchor required";
@@ -432,6 +574,7 @@ void loadMission() {
 struct FirmwarePowerPort : roonav::PowerShutdown::Port {
   uint32_t nowMs() const override { return millis(); }
   bool quiesce() override {
+    dockGuard.endAccess();
     arbiter.hold();
     assistance.operatorPause();
     navigator->pause(millis());
@@ -483,9 +626,95 @@ struct FirmwarePowerPort : roonav::PowerShutdown::Port {
   }
 } powerPort;
 
+String returnEventJson() {
+  if (navigator->returnCause == roonav::ReturnCause::None || !missionId[0] || !returnBoot[0])
+    return "null";
+  const char *names[] = {"none", "manual", "battery", "completed"};
+  return "{\"cause\":\"" + String(names[uint8_t(navigator->returnCause)]) +
+         "\",\"provenance\":\"firmware_mission_event\",\"confirmed\":true,\"mission_id\":\"" +
+         String(missionId) + "\",\"boot_id\":\"" + returnBoot +
+         "\",\"at_ms\":" + String(navigator->returnAt) + "}";
+}
+void recordReturnEvent() {
+  if (navigator->returnSequence != observedReturnSequence) {
+    observedReturnSequence = navigator->returnSequence;
+    memcpy(returnBoot, bootId, sizeof returnBoot);
+  }
+}
+void beginMissionIdentity(uint32_t now) {
+  snprintf(missionId, sizeof missionId, "%s-%08lx", bootId,
+           static_cast<unsigned long>(++missionCounter));
+  memcpy(missionStartBoot, bootId, sizeof missionStartBoot);
+  missionStartedAt = now;
+  returnBoot[0] = 0;
+  chargeSupervisor.reset();
+}
+void captureProgress(uint32_t now, const String &status) {
+  if (uint32_t(now - lastProgress) < ROO_PROGRESS_INTERVAL_MS ||
+      xSemaphoreTake(progressMutex, 0) != pdTRUE)
+    return;
+  // Bounded raw copy only. HTTP task serializes arrays outside the control loop/lock.
+  auto &p = *progressPublished;
+  p.valid = status.length() < sizeof p.status;
+  if (p.valid) {
+    p.at = now; p.sequence = ++progressSequence; p.revision = mapRevision;
+    p.anchorRevision = dockAnchorRevision;
+    p.config = navigator->cfg; p.pose = latest.pose;
+    p.dockConfig = dockGuard.config(); p.staging = navigator->dock;
+    p.localized = latest.localized && navigator == primaryNavigator;
+    p.anchored = anchored && dockGuard.ready() && navigator == primaryNavigator;
+    memcpy(p.boot, bootId, sizeof bootId);
+    memcpy(p.mission, missionId, sizeof missionId);
+    if (navigator == primaryNavigator)
+      snprintf(p.map, sizeof p.map, "%s", mapId);
+    else
+      snprintf(p.map, sizeof p.map, "%s-local-%lu", mapId, static_cast<unsigned long>(dirtFrame));
+    status.toCharArray(p.status, sizeof p.status);
+    const size_t count = navigator->count();
+    memcpy(p.cells, navigator->cells, count);
+    memcpy(p.covered, navigator->covered, count);
+    memcpy(p.side, navigator->sideCovered, count);
+    memcpy(p.excluded, navigator->excluded, count);
+    lastProgress = now;
+  }
+  xSemaphoreGive(progressMutex);
+}
 void publish(uint32_t now) {
   String s = "{\"now\":" + String(now) + ",\"epoch\":" + String(arbiter.epoch) +
              ",\"owner\":" + String(uint8_t(arbiter.owner));
+  s += ",\"boot_id\":\"" + String(bootId) + "\",\"mission_id\":\"" + missionId + "\"";
+  s += ",\"profile\":\"" + String(navigator->passes == 2 ? "deep" : "daily") + "\"";
+  s += ",\"mission_active\":" + String(active() ? "true" : "false");
+  s += ",\"active_ms\":" + String(navigator->activeMs) +
+       ",\"mission_started_at_ms\":" + String(missionStartedAt) +
+       ",\"mission_start_boot_id\":\"" + missionStartBoot + "\"";
+  s += ",\"return_cause\":" + returnEventJson();
+  s += ",\"pass_index\":" + String(navigator->pass);
+  const auto battery = robot->battery(now, 200);
+  const auto batterySample = robot->sensor(roocore::Sensor::ChargeMah);
+  s += ",\"battery_valid\":" + String(latest.batteryValid ? "true" : "false");
+  s += ",\"battery_sample_ms\":" + String(batterySample.timestampMs) +
+       ",\"battery_ms\":" + String(batterySample.timestampMs);
+  s += ",\"charge_mah\":" + (battery.valid ? String(battery.chargeMah) : String("null")) +
+       ",\"capacity_mah\":" + (battery.valid ? String(battery.capacityMah) : String("null"));
+  s += ",\"current_ma\":" + (battery.valid ? String(battery.milliamps) : String("null")) +
+       ",\"temperature_c\":" + (battery.valid ? String(battery.temperatureC) : String("null"));
+  s += ",\"charger_valid\":" + String(latest.chargerValid ? "true" : "false") +
+       ",\"charging_state\":" + (latest.chargerValid ? String(latest.chargerState) : String("null")) +
+       ",\"charging_sources\":" + (latest.chargerValid ? String(latest.chargerSources) : String("null"));
+  const char *chargePhases[] = {"unknown", "contact", "waiting", "bulk", "reconditioning",
+                               "maintenance", "preparing", "held"};
+  const char *chargeReasons[] = {"none", "telemetry_invalid", "no_source", "charger_fault",
+                                "not_passive_or_moving", "departure_unqualified", "waiting_timeout",
+                                "preparation_timeout"};
+  s += ",\"charge_phase\":\"" + String(chargePhases[uint8_t(chargeSupervisor.phase)]) + "\"";
+  s += ",\"charge_reason\":\"" + String(chargeReasons[uint8_t(chargeSupervisor.why)]) + "\"";
+  s += ",\"charge_policy\":\"" + String(ROO_CHARGE_MISSION_READY ? "mission_energy_ready" : "native_cycle_complete") + "\"";
+  s += ",\"automatic_brc_wake\":false,\"link_recovery\":\"" +
+       String(latest.chargerValid ? "not_required" : "held_manual_verification_required") + "\"";
+  s += ",\"dock_guard_ready\":" + String(dockGuard.ready() ? "true" : "false") +
+       ",\"dock_guard_issue\":" + String(uint8_t(dockGuard.issue())) +
+       ",\"dock_guard_mode\":" + String(uint8_t(dockGuard.mode()));
   s += ",\"help_id\":" + String(assistance.id) + ",\"frame\":" + String(assistance.frame);
   s += ",\"help_status\":" + String(uint8_t(assistance.status));
   s += ",\"help_reason\":" + String(uint8_t(assistance.reason));
@@ -500,12 +729,12 @@ void publish(uint32_t now) {
   s += ",\"undocking\":" + String(undocking ? "true" : "false");
   s += ",\"commissioned\":" +
        String(ROO_COMMISSIONED && ROO_ENCODERS_VERIFIED && powerShutdown.cfg.valid() &&
-                      LidarPowerConfigured ? "true"
+                      LidarPowerConfigured && dockGuard.ready() ? "true"
                                                                                      : "false");
   s += ",\"localized\":" + String(latest.localized ? "true" : "false") +
        ",\"x\":" + String(odometry.pose.x, 4) + ",\"y\":" + String(odometry.pose.y, 4) +
        ",\"yaw\":" + String(odometry.pose.yaw, 5);
-  s += ",\"battery\":" + String(latest.battery, 1) + ",\"pose_ms\":" + String(latest.poseMs) +
+  s += ",\"battery\":" + (latest.batteryValid ? String(latest.battery, 1) : String("null")) + ",\"pose_ms\":" + String(latest.poseMs) +
        ",\"scan_ms\":" + String(latest.scanMs) + ",\"sensors_ms\":" + String(latest.sensorsMs);
   s += ",\"scan_valid\":" + String(latest.scanValid ? "true" : "false") +
        ",\"docked\":" + String(latest.docked ? "true" : "false") +
@@ -620,13 +849,14 @@ void publish(uint32_t now) {
   } else
     s += ",\"target\":null";
   s += "}";
+  captureProgress(now, s);
   xSemaphoreTake(statusMutex, portMAX_DELAY);
   publishedStatus = s;
   xSemaphoreGive(statusMutex);
 }
 void sample(uint32_t now) {
   const auto safety = robot->safety(now, 200);
-  const auto battery = robot->battery(now, 1000);
+  const auto battery = robot->battery(now, 200);
   auto left = robot->sensor(roocore::Sensor::LeftEncoder),
        right = robot->sensor(roocore::Sensor::RightEncoder);
   if (left.generation != lastGeneration && left.fresh(now, 200) && right.fresh(now, 200) &&
@@ -651,7 +881,8 @@ void sample(uint32_t now) {
   latest.pose = odometry.pose;
   latest.poseMs = odometry.stamp;
   latest.sensorsMs = robot->sensor(roocore::Sensor::BumpsAndDrops).timestampMs;
-  latest.sensorsValid = safety.valid && battery.valid && battery.percentageValid;
+  latest.sensorsValid = safety.valid;
+  latest.batteryValid = battery.valid && battery.percentageValid;
   latest.cliff = safety.cliffLeft || safety.cliffFrontLeft || safety.cliffFrontRight ||
                  safety.cliffRight || safety.virtualWall;
   latest.wheelDrop = safety.wheelDropLeft || safety.wheelDropRight;
@@ -667,12 +898,43 @@ void sample(uint32_t now) {
   latest.overcurrent = !overcurrent.fresh(now, 200) || overcurrent.value != 0;
   latest.battery = battery.percentage;
   const auto charger = robot->sensor(roocore::Sensor::ChargingSources);
+  const auto chargeState = robot->sensor(roocore::Sensor::ChargingState);
+  const auto oiMode = robot->sensor(roocore::Sensor::OiMode);
+  latest.chargerValid = battery.valid && charger.fresh(now, 200) && oiMode.fresh(now, 200) &&
+                        charger.generation == chargeState.generation &&
+                        oiMode.generation == chargeState.generation;
+  latest.chargerMs = chargeState.timestampMs;
+  latest.chargerSources = charger.value;
+  latest.chargerState = uint8_t(battery.charging);
   latest.docked = charger.fresh(now, 200) && (charger.value & 2);
-  latest.charging = battery.charging == roocore::Charging::FullCharging ||
-                    battery.charging == roocore::Charging::Trickle ||
-                    battery.charging == roocore::Charging::Waiting;
+  latest.charging = latest.chargerValid && latest.docked &&
+                    (battery.charging == roocore::Charging::FullCharging ||
+                     battery.charging == roocore::Charging::Trickle ||
+                     battery.charging == roocore::Charging::Reconditioning);
+  if (!left.fresh(now, 200) || !right.fresh(now, 200) || left.generation != right.generation) {
+    chargeWheelsKnown = false;
+    chargeWheelAt = now;
+  } else if (!chargeWheelsKnown || left.generation != chargeWheelGeneration) {
+    if (!chargeWheelsKnown || chargeLeft != left.value || chargeRight != right.value)
+      chargeWheelAt = now;
+    chargeWheelsKnown = true;
+    chargeWheelGeneration = left.generation;
+    chargeLeft = left.value; chargeRight = right.value;
+  }
+  roonav::ChargeSupervisor::Sample charge;
+  charge.now = now; charge.stamp = chargeState.timestampMs; charge.generation = chargeState.generation;
+  charge.valid = latest.chargerValid;
+  charge.percentageValid = latest.batteryValid;
+  charge.percentage = battery.percentage;
+  charge.state = latest.chargerState; charge.sources = latest.chargerSources; charge.mode = oiMode.value;
+  charge.stopped = chargeWheelsKnown && uint32_t(now - chargeWheelAt) >= 1000;
+  charge.currentMa = battery.milliamps; charge.temperatureC = battery.temperatureC;
+  chargeSupervisor.update(charge, navigator->state == roonav::State::Charging && !navigator->finished);
+  latest.chargeContactConfirmed = chargeSupervisor.contactConfirmed;
+  latest.chargeReady = chargeSupervisor.ready;
   latest.dirt = uint8_t(robot->sensor(roocore::Sensor::DirtDetect).value);
   if (lidar.scans != lastScan && lidar.valid) {
+    ++mapRevision;
     lastScan = lidar.scans;
     memset(latest.ranges, 0, sizeof latest.ranges);
     for (int i = 0; i < 180; ++i) {
@@ -758,7 +1020,7 @@ bool healthy() {
   const uint32_t now = millis();
   return !powerShutdown.blocksMotion() && uint32_t(now - latest.sensorsMs) <= 200 &&
          uint32_t(now - latest.poseMs) <= 300 && uint32_t(now - latest.scanMs) <= 400 &&
-         latest.sensorsValid && latest.localized && latest.scanValid && !latest.cliff &&
+         latest.sensorsValid && latest.batteryValid && latest.localized && latest.scanValid && !latest.cliff &&
          !latest.wheelDrop && (!latest.bumper || navigator->wallRetreat()) && !latest.overcurrent &&
          latest.battery > 6;
 }
@@ -801,7 +1063,8 @@ void request(const Request &r, uint32_t now) {
   }
   if (!strcmp(r.action, "pause")) {
     assistance.operatorPause();
-    undocking = false;
+    undocking = startAfterUndock = false;
+    dockGuard.endAccess();
     stopMotion();
     navigator->pause(now);
     arbiter.hold();
@@ -815,6 +1078,22 @@ void request(const Request &r, uint32_t now) {
     }
     storageReady = LittleFS.format() && LittleFS.begin(false);
     powerShutdown.begin(millis(), storageReady && LittleFS.exists(PowerIntentPath));
+    return;
+  }
+  if (!strcmp(r.action, "map-clear")) {
+    if (movingSession() || !storageReady || powerShutdown.intentPending) {
+      lastError = "map-clear requires stopped mission, storage and no power-cutoff intent";
+      return;
+    }
+    stopMotion();
+    navigator = primaryNavigator;
+    navigator->clearMap(now);
+    snprintf(mapId, sizeof mapId, "%s-map-%08lx", bootId,
+             static_cast<unsigned long>(++mapRevision));
+    beginMissionIdentity(now);
+    anchored = false;
+    arbiter.hold();
+    lastError = saveMission() ? "map cleared; physical dock reanchor required" : "map clear save failed";
     return;
   }
   if (!ROO_COMMISSIONED || !ROO_ENCODERS_VERIFIED) {
@@ -896,7 +1175,8 @@ void request(const Request &r, uint32_t now) {
     return;
   }
   if (!strcmp(r.action, "anchor")) {
-    if (movingSession() || !latest.docked || !latest.charging || !latest.sensorsValid) {
+    if (movingSession() || !latest.docked || !latest.chargerValid ||
+        latest.chargerState == 5 || !latest.sensorsValid) {
       lastError = "anchor requires stopped robot on powered dock";
       return;
     }
@@ -918,6 +1198,14 @@ void request(const Request &r, uint32_t now) {
     p.y += ROO_DOCK_EXIT_METERS * sinf(p.yaw);
     ++dirtFrame;
     odometry.reset(p, l.value, rr.value, now);
+    latest.pose = p; latest.poseMs = now; latest.localized = true;
+    configureDockGuard(++dockAnchorRevision);
+    if (!dockGuard.confirmDocked(dockObservation(now))) {
+      anchored = false;
+      latest.localized = false;
+      lastError = "dock geometry/anchor is not qualified";
+      return;
+    }
     anchored = true;
     assistance.operatorResume();
     anchorAt = now;
@@ -934,41 +1222,64 @@ void request(const Request &r, uint32_t now) {
       return;
     anchorAt = now;
   }
-  if (!healthy()) {
-    lastError = "fresh healthy sensors and dock anchor required";
-    return;
-  }
   if (!strcmp(r.action, "daily") || !strcmp(r.action, "deep")) {
     if (movingSession()) {
       lastError = "pause before starting a new mission";
       return;
     }
+    if (!anchored || !dockGuard.ready() || !latest.sensorsValid || !latest.batteryValid || latest.cliff ||
+        latest.wheelDrop || latest.bumper || latest.overcurrent ||
+        uint32_t(now - latest.sensorsMs) > 200 || (!latest.docked && !healthy())) {
+      lastError = "fresh sensors and physical map anchor required";
+      return;
+    }
+    if (latest.docked && (!latest.chargerValid || latest.chargerState == 5 ||
+                          !ROO_DOCK_EXIT_VERIFIED || !chargeSupervisor.cfg.valid())) {
+      lastError = "dock departure and battery policy require qualification";
+      return;
+    }
+    beginMissionIdentity(now);
+    navigator->start(!strcmp(r.action, "deep"), navigator->dock, now, true);
+    if (latest.docked)
+      navigator->waitOnDock(now);
     xSemaphoreTake(dirtMutex, portMAX_DELAY);
     dirtMonitor->beginSession(++dirtSession, dirtContext(now));
     xSemaphoreGive(dirtMutex);
     assistance.attempts = 0;
     assistance.operatorResume();
-    if (latest.docked) {
-      if (!ROO_DOCK_EXIT_VERIFIED) {
-        lastError = "dock exit corridor not commissioned";
-        return;
-      }
-      startAfterUndock = true;
-      deepAfterUndock = !strcmp(r.action, "deep");
-      undocking = true;
-      undockAt = undockProgressAt = now;
-      undockBest = 1e9f;
-    } else
-      navigator->start(!strcmp(r.action, "deep"), navigator->dock, now);
     arbiter.owner = roonav::Owner::Local;
     lastError = "";
-  } else if (!strcmp(r.action, "home")) {
+    if (!saveMission()) {
+      navigator->fault(roonav::Reason::Telemetry);
+      lastError = "mission checkpoint save failed";
+    }
+    return;
+  }
+  if (!healthy()) {
+    lastError = "fresh healthy sensors and dock anchor required";
+    return;
+  }
+  if (!strcmp(r.action, "home")) {
+    if (latest.docked && latest.chargerValid) {
+      stopMotion();
+      lastError = "already on powered base";
+      return;
+    }
     navigator->goHome(latest);
+    recordReturnEvent();
     arbiter.local(now);
+    if (!saveMission()) {
+      navigator->fault(roonav::Reason::Telemetry);
+      lastError = "return checkpoint save failed";
+    }
   } else if (!strcmp(r.action, "resume")) {
     if (navigator->resume(latest)) {
+      chargeSupervisor.reset();
       assistance.operatorResume();
-      arbiter.local(now);
+      if (navigator->state == roonav::State::Charging)
+        arbiter.owner = roonav::Owner::Local; // stationary local charging needs no remote handoff
+      else
+        arbiter.local(now);
     } else
       lastError = "resume rejected";
   } else if (!strcmp(r.action, "remote")) {
@@ -984,6 +1295,18 @@ void apply(roonav::Output out, uint32_t now) {
     return;
   now = millis();
   if (out.action == roonav::Action::SeekDock) {
+    if (dockGuard.mode() == roonav::DockGuard::Mode::Docked && latest.docked) {
+      stopMotion(); // stay Passive while the charge supervisor confirms stable contact
+      return;
+    }
+    if ((nativeDock && !dockGuard.permitsNativeDock(dockObservation(now))) ||
+        (!nativeDock && !dockGuard.beginApproach(dockObservation(now)))) {
+      stopMotion();
+      dockGuard.endAccess();
+      navigator->fault(roonav::Reason::NoRoute);
+      lastError = "native docking outside qualified approach";
+      return;
+    }
     if (!nativeDock) {
       stopMotion();
       if (robot->seekDock() == roocore::Result::Ok) {
@@ -996,6 +1319,8 @@ void apply(roonav::Output out, uint32_t now) {
   }
   if (out.action != roonav::Action::Drive) {
     stopMotion();
+    if (terminal(navigator->state))
+      dockGuard.endAccess();
     return;
   }
   if (!healthy()) {
@@ -1003,7 +1328,16 @@ void apply(roonav::Output out, uint32_t now) {
     navigator->fault(roonav::Reason::Telemetry);
     return;
   }
-  if (!navigator->allowsMotion(latest.pose, out.speed, out.turn)) {
+  int l = 0, r = 0;
+  if (!roonav::quantizeMotion(out, navigator->cfg.wheelSeparation, l, r)) {
+    stopMotion();
+    navigator->fault(roonav::Reason::Telemetry);
+    return;
+  }
+  if (navigator != primaryNavigator ||
+      !dockGuard.permitsMotion(dockObservation(now), out.speed, out.turn, 300,
+                               out.pwm > 0 || (out.sidePwm != 255 && out.sidePwm > 0)) ||
+      !navigator->allowsMotion(latest.pose, out.speed, out.turn, undocking)) {
     stopMotion();
     navigator->fault(roonav::Reason::NoRoute);
     return;
@@ -1048,10 +1382,6 @@ void apply(roonav::Output out, uint32_t now) {
     return;
   }
   armingSince = 0;
-  const int l = constrain(
-      lroundf((out.speed - out.turn * navigator->cfg.wheelSeparation / 2) * 1000), -250, 250);
-  const int r = constrain(
-      lroundf((out.speed + out.turn * navigator->cfg.wheelSeparation / 2) * 1000), -250, 250);
   appliedPwm = out.pwm;
   appliedSidePwm = out.sidePwm == 255 ? out.pwm : out.sidePwm;
   appliedVacuumPwm =
@@ -1080,6 +1410,9 @@ void tryAssistance(uint32_t now) {
   // A fresh map must not erase a nearby bumper hazard that may be below the laser.
   // Keep the help request, but require verified relocalization/operator intervention.
   localSafe = localSafe && !navigator->nearbyContact(latest.pose);
+  // A provisional coordinate frame cannot safely erase the global base exclusion.
+  // Keep server-assisted relocalization, but hold local driving until that succeeds.
+  localSafe = false;
   if (!saveMission()) {
     navigator->fault(roonav::Reason::Telemetry);
     lastError = "cannot preserve global mission";
@@ -1210,6 +1543,15 @@ void controlTask(void *) {
       lastControl = now;
       powerShutdown.tick(powerInput(now), powerPort);
       sample(now);
+      if (anchored) {
+        dockGuard.observe(dockObservation(now));
+        if (!dockGuard.ready() && active()) {
+          stopMotion();
+          undocking = false;
+          navigator->fault(roonav::Reason::NoRoute);
+          lastError = "dock anchor invalid; motion held";
+        }
+      }
       collectDirt(now);
       updateFloorEstimate(now);
       Request req;
@@ -1223,6 +1565,11 @@ void controlTask(void *) {
           stopMotion();
         }
         roonav::Output out;
+        if (undocking && terminal(navigator->state)) {
+          undocking = startAfterUndock = false;
+          stopMotion();
+          dockGuard.endAccess();
+        }
         if (undocking) {
           const float remaining =
               roonav::distance(latest.pose.x, latest.pose.y, navigator->dock.x, navigator->dock.y);
@@ -1237,8 +1584,9 @@ void controlTask(void *) {
             navigator->fault(roonav::Reason::NoProgress);
           } else if (remaining < .04f) {
             undocking = false;
+            dockGuard.endAccess();
             if (startAfterUndock) {
-              navigator->start(deepAfterUndock, navigator->dock, now);
+              navigator->start(deepAfterUndock, navigator->dock, now, true);
               startAfterUndock = false;
             }
           } else {
@@ -1248,6 +1596,7 @@ void controlTask(void *) {
         } else if (active()) {
           // Always maintain a local map/mission during remote control for fallback.
           out = navigator->tick(latest, arbiter.owner == roonav::Owner::Remote);
+          recordReturnEvent();
           if (navigator->state != roonav::State::Cleaning && arbiter.owner == roonav::Owner::Remote)
             arbiter.local(now);
           if (arbiter.owner == roonav::Owner::Remote && healthy() &&
@@ -1270,7 +1619,7 @@ void controlTask(void *) {
         if (navigator->state == roonav::State::Fault)
           undocking = false;
         if (before == roonav::State::Charging && navigator->state == roonav::State::Resuming) {
-          if (ROO_DOCK_EXIT_VERIFIED) {
+          if (ROO_DOCK_EXIT_VERIFIED && dockGuard.beginDeparture(dockObservation(now))) {
             undocking = true;
             startAfterUndock = false;
             undockAt = undockProgressAt = now;
@@ -1294,7 +1643,7 @@ void controlTask(void *) {
           lastError = "checkpoint write failed";
         }
         if (navigator->state == roonav::State::Charging)
-          lidarPower(latest.battery >= 78);
+          lidarPower(chargeSupervisor.preparation && !chargeSupervisor.held());
         tryAssistance(now);
         if (!assistance.pending() && !undocking && terminal(navigator->state) &&
             uint32_t(now - anchorAt) > 10000)
@@ -1319,6 +1668,45 @@ bool number(const char *name, int64_t &out, int64_t minimum, int64_t maximum) {
   char *end = nullptr;
   out = strtoll(value.c_str(), &end, 10);
   return end != value.c_str() && *end == 0 && out >= minimum && out <= maximum;
+}
+void serveProgress() {
+  if (!authenticated()) { web.send(401); return; }
+  if (xSemaphoreTake(progressMutex, pdMS_TO_TICKS(50)) != pdTRUE) { web.send(503); return; }
+  memcpy(progressServing, progressPublished, sizeof(ProgressSnapshot));
+  xSemaphoreGive(progressMutex);
+  const auto &p = *progressServing;
+  if (!p.valid) { web.send(503, "application/json", "{\"error\":\"progress_not_ready\"}"); return; }
+  String s;
+  if (!s.reserve(400000)) { web.send(503, "application/json", "{\"error\":\"progress_memory\"}"); return; }
+  s = "{\"schema\":1,\"source\":\"robot\",\"boot_id\":\"" + String(p.boot) +
+      "\",\"mission_id\":\"" + p.mission + "\",\"map_id\":\"" + p.map + "\"";
+  s += ",\"map_revision\":" + String(p.revision) + ",\"sequence\":" + String(p.sequence) +
+       ",\"at_ms\":" + String(p.at) + ",\"status\":" + p.status;
+  s += ",\"pose\":{\"x\":" + String(p.pose.x, 4) + ",\"y\":" + String(p.pose.y, 4) +
+       ",\"yaw\":" + String(p.pose.yaw, 5) + ",\"valid\":" + (p.localized ? "true" : "false") + "}";
+  s += ",\"dock\":{\"anchor_revision\":" + String(p.anchorRevision) +
+       ",\"valid\":" + (p.anchored ? "true" : "false") +
+       ",\"pose_kind\":\"front_contact_face\",\"x\":" + String(p.dockConfig.frontX, 4) +
+       ",\"y\":" + String(p.dockConfig.frontY, 4) + ",\"yaw\":" + String(p.dockConfig.yaw, 5) +
+       ",\"depth\":" + String(p.dockConfig.depth, 4) +
+       ",\"half_width\":" + String(p.dockConfig.halfWidth, 4) +
+       ",\"geometry_verified\":" + (p.dockConfig.verified ? "true" : "false") +
+       ",\"staging\":{\"x\":" + String(p.staging.x, 4) + ",\"y\":" + String(p.staging.y, 4) +
+       ",\"yaw\":" + String(p.staging.yaw, 5) + "}}";
+  s += ",\"map\":{\"cols\":" + String(p.config.cols) + ",\"rows\":" + String(p.config.rows) +
+       ",\"resolution\":" + String(p.config.resolution, 4) +
+       ",\"origin_x\":" + String(p.config.originX, 4) +
+       ",\"origin_y\":" + String(p.config.originY, 4) + ",\"cells\":[";
+  const unsigned count = p.config.cols * p.config.rows;
+  for (unsigned i = 0; i < count; ++i) { if (i) s += ','; s += String(int(p.cells[i])); }
+  s += "]},\"coverage\":{\"main\":[";
+  for (unsigned i = 0; i < count; ++i) { if (i) s += ','; s += String(p.covered[i]); }
+  s += "],\"side\":[";
+  for (unsigned i = 0; i < count; ++i) { if (i) s += ','; s += String(p.side[i]); }
+  s += "],\"excluded\":[";
+  for (unsigned i = 0; i < count; ++i) { if (i) s += ','; s += String(p.excluded[i]); }
+  s += "]}}";
+  web.send(200, "application/json", s);
 }
 String dirtNumber(uint64_t n) {
   char text[24];
@@ -1476,6 +1864,19 @@ void setup() {
     return;
   }
   dirtBoot = esp_random();
+  snprintf(bootId, sizeof bootId, "%08lx%08lx", static_cast<unsigned long>(dirtBoot),
+           static_cast<unsigned long>(esp_random()));
+  snprintf(mapId, sizeof mapId, "%s-map", bootId);
+  snprintf(missionId, sizeof missionId, "%s-idle", bootId);
+  memcpy(missionStartBoot, bootId, sizeof missionStartBoot);
+  chargeSupervisor.cfg.departureVerified = ROO_CHARGE_DEPARTURE_VERIFIED;
+  chargeSupervisor.cfg.policy = ROO_CHARGE_MISSION_READY
+      ? roonav::ChargeSupervisor::Policy::MissionEnergyReady
+      : roonav::ChargeSupervisor::Policy::NativeCycleComplete;
+  chargeSupervisor.cfg.resumePercent = ROO_CHARGE_RESUME_PERCENT;
+  chargeSupervisor.cfg.nativeMinimumPercent = ROO_CHARGE_NATIVE_MIN_PERCENT;
+  chargeSupervisor.cfg.minimumC = ROO_CHARGE_MIN_C;
+  chargeSupervisor.cfg.maximumC = ROO_CHARGE_MAX_C;
   robot->setSampleObserver(observeDirt);
   powerShutdown.cfg.verified =
       ROO_POWER_CUTOFF_VERIFIED && ROO_COMMISSIONED && ROO_ENCODERS_VERIFIED;
@@ -1497,6 +1898,20 @@ void setup() {
   navigator->dock.x = -ROO_DOCK_EXIT_METERS;
   navigator->cfg.metersPerTick = ROO_METERS_PER_TICK;
   navigator->cfg.wheelSeparation = ROO_WHEEL_SEPARATION;
+  configureDockGuard(1);
+  navigator->ordinaryCenterAllowed = ordinaryCenterAllowed;
+  navigator->ordinaryGuardContext = &dockGuard;
+  progressPublished = static_cast<ProgressSnapshot *>(heap_caps_malloc(
+      sizeof(ProgressSnapshot), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+  progressServing = static_cast<ProgressSnapshot *>(heap_caps_malloc(
+      sizeof(ProgressSnapshot), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+  progressMutex = xSemaphoreCreateMutex();
+  if (!progressPublished || !progressServing || !progressMutex) {
+    Serial.println("Progress PSRAM allocation failed; motion disabled");
+    return;
+  }
+  new (progressPublished) ProgressSnapshot();
+  new (progressServing) ProgressSnapshot();
   requests = xQueueCreate(8, sizeof(Request));
   statusMutex = xSemaphoreCreateMutex();
   if (!requests || !statusMutex) {
@@ -1511,6 +1926,7 @@ void setup() {
   const char *headers[] = {"Authorization"};
   web.collectHeaders(headers, 1);
   web.on("/dirt", HTTP_GET, serveDirt);
+  web.on("/progress", HTTP_GET, serveProgress);
   web.on("/status", HTTP_GET, [] {
     if (!authenticated()) {
       web.send(401);
