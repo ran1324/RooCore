@@ -41,7 +41,7 @@
 
 [החיבור המדויק, הקוד והבדיקות](docs/assembly/LIDAR_POWER_UART.md). הרצף משולב ב־RooCoreXiao המלא: UART2, ‏D4/D5 וללא OE. הקושחה נבנתה בתצורת ברירת מחדל ובתצורת בדיקה, ומודל תוכנה בדק 100 מחזורים ומקרי שגיאה. ברירת המחדל false/0 עד כיול; לא נצרב ולא נבדק פיזית. זה פתרון לכיבוי ליידר כשהבקר נשאר מוזן, לא בידוד לתקלות או אובדן הזנת הבקר. ניתוק XIAO מכל הצמה לפני USB נשאר נוהל שירות נפרד.
 
-**הוראת המשתמש הקבועה:** כל תיקון רלוונטי לחיבור/מדריך מתעדכן גם ב־`/Volumes/T9/RooCore/docs/assembly/RooCore-assembly.html`, יחד עם MD, התמונות והטבלאות. אין להשאיר תיקון רק בשיחה.
+כל תיקון בחיבורים או במדריך צריך להגיע גם לקובץ `docs/assembly/RooCore-assembly.html` בעותק הראשי, יחד עם Markdown, התמונות והטבלאות.
 
 ## זיהוי Q1/Q2 — ההסבר המתוקן
 
@@ -106,7 +106,7 @@ The locally retained Amazon order record lists 23 product lines and 24 purchased
 | ESP8266 ESP-01S Wi-Fi modules | 1 | Pack of four modules | [B09J2KPHTN](https://www.amazon.com/dp/B09J2KPHTN) |
 | MG Chemicals 8341 no clean flux paste jar | 1 | 49 g / 50 mL | [B09FWB6L5L](https://www.amazon.com/dp/B09FWB6L5L) |
 
-The current order details show **₪1,372.13**. The [original confirmation email](https://mail.google.com/mail/u/?authuser=thfcxv%40gmail.com#all/1a19394e96da3eac) showed **₪1,556.15**. The reason for this difference was not established; use the live order details for the current displayed total.
+The current order details show **₪1,372.13**. The original confirmation email showed **₪1,556.15**. The reason for this difference was not established; use the live order details for the current displayed total.
 
 ## הזמנה שאינה מלאי לפרויקט
 
@@ -120,4 +120,4 @@ The current order details show **₪1,372.13**. The [original confirmation email
 
 ## מיקום הקושחה ששולבה
 
-RooCoreXiao המלא עודכן בעותק `/Volumes/T9/RooCore-worktrees/lidar-power-sequence`, בענף `codex/lidar-power-sequence`. [פרטי שילוב ותוצאות](docs/assembly/FIRMWARE_INTEGRATION.md). קובץ המדריך הקנוני נשאר ב־T9/RooCore/docs/assembly, ועותק הספרייה שבו מסונכרן למימוש שבקושחה.
+הקושחה המלאה של RooCoreXiao נמצאת בענף `main`, אחרי מיזוג העבודה מהענף `codex/lidar-power-sequence`. [פרטי השילוב והתוצאות](docs/assembly/FIRMWARE_INTEGRATION.md). המדריך נמצא בתיקייה `docs/assembly` בעותק הראשי, והספרייה שבו מסונכרנת עם הקושחה.

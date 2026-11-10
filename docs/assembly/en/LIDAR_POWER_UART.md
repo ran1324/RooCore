@@ -4,7 +4,7 @@
 
 The chosen arrangement uses two permanent UART wires and prepares their GPIO states before switching LiDAR power off. It uses the purchased XIAO ESP32S3, Pololu #2810 and GH cable, with no additional resistor, capacitor, transistor, diode or level shifter in this path.
 
-**The sequence is integrated into the full RooCoreXiao firmware.** Builds and host tests passed; no flashing or physical measurements have been performed. It handles intentional LiDAR shutdown while XIAO remains powered, including the step before a D10 whole-system cutoff request. Software sequencing does not provide hardware isolation during reset, unexpected power loss or electrical faults.
+The sequence is integrated into the full RooCoreXiao firmware on `main`. Builds and host tests passed; no flashing or physical measurements have been performed. It handles intentional LiDAR shutdown while XIAO remains powered, including the step before a D10 whole-system cutoff request. Software sequencing does not provide hardware isolation during reset, unexpected power loss or electrical faults.
 
 [Stage 7](RooCore-assembly.html#s-uart) · [Photo wiring](photo-uart.svg) · [Combined view](combined-wiring.html) · [Schematic](electrical-schematic.svg) · [Hebrew](../LIDAR_POWER_UART.md)
 

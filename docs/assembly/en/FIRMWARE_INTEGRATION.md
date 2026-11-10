@@ -4,7 +4,9 @@
 
 [Assembly guide](RooCore-assembly.html) · [Hebrew record](../FIRMWARE_INTEGRATION.md) · [Firmware source snapshot](../firmware-source/RooCoreXiao.ino)
 
-The change was prepared on `codex/lidar-power-sequence`, based on `033b90050f3deb9c03d79670bc8a90fa2b6590de`. The source snapshot in the guide kit is for review, not a standalone flashable sketch. Build the application from a complete repository checkout with its RoombaOI and RooNavigation libraries.
+The change was prepared on `codex/lidar-power-sequence`, based on `033b90050f3deb9c03d79670bc8a90fa2b6590de`. After PR #1 merged, the firmware and guides are available on `main` in the primary checkout. Continue editing `firmware/xiao/RooCoreXiao/RooCoreXiao.ino` there. Existing local changes were preserved during the update.
+
+The source snapshot in the guide kit is for review, not a standalone flashable sketch. Build the application from a complete repository checkout with its RoombaOI and RooNavigation libraries.
 
 ## Application behavior
 

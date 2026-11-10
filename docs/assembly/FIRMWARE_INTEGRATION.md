@@ -2,7 +2,7 @@
 
 2026-11-10 · גרסה 5. השינוי בוצע ב־`RooCoreXiao.ino`, ולא רק בדוגמת OffByDefault. לא בוצעה צריבה או הפעלת רובוט.
 
-המקור לעריכה נמצא בעותק `/Volumes/T9/RooCore-worktrees/lidar-power-sequence`, בענף `codex/lidar-power-sequence`, על בסיס `origin/main` ב־`033b90050f3deb9c03d79670bc8a90fa2b6590de`. העותק הראשי `/Volumes/T9/RooCore` נשאר עם המדריך הקנוני והשינויים הקיימים בו. לא בוצע reset או דריסה של אותם שינויים.
+השינוי הוכן בענף `codex/lidar-power-sequence`, על בסיס `033b90050f3deb9c03d79670bc8a90fa2b6590de`. לאחר מיזוג בקשת המיזוג #1, הקושחה והמדריכים נמצאים בענף `main` בעותק הראשי. ממשיכים לערוך את `firmware/xiao/RooCoreXiao/RooCoreXiao.ino` שם. השינויים המקומיים נשמרו בזמן העדכון.
 
 ## מה מחובר ביישום
 

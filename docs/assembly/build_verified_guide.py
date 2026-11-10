@@ -204,7 +204,9 @@ with ZipFile(OUT/'RooCore-assembly-kit.zip','w',ZIP_DEFLATED) as z:
             if p.suffix=='.html':
                 z.writestr(p.relative_to(OUT.parents[1]).as_posix(),p.read_text().replace('<a href="RooCore-assembly-kit.zip">כל הערכה</a>','').replace('<a href="../RooCore-assembly-kit.zip">Complete kit</a>',''))
             else:z.write(p,p.relative_to(OUT.parents[1]))
-    for name in ['HARDWARE_INVENTORY.md','AMAZON_ORDER.md','WIRING_GUIDE.md','POWER_DESIGN.md','POWER_SHUTDOWN.md','docs/POWER_SHUTDOWN.md']:
+    for name in ['HARDWARE_INVENTORY.md','AMAZON_ORDER.md','WIRING_GUIDE.md','POWER_DESIGN.md','POWER_SHUTDOWN.md',
+                 'docs/POWER_SHUTDOWN.md','docs/POWER_SHUTDOWN-he.md','docs/diagrams/wiring-xiao.svg',
+                 'hardware/README.md','hardware/check_shutdown.py']:
         content=(OUT.parents[1]/name).read_text()
         content=re.sub(r'\[([^\]]+)\]\([^)]*2026-11-09-withdrawn-before-module-audit\.zip\)',r'\1 (ארכיון נפרד בסביבת העבודה, אינו בערכה הזאת)',content)
         z.writestr(name,content)

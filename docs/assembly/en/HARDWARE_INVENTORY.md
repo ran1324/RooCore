@@ -35,7 +35,7 @@ Product links are retained in the [illustrated guide](RooCore-assembly.html#bom)
 
 Wire 12 is D4/GPIO5→LiDAR RX; wire 13 is LiDAR TX→D5/GPIO6. D3/GPIO4 controls S1 ON. Before intentional power-off, detach UART, drive D4 LOW, configure D5 as an input with pulldown and no pullup, then lower D3. No manual unplugging or extra component is required in this path.
 
-The full firmware uses UART2 and the shared shutdown path; default and enabled-fixture builds passed. Defaults remain false/0 pending physical qualification. See [integration](FIRMWARE_INTEGRATION.md) and [power/UART qualification](LIDAR_POWER_UART.md).
+The full firmware is on `main` and uses UART2 and the shared shutdown path; default and enabled-fixture builds passed. Defaults remain false/0 pending physical qualification. See [integration](FIRMWARE_INTEGRATION.md) and [power/UART qualification](LIDAR_POWER_UART.md).
 
 ## Remaining evidence
 

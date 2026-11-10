@@ -1,5 +1,5 @@
 {
-  "source_root": "/Volumes/T9/RooCore-worktrees/lidar-power-sequence",
+  "source_root": ".",
   "branch": "codex/lidar-power-sequence",
   "base_commit": "033b90050f3deb9c03d79670bc8a90fa2b6590de",
   "arduino_core": "3.3.12",

@@ -48,6 +48,8 @@ In `firmware/xiao/RooCoreXiao/config.local.h`, following the updated template:
 
 ## Diagnostics and tests
 
+The optional [shutdown circuit simulation](../hardware/README.md) checks the proposed EN divider and a generic transistor model on a computer. Its calculated thresholds do not replace measurements on the installed circuit.
+
 `GET /status` includes `power_state`, `power_reason`, `power_configured`, `power_intent_pending`, the D10 assertion count, cutoff time and voltage, and checkpoint-save result. `running` means the guard permits motion, not that the robot is already moving. `init-storage` may not erase an active shutdown marker or run during preparation/cutoff.
 
 Successful cutoff may remove power before an `asserted` report reaches the server; absence of a final report does not prove failure. The marker is saved before D10 assertion and checked at the next boot.

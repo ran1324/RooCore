@@ -72,9 +72,9 @@ assert len(ET.parse(out / 'RooCore-assembly.drawio').getroot().findall('diagram'
 # Bind the published pin map and source snapshot to the full firmware actually
 # built. Offline ZIP readers may use snapshots; a live checkout must match.
 integration = json.loads((out / 'firmware-integration.json').read_text())
-source = repo if (repo / 'firmware/xiao/RooCoreXiao/RooCoreXiao.ino').is_file() else Path(integration['source_root'])
+source = repo / integration['source_root']
 assert integration['physical_validation'] is False
-if source.is_dir():
+if (source / 'firmware/xiao/RooCoreXiao/RooCoreXiao.ino').is_file():
     for name, digest in integration['sha256'].items():
         assert hashlib.sha256((source / name).read_bytes()).hexdigest() == digest, ('changed since build', name)
     for name in ['RooCoreXiao.ino', 'config.example.h']:
@@ -114,7 +114,9 @@ def targets(path):
 
 active = [p for p in out.glob('*.md') if not p.name.startswith('._')] + [out / n for n in ['RooCore-assembly.html', 'combined-wiring.html']]
 active += [repo / n for n in ['HARDWARE_INVENTORY.md', 'WIRING_GUIDE.md', 'POWER_DESIGN.md',
-                              'POWER_SHUTDOWN.md', 'lib/RooCoreLidarPower/README.md']]
+                              'POWER_SHUTDOWN.md', 'lib/RooCoreLidarPower/README.md',
+                              'docs/POWER_SHUTDOWN.md', 'docs/POWER_SHUTDOWN-he.md', 'docs/diagrams/wiring-xiao.svg',
+                              'hardware/README.md']]
 english = out / 'en'
 active += [p for p in english.glob('*.md') if not p.name.startswith('._')] + [english / n for n in ['RooCore-assembly.html', 'combined-wiring.html']]
 english_rows = json.loads((english / 'connections.json').read_text())
@@ -161,6 +163,7 @@ with ZipFile(out / 'RooCore-assembly-kit.zip') as z:
     for path in [out / 'firmware-integration.json', out / 'sources/firmware-integration-build.txt',
                  out / 'firmware-source/RooCoreXiao.ino', out / 'firmware-source/config.example.h']:
         assert z.read(path.relative_to(repo).as_posix()) == path.read_bytes(), ('stale packaged firmware', path)
+    assert z.read('hardware/check_shutdown.py') == (repo / 'hardware/check_shutdown.py').read_bytes()
 
 print('PASS: 13 wires; 7 separate nets; two drawing maps; XML; 13 draw.io pages;')
 print(f'{count} local links in both languages; identical English wiring geometry; firmware hashes/pin map; ZIP CRC and document/code parity. Not hardware validation.')

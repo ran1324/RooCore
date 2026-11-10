@@ -23,18 +23,18 @@
 
 השילוב בקושחה המלאה הושלם ונבדק בעותק `codex/lidar-power-sequence`, המתועד ב־FIRMWARE_INTEGRATION.md. ברירת המחדל נשארת כבויה: `ROO_LIDAR_POWER_VERIFIED=false`, ‏`ROO_LIDAR_RISE_MS=0`, כי זמן עליית ההספק והבדיקות הפיזיות טרם בוצעו. זה אינו קוד דוגמה בלבד. בדיקות OI, כיבוי סוללה, Dirt/Stasis, carpet וניווט במחשב עברו יחד עם מבחן הרצף החדש. לא בוצעה צריבה.
 
-אין קובץ KiCad או kicad-cli זמין; לא בוצעו ERC/DRC. כלי pcb הזמין מספק draw.io. בדיקת רשתות החוטים היא בדיקת עקביות, לא ERC חשמלי. ngspice זמין, אך אין מודל מאומת של המודולים ולא הורצה סימולציית רכיבים.
+אין קובץ KiCad או kicad-cli זמין; לא בוצעו ERC/DRC. כלי pcb הזמין מספק draw.io. בדיקת רשתות החוטים היא בדיקת עקביות, לא ERC חשמלי. [סימולציית EN](../../hardware/README.md) עברה 32 מקרי DC ובדיקות ספי מעבר עם ngspice 47. היא משתמשת בטרנזיסטור כללי ובספים נומינליים. אין מודל מאומת של המודולים שנרכשו.
 
 בפתיחת SVG ישירות הדפדפן ביקש favicon.ico שאינו קיים (404). החוברת והתצוגה המשולבת כוללות סמל ריק; זו אינה תמונת רכיב חסרה.
 
 ## שחזור הבדיקות ללא חומרה
 
 ```sh
-# In /Volumes/T9/RooCore: rebuild the canonical guide and check snapshots/pin maps.
+# From the repository root: rebuild the guide and check snapshots/pin maps.
 python3 docs/assembly/build_guide.py
 python3 docs/assembly/check_artifacts.py
 
-# In /Volumes/T9/RooCore-worktrees/lidar-power-sequence: actual application checks.
+# From the same checkout: application checks.
 sh tests/run.sh
 sh tests/build_xiao.sh
 ```

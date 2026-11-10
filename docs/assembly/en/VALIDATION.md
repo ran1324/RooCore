@@ -18,7 +18,7 @@ The model enforces no positive controller signal source while LiDAR is commanded
 
 The integrated firmware remains disabled by default with `ROO_LIDAR_POWER_VERIFIED=false` and `ROO_LIDAR_RISE_MS=0`. A measured settling interval and physical qualification are still required. OI, cutoff, Dirt/Stasis, carpet and navigation host tests passed along with the new sequence test. See the [integration record and build log](FIRMWARE_INTEGRATION.md).
 
-No KiCad project or kicad-cli was available. No ERC/DRC was run. The pcb connector supplies draw.io. The wire-net consistency check is not electrical ERC. ngspice was available, but no validated module model was available and no SPICE simulation was performed.
+No KiCad project or kicad-cli was available. No ERC/DRC was run. The pcb connector supplies draw.io. The wire-net consistency check is not electrical ERC. The [EN simulation](../../../hardware/README.md) passed 32 DC cases and enable-state checks with ngspice 47. It uses a generic transistor and nominal thresholds. No validated model of the purchased modules is available.
 
 ## Reproduce without hardware
 
