@@ -2,6 +2,8 @@
 
 The current stage is **collection and analysis only**. The old response to a single reading above 90 has been removed from both the XIAO core and the reference engine. There is currently no switch that enables automatic cleaning in response to dirt. No physical Roomba data was collected and no firmware was flashed as part of this change.
 
+The user's requested automatic mode, persistent cleaning history and maintenance recommendations are now accepted requirements in the [implementation plan](SMART_CLEANING_PLAN.md) ([Hebrew](SMART_CLEANING_PLAN-he.md)). That plan defines the next behavior and validation gates; it does not enable the observation-only detector described here.
+
 ## Stored data
 
 Packet 15 is decoded as an unsigned value from 0–255; packet 16 is a separate byte, not a dirt measurement. The library already stored the latest reading with its reception time and generation. `setSampleObserver` now receives every measurement from every valid frame after the entire frame has been decoded, including multiple frames in one `poll`. An invalid checksum or payload produces no reading. The reading is not a calibrated quantity of dirt.

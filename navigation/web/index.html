@@ -11,7 +11,7 @@
   <body>
     <header>
       <a href="/" class="brand">RooCore<span>מעבדת ניווט</span></a>
-      <div class="tag">סימולציה בלבד <i></i></div>
+      <div class="tag" id="source-tag">טוען מקור נתונים <i></i></div>
     </header>
     <main>
       <section class="workspace" aria-label="מפת הסימולציה">
@@ -29,7 +29,7 @@
             ><strong id="coverage">0<span>%</span></strong>
           </div>
           <div>
-            <small>סוללה מדומה</small
+            <small id="battery-label">סוללה מדומה</small
             ><strong id="battery">90<span>%</span></strong>
           </div>
           <div><small>מעבר</small><strong id="pass">1 / 1</strong></div>
@@ -41,7 +41,7 @@
             height="720"
             aria-label="מפה: שטח שנצפה, מסלול, רובוט ונקודת טעינה"
           ></canvas>
-          <div class="map-note">
+          <div class="map-note" id="map-note">
             ליבת XIAO ב־C++ · מיקום מדומה · מידות מברשות זמניות
           </div>
         </div>
@@ -51,14 +51,45 @@
           ><span><i style="background: #f2ce8c"></i>מברשת צד</span
           ><span><i class="path"></i>מסלול מתוכנן</span
           ><span><i class="unknown"></i>טרם נצפה</span
+          ><span><i style="background: #dfad80"></i>שטח מוגן ליד העמדה</span
           ><label
             ><input type="checkbox" id="truth" /> הצגת המכשולים האמיתיים</label
           >
         </div>
+        <p id="freshness" role="status"></p>
         <p id="reason" role="status">בחרו תרחיש והפעילו את הסימולציה.</p>
+        <div class="insights">
+          <section class="insight" aria-labelledby="health-title">
+            <p class="eyebrow">זמן עבודה וטעינות</p>
+            <h2 id="health-title">בריאות הסוללה</h2>
+            <strong id="health-status">ממתינים לנתונים</strong>
+            <p id="health-detail" class="hint"></p>
+            <ul id="health-evidence"></ul>
+            <p class="hint">ההשוואה מבוססת על משימות בתנאים דומים. היא אינה מדידת קיבולת הסוללה.</p>
+          </section>
+          <section class="insight" aria-labelledby="history-title">
+            <p class="eyebrow">דיווחים שנשמרו</p>
+            <h2 id="history-title">היסטוריית ניקיון</h2>
+            <ol id="history"></ol>
+            <p id="usage" class="hint"></p>
+          </section>
+        </div>
+        <section class="insight maintenance" aria-labelledby="care-title">
+          <div class="map-heading"><h2 id="care-title">תחזוקה וחלקים</h2><label><input type="checkbox" id="pets" /> יש בעלי חיים בבית</label></div>
+          <p class="hint">תאריכים לפי הדיווח שלך, ותזכורות לפי הנחיות iRobot. גיל החלק וזמן ההפעלה אינם אחוז בלאי.</p>
+          <div id="parts"></div>
+          <form id="service-form">
+            <label>חלק<select id="service-part" required></select></label>
+            <label>פעולה<select id="service-action"><option value="cleaned">ניקיתי</option><option value="replaced">החלפתי</option><option value="installed">תאריך התקנה</option><option value="snoozed">דחיית תזכורת עד</option></select></label>
+            <label>תאריך<input id="service-date" type="date" required /></label>
+            <button type="submit">שמירת דיווח</button>
+          </form>
+          <p id="service-result" role="status"></p>
+          <a href="https://support.irobot.co.uk/articles/en_GB/Knowledge/11179" target="_blank" rel="noopener">הנחיות התחזוקה של iRobot ↗</a>
+        </section>
       </section>
       <aside>
-        <h2>תוכנית הניקיון</h2>
+        <div id="simulation-controls"><h2>תוכנית הניקיון</h2>
         <label class="field"
           >מצב ניקיון<select id="profile">
             <option value="daily">יומיומי · מעבר אחד</option>
@@ -66,7 +97,7 @@
           </select></label
         >
         <p id="profile-description" class="hint">
-          תנועה רגילה וניקוי נוסף באזורים מלוכלכים.
+          מעבר שיטתי אחד, עם השלמת קצוות בשטח שנצפה.
         </p>
         <label class="field"
           >סביבת בדיקה<select id="scenario">
@@ -100,8 +131,12 @@
           ><button data-fault="localization" aria-pressed="false">
             אובדן מיקום</button
           ><button data-fault="cliff" aria-pressed="false">זיהוי מדרגה</button>
+          <button data-fault="charger_waiting">המתנה במטען</button>
+          <button data-fault="charger_fault">תקלה במטען</button>
+          <button data-fault="dock_moved">העמדה זזה</button>
+          <button data-fault="accidental_charge">מגע טעינה לא צפוי</button>
         </div>
-        <div class="divider"></div>
+        </div><p id="readonly-note" class="hint" hidden>צפייה בדיווחי הרובוט בלבד. פתיחת האתר אינה מפעילה ניקיון.</p><div class="divider"></div>
         <div class="log-title">
           <h2>יומן המשימה</h2>
           <span id="clock">00:00</span>
@@ -109,7 +144,7 @@
         <ol id="events" aria-live="polite">
           <li>ממתינים להפעלה</li>
         </ol>
-        <div class="limits">
+        <div class="limits" id="limits">
           ליבת הניווט זהה לליבת XIAO. הטעינה והמיקום מדומים. רוחב המברשות זמני:
           16 ס״מ. ירוק מציין מעבר מברשות מרכזיות, צהוב מברשת צד בלבד. שטח לבן לא
           נוקה; אפור לא מוכר. אין חיבור לרובוט במסך הזה.

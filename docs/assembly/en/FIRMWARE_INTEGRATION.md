@@ -1,6 +1,16 @@
 # Integrated LiDAR power sequencing
 
-2026-11-10 · Revision 5. The sequence is part of the full `RooCoreXiao.ino` application, not just the OffByDefault example. No firmware has been flashed and no robot has been operated for this validation.
+## Charging, dock protection and progress dashboard — revision 6
+
+Firmware now has a local charge supervisor, active-time accounting excluding charging/pauses, explicit return causes, reusable occupancy and coherent `/progress` snapshots. Dock protection checks the swept body/side-brush envelope with qualified approach/departure corridors. IR is not a distance measurement. Unknown-frame motion stays held even if a provisional local map exists.
+
+LiDAR preparation remains latched through warm-up. Invalid charger telemetry, waiting/reconditioning and faults cannot be overridden by a high percentage. The native charger owns charging. Automatic BRC wake is disabled without verified interface/behavior. New user configuration stays unqualified/off. No wire or pin mapping changed.
+
+All 92 Python tests and C++ ASan/UBSan checks passed, including a three-hour simulated charging dwell, charge/resume, pause during departure and a moved dock. Full firmware compiled in both configurations below. The enabled compiler fixture uses synthetic dock dimensions and temperatures only.
+
+[Dashboard](../../DASHBOARD.md) · [Charge/resume](../../CHARGE_RESUME_PLAN.md) · [Dock guard](../../DOCK_GUARD.md). No flashing, hardware operation or measurements were performed.
+
+2026-11-10 · Revision 6. The sequence is part of the full `RooCoreXiao.ino` application, not just the OffByDefault example. No firmware has been flashed and no robot has been operated for this validation.
 
 [Assembly guide](RooCore-assembly.html) · [Hebrew record](../FIRMWARE_INTEGRATION.md) · [Firmware source snapshot](../firmware-source/RooCoreXiao.ino)
 
@@ -31,8 +41,8 @@ The defaults remain `ROO_LIDAR_POWER_VERIFIED=false` and `ROO_LIDAR_RISE_MS=0`. 
 |---|---:|---:|
 | BatteryMonitor | 289795 | 23724 |
 | LinkSetup | 291239 | 23740 |
-| Full RooCoreXiao, defaults | 524259 | 151148 |
-| Full RooCoreXiao, enabled test fixture | 529531 | 151156 |
+| Full RooCoreXiao, defaults | 536135 | 151708 |
+| Full RooCoreXiao, enabled test fixture | 544411 | 151716 |
 
 The temporary enabled fixture uses synthetic calibration, including **25ms solely for the build fixture**. It is not a robot setting or a flashing instruction. Compilation does not validate electrical behavior.
 
