@@ -43,4 +43,4 @@
 #zone-editor [hidden],.zone-workbench [hidden],.zone-bottom [hidden] { display:none!important; }
 @media(max-width:850px){.zone-workbench.is-editing{grid-template-columns:1fr;}.zone-inspector{padding:16px;}.zone-list{flex-direction:row;flex-wrap:wrap;}.zone-list button{flex:1;min-width:130px;}.zone-bottom{align-items:flex-start;}.zone-tools{gap:8px;}.zone-editing main{padding:18px 12px;}.zone-top h2{font-size:20px;}#zone-editor .zone-top{align-items:flex-start;}}
 
-.zone-editing .legend, .zone-editing #reason { display:none; }
+.zone-editing .legend, .zone-editing #reason, .zone-editing .insight { display:none; }

@@ -36,7 +36,10 @@ Manufacturer reference: [iRobot Create 2 OI specification based on Roomba 600, 2
 
 ## Verification
 
+The integrated version passed all 100 Python tests and four XIAO builds (two examples plus default/enabled full firmware), in addition to the C++ sanitizer suite.
+
 - `tests/run.sh`: existing OI, power, current-estimation and navigation cases plus `map_zones_native_test.cpp`, with ASan/UBSan.
 - `tests/test_map_zones.py`: invalid geometry/policy, identity separation, stale-edit rejection, corrupt storage, dock overlap rejection, presence toggle, boost/safety priority and HTTP reset/persistence.
 - Independent simulated trajectory: room with a carpet and exclusion completed both general and carpet passes, requested boost, had zero collisions, and stayed at least 0.2646 m from the forbidden rectangle. The observer checked simulator integration positions, independently of the policy geometry. This is a software result, not a physical clearance measurement.
+- Combined charge/resume regression: 11,271 simulator steps to completion with an exclusion and carpet. Battery return was triggered after extra-pass coverage began; charging and departure preserved the pass and prior coverage. The extra pass then progressed to 256 samples. Minimum observed clearance was 0.264603 m; collisions and dock brush contacts were both zero. The read-only robot-mode API test also confirmed saved annotations cause no command upload.
 - Browser verification covers drawing, naming, moving/resizing, undo, saving/reload and the responsive editor. Physical localization, pile climbing, brush response and stopping distance remain untested.

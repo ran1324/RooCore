@@ -1,7 +1,7 @@
 {
   "source_root": ".",
-  "branch": "codex/charge-dock-dashboard",
-  "base_commit": "41902427fb7f00e34e77e2feb7c71bc9ed8875de",
+  "branch": "codex/map-zones",
+  "base_commit": "1b165f186abab299f6c44dcb192126a82b36adfa",
   "arduino_core": "3.3.12",
   "physical_validation": false,
   "sha256": {
@@ -9,33 +9,25 @@
     "firmware/xiao/RooCoreXiao/config.example.h": "a65b772d40d1d26c4dcb5fa350234012e1ad1c414b858e4e5879be9e466db2a5",
     "lib/RooCoreLidarPower/src/LidarPowerSequence.h": "9c21fc5eddc39f0d40a102f202f6d79b474ddf1909b2f7bbfcd856e0fed0ca40",
     "lib/RooCoreLidarPower/src/RooCoreLidarPower.h": "5eda1bbee756031107779be45b0d3691d6abace3808d8e72b9fcb6de9a1f661d",
-    "lib/RooNavigation/src/._CarpetBoost.h": "3d59a3989563ea542dabff88365ab6bf69d3e475f60bd5c6a9d8ce067a3641f5",
-    "lib/RooNavigation/src/._ChargeSupervisor.h": "3d59a3989563ea542dabff88365ab6bf69d3e475f60bd5c6a9d8ce067a3641f5",
-    "lib/RooNavigation/src/._ControlArbiter.h": "3d59a3989563ea542dabff88365ab6bf69d3e475f60bd5c6a9d8ce067a3641f5",
-    "lib/RooNavigation/src/._DirtMonitor.h": "3d59a3989563ea542dabff88365ab6bf69d3e475f60bd5c6a9d8ce067a3641f5",
-    "lib/RooNavigation/src/._DockGuard.h": "3d59a3989563ea542dabff88365ab6bf69d3e475f60bd5c6a9d8ce067a3641f5",
-    "lib/RooNavigation/src/._NavigationHelp.h": "3d59a3989563ea542dabff88365ab6bf69d3e475f60bd5c6a9d8ce067a3641f5",
-    "lib/RooNavigation/src/._PowerShutdown.h": "3d59a3989563ea542dabff88365ab6bf69d3e475f60bd5c6a9d8ce067a3641f5",
-    "lib/RooNavigation/src/._PowerShutdownOI.h": "3d59a3989563ea542dabff88365ab6bf69d3e475f60bd5c6a9d8ce067a3641f5",
-    "lib/RooNavigation/src/._RooNavigation.h": "3d59a3989563ea542dabff88365ab6bf69d3e475f60bd5c6a9d8ce067a3641f5",
-    "lib/RooNavigation/src/._TminiPlus.h": "3d59a3989563ea542dabff88365ab6bf69d3e475f60bd5c6a9d8ce067a3641f5",
     "lib/RooNavigation/src/CarpetBoost.h": "419cd15b160a551c010bd5811b9731a15b3eeeb2f8b3c4902dbce1ed437ee144",
     "lib/RooNavigation/src/ChargeSupervisor.h": "1c5655b6aadfc96b8a9e76735812ef8e89f1eecadbc4e2fc0e795370ff4c167e",
     "lib/RooNavigation/src/ControlArbiter.h": "59dd120537cb92b1e6fc174e652d6fbf7740c03bb2b912fc6f68a8b3d5f94e92",
     "lib/RooNavigation/src/DirtMonitor.h": "47bd2a9d9e5f985fbf4bd00653596c9f509ab6f99f7d7823a49ae4e802f3dd06",
     "lib/RooNavigation/src/DockGuard.h": "866f11c8e4469351e97691b6627964c648d1d7d9f4911afc630aa120ddb94e02",
+    "lib/RooNavigation/src/MapZones.h": "de4e2abc3a2f1852707267337ef7bb5b8a5cf40a73656c88e616fddbbf6255d3",
     "lib/RooNavigation/src/NavigationHelp.h": "b1424be6018bd514ce9ca2d9c1f6893a4b29973d1fc298cb47cff6916cd69965",
     "lib/RooNavigation/src/PowerShutdown.h": "a4f0d4666091141d551c4b3f70069106c60cb34731662048f0521f6dfb636d54",
     "lib/RooNavigation/src/PowerShutdownOI.h": "687c256a1f838f6bc1e6983b4458b51d101f76af84463c403bc6735a3394718e",
-    "lib/RooNavigation/src/RooNavigation.h": "fb038d9283b10a5c913892c6bbee0a9da9247e84930c6a91f3f99d6e29f69489",
+    "lib/RooNavigation/src/RooNavigation.h": "57dac2d391979d0adfa4a90351d4b58430508846eeca559c28c32bde2bef986b",
     "lib/RooNavigation/src/TminiPlus.h": "859a365f3c3f428778acf5179094f719fa09356e0f67b54dcb5244f8b2fbbe41",
     "tests/build_xiao.sh": "bee4e999af5e5fc35f75b82abbbc6d15814d543541432341d21f82adb6346b58",
     "tests/charge_resume_test.cpp": "5ee86fc77a2b9100820746726aa0d5363b5921cd12e76d2c590fcda03406ec4e",
     "tests/dock_guard_test.cpp": "a8a7330f924c6cecc206571c54adc00915d7845dac2a16eba1195a3593569408",
     "tests/lidar_power_test.cpp": "4781257febeb1f79daf673a37c96f1d144a369f01fc462ada287f49d18e55edd",
+    "tests/map_zones_native_test.cpp": "3e8dd0bbcf24487b0304f6d3e4a5bb1a062af5e38dc2e27f44c5e66fce9a2621",
     "tests/navigation_native_test.cpp": "b033b5e76074eb980678c1326eeb3bf0bc8d5652e492452a07aa5fca1095b26e",
-    "tests/run.sh": "389a9676b624ae5fa76a607200965c8f613fc3144db6301e8956d50136ff3271"
+    "tests/run.sh": "e3175c5ce286ca845d29c40286c6a081c2d1e4534724e2b175dcd4f85443bf86"
   },
   "validation_date": "2026-11-10",
-  "source_state": "working tree; source hashes bind the verified build"
+  "source_state": "integrated charge/dock and map zones; source hashes bind the verified build"
 }

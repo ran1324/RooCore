@@ -1,5 +1,6 @@
 import copy
 import json
+import math
 import tempfile
 import threading
 import unittest
@@ -91,6 +92,48 @@ class MapZonesTests(unittest.TestCase):
         post("/api/start", {})
         self.assertEqual(json.load(urlopen(url+"/api/state"))["passes"], 3)
         self.assertEqual(post("/api/reset", {"scenario":"room"})["zones"], [])
+
+    def test_zones_survive_charge_resume_during_extra_carpet_pass(self):
+        sim = self.sim
+        items = [zone(), zone("no_go", id="bowls", x1=2.3, y1=1.3, x2=2.7, y2=1.7)]
+        ZoneService(self.tmp.name).save(sim.state(), self.body(items), sim)
+        sim.mission.start()
+        requested_charge = charged = resumed = boosted = False
+        before = None
+        passes = set()
+        minimum = math.inf
+        for step in range(18000):
+            sim.step()
+            m = sim.mission
+            passes.add(m.pass_index)
+            distance = math.hypot(max(2.3-sim.pose.x, 0, sim.pose.x-2.7),
+                                  max(1.3-sim.pose.y, 0, sim.pose.y-1.7))
+            minimum = min(minimum, distance)
+            self.assertGreaterEqual(distance, .215, "simulated body entered the exclusion margin")
+            self.assertNotEqual(m.state, "FAULT", (step, m.reason))
+            boosted |= sim.command.cleaning_pwm == 127 and sim.command.side_pwm == 127
+            if m.pass_index == 1 and m.fine_covered[1] and not requested_charge:
+                before = set(m.fine_covered[1])
+                sim.inject("battery")
+                requested_charge = True
+            if requested_charge and m.state == "CHARGING":
+                charged = True
+                self.assertEqual(m.return_cause, "battery")
+                self.assertTrue(before <= set(m.fine_covered[1]))
+            if charged and m.state == "CLEANING":
+                resumed = True
+                self.assertEqual(m.pass_index, 1)
+                self.assertTrue(before <= set(m.fine_covered[1]))
+            if m.state == "COMPLETE":
+                break
+        self.assertEqual(sim.mission.state, "COMPLETE")
+        self.assertTrue(requested_charge and charged and resumed and boosted)
+        self.assertEqual(passes, {0, 1})
+        self.assertGreater(len(sim.mission.fine_covered[1]), len(before))
+        self.assertEqual((sim.collisions, sim.dock_brush_contacts), (0, 0))
+        self.assertEqual(sim.mission.zones[1]["id"], "bowls")
+        print("combined zones/charge: steps=%d passes=%s clearance=%.6fm extra_samples=%d collisions=%d dock_contacts=%d" %
+              (step+1, sorted(passes), minimum, len(sim.mission.fine_covered[1]), sim.collisions, sim.dock_brush_contacts), flush=True)
 
 
 if __name__ == "__main__": unittest.main()

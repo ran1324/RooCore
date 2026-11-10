@@ -297,6 +297,23 @@ class ReadOnlyServerTests(unittest.TestCase):
         self.assertEqual(self.request("/api/state", headers={"Host": "attacker.example"})[0], 403)
         self.assertEqual(self.request("/api/maintenance/settings", {"pets": True}, {"Origin": "https://attacker.example"})[0], 403)
 
+    def test_saved_robot_map_zones_are_annotations_without_command_upload(self):
+        from navigation.zone_service import ZoneService
+        with tempfile.TemporaryDirectory() as directory:
+            self.server.zones = ZoneService(directory)
+            self.server.monitor.ingest(frame(state=8))
+            status, document = self.request("/api/zones")
+            self.assertEqual(status, 200)
+            self.assertEqual(document["application"], "annotations_only")
+            document["zones"] = [{"id": "bathroom", "name": "חדר רחצה", "kind": "no_go",
+                                  "x1": -1., "y1": -2., "x2": -.9, "y2": -1.9}]
+            status, saved = self.request("/api/zones", document)
+            self.assertEqual(status, 200, saved)
+            self.assertEqual(saved["revision"], 1)
+            self.assertEqual(saved["zones"][0]["name"], "חדר רחצה")
+            self.assertEqual(self.calls, [])
+            self.assertTrue(self.request("/api/state")[1]["read_only"])
+
     def test_configuration_fails_closed(self):
         with self.assertRaises(ValueError):
             Server(("0.0.0.0", 0), store_path=":memory:")
@@ -310,7 +327,9 @@ class ReadOnlyServerTests(unittest.TestCase):
                      "active_ms": 0, "brush_s": 0., "vacuum_s": 0.}
             def state(self):
                 return dict(self.value)
-        with patch("navigation.server.Simulation", SimulationFixture):
+        # This fixture deliberately has only cumulative usage, not navigation/map state.
+        # Map loading is exercised by the real simulator integration tests.
+        with patch("navigation.server.Simulation", SimulationFixture), patch("navigation.server.ZoneService.activate"):
             sim_server = Server(("127.0.0.1", 0), store_path=":memory:")
             sim_server.state()
             sim_server.sim.value.update(time=25., state="CHARGING", active_ms=15000, brush_s=10., vacuum_s=8.)

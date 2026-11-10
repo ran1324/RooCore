@@ -2,6 +2,8 @@
 
 2026-11-10 · Revision 6. File, browser, host-model and compilation checks only. No flashing, robot operation, physical power cycles or LiDAR measurements.
 
+The combined map-zones integration passed all 100 Python tests, C++ ASan/UBSan checks and four XIAO builds (two examples and two full-application configurations). Charging during an extra carpet pass resumed through completion with coverage retained and no collisions. The map editor was independently checked in the browser, including a 390px layout.
+
 | Check | Scope / result |
 |---|---|
 | Wire ledger | 13 matching CSV/JSON/source rows; stable IDs 1–13 |
@@ -11,7 +13,7 @@
 | English version | Translated text over the same source geometry and wire IDs; English HTML/MD/CSV/JSON/SVG/draw.io; reciprocal language navigation |
 | Local links and kit | Link targets, ZIP CRC, current document/code entries and source snapshots checked by `check_artifacts.py` |
 | Browser | Desktop/mobile layout, images and interactive route highlighting checked; wide diagrams scroll inside their own container |
-| Firmware | Full XIAO defaults: 536135 Flash / 151708 static RAM bytes; enabled fixture: 544411 / 151716. BatteryMonitor and LinkSetup also built |
+| Firmware | Full XIAO defaults: 538031 Flash / 151708 static RAM bytes; enabled fixture: 546471 / 151716. BatteryMonitor and LinkSetup also built |
 | Host model | ASan/UBSan tests include 100 modeled LiDAR cycles, nonblocking startup, cancellation, timer wrap, stale RX, busy TX and latched partial-UART failure |
 
 The model enforces no positive controller signal source while LiDAR is commanded off. It does not model semiconductor leakage, capacitors, physical reset or brownout. `powerOff()` is shared by normal and battery-cutoff paths; it is not a hardware isolation guarantee.

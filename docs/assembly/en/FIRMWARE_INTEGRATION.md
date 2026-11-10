@@ -18,6 +18,10 @@ The change was prepared on `codex/lidar-power-sequence`, based on `033b90050f3de
 
 The source snapshot in the guide kit is for review, not a standalone flashable sketch. Build the application from a complete repository checkout with its RoombaOI and RooNavigation libraries.
 
+## Map zones — additional integration verification
+
+Rectangle areas and virtual walls were added to the shared planner and visual map editor. A complete simulation with an exclusion and carpet covered charging during an extra carpet pass, departure and resumption in that same pass with prior coverage retained, through completion without collisions. All 100 Python tests passed after integration, alongside C++ ASan/UBSan checks. Zone policy was included in both firmware builds. XIAO does not yet accept or acknowledge zone uploads; saving in robot mode stores annotations only and does not activate physical protection. Wiring and enablement settings are unchanged. [Behavior and limits](../../MAP_ZONES.md).
+
 ## Application behavior
 
 - `setup()` calls `lidarPort.begin()` before networking or tasks: detach UART, drive D4 LOW, make D5 an input with pulldown, then drive D3 LOW.
@@ -41,8 +45,8 @@ The defaults remain `ROO_LIDAR_POWER_VERIFIED=false` and `ROO_LIDAR_RISE_MS=0`. 
 |---|---:|---:|
 | BatteryMonitor | 289795 | 23724 |
 | LinkSetup | 291239 | 23740 |
-| Full RooCoreXiao, defaults | 536135 | 151708 |
-| Full RooCoreXiao, enabled test fixture | 544411 | 151716 |
+| Full RooCoreXiao, defaults | 538031 | 151708 |
+| Full RooCoreXiao, enabled test fixture | 546471 | 151716 |
 
 The temporary enabled fixture uses synthetic calibration, including **25ms solely for the build fixture**. It is not a robot setting or a flashing instruction. Compilation does not validate electrical behavior.
 
