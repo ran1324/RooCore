@@ -1,4 +1,5 @@
 #pragma once
+#include "MapZones.h"
 #include <initializer_list>
 #include <math.h>
 #include <stddef.h>
@@ -85,6 +86,7 @@ struct Config {
   float overlap = .04f;
   uint16_t wallIRTarget = 0; // zero disables uncalibrated signal-to-steering correction
   bool homeKnown = true;
+  bool stationaryDockSimulation = false; // host physics only; never set on hardware
   bool perimeter = true, wallTouch = false; // touch requires measured bumper/stop latency
   uint32_t perimeterTimeoutMs = 900000;
   float wheelSeparation = .235f, metersPerTick = .000444565f;
@@ -97,6 +99,8 @@ class Navigator {
 public:
   static constexpr int MaxCells = 16384;
   Config cfg;
+  MapZones zones;
+  uint8_t zoneCovered[MaxCells]{}, zoneExtra[MaxCells]{}, zoneBlocked[MaxCells]{};
   State state = State::Idle;
   Reason reason = Reason::None;
   Pose dock, checkpoint;
@@ -137,6 +141,62 @@ public:
            cfg.sideX >= 0 && cfg.sideX <= .2f && cfg.sideY < 0 && cfg.sideY >= -.2f &&
            cfg.sideRadius >= .05f && cfg.sideRadius <= .15f;
   }
+  // Replace only while stopped. Caller must validate map identity + geometry.
+  bool setZones(const MapZone *items, unsigned size) {
+    if (size > MapZones::Capacity || (size && !items) ||
+        (state != State::Idle && state != State::Paused && state != State::Complete))
+      return false;
+    for (unsigned i = 0; i < size; ++i) {
+      const MapZone &z = items[i];
+      if (!z.valid() || z.x1 < cfg.originX || z.y1 < cfg.originY ||
+          z.x2 < cfg.originX || z.y2 < cfg.originY ||
+          z.x1 > cfg.originX + cfg.cols * cfg.resolution ||
+          z.x2 > cfg.originX + cfg.cols * cfg.resolution ||
+          z.y1 > cfg.originY + cfg.rows * cfg.resolution ||
+          z.y2 > cfg.originY + cfg.rows * cfg.resolution)
+        return false;
+    }
+    zones.count = size;
+    for (unsigned i = 0; i < size; ++i)
+      zones.items[i] = items[i];
+    memset(zoneCovered, 0, sizeof zoneCovered);
+    for (int c = 0; c < count(); ++c) {
+      Pose p = center(c);
+      zoneBlocked[c] = zones.blocked(p.x, p.y, cfg.radius + cfg.margin + cfg.resolution * .707107f);
+      zoneExtra[c] = zones.extraAt(p.x, p.y);
+      if (zoneBlocked[c]) safe[c] = 0;
+    }
+    pass = 0;
+    if (state == State::Paused && (resume_ == State::Cleaning || resume_ == State::Edging || resume_ == State::Touchup))
+      resume_ = State::Cleaning;
+    touchupDone_ = false;
+    pathLength_ = 0;
+    target_ = -1;
+    roomReady_ = false;
+    sweepValid_ = false;
+    return true;
+  }
+  unsigned totalPasses() const { return passes + zones.maxExtra(); }
+  bool carpetPass() const { return pass >= passes && zones.maxExtra() != 0; }
+  unsigned passSlot() const { return !carpetPass() ? pass : pass - passes; }
+  uint8_t passCoverage(int c) const { return !carpetPass() ? covered[c] : zoneCovered[c]; }
+  bool wantsPass(int c) const { return !carpetPass() || zoneExtra[c] > pass - passes; }
+  bool zoneMotionAllowed(Pose p, float speed, float turn) const {
+    if (!zones.hasBarriers()) return true;
+    if (!isfinite(speed) || !isfinite(turn) || !isfinite(p.yaw)) return false;
+    // Same 0.5 s command horizon as allowsMotion; 1 cm sweep discretization
+    // guarded by an additional 1 cm radius. Reverse and turning are included.
+    int steps = int(ceilf(fabsf(speed) * .5f / .01f)) + 1;
+    if (steps > 128) return false;
+    for (int j = 0; j <= steps; ++j) {
+      if (zones.blocked(p.x, p.y, cfg.radius + cfg.margin + .01f)) return false;
+      float dt = .5f / steps;
+      p.x += speed * cosf(p.yaw + turn * dt / 2) * dt;
+      p.y += speed * sinf(p.yaw + turn * dt / 2) * dt;
+      p.yaw += turn * dt;
+    }
+    return true;
+  }
   void start(bool deep, Pose home, uint32_t now) {
     if (!configureValid()) {
       fault(Reason::MapBoundary);
@@ -144,6 +204,7 @@ public:
     }
     memset(cells, 0, sizeof cells);
     memset(covered, 0, sizeof covered);
+    memset(zoneCovered, 0, sizeof zoneCovered);
     memset(sideCovered, 0, sizeof sideCovered);
     memset(edgeSeen, 0, sizeof edgeSeen);
     memset(gapTried, 0, sizeof gapTried);
@@ -227,6 +288,7 @@ public:
   bool wallApproach() const { return state == State::Edging && edgePhase_ == 6; }
   bool roomTransit() const { return roomTransit_; }
   bool allowsMotion(Pose p, float speed, float turn) const {
+    if (!zoneMotionAllowed(p, speed, turn)) return false;
     if (state != State::Cleaning || roomTransit_ || !roomReady_)
       return true;
     for (int j = 0; j < 5; ++j) {
@@ -289,16 +351,17 @@ public:
           if (x < 0 || y < 0 || x >= cfg.cols || y >= cfg.rows)
             continue;
           int c = y * cfg.cols + x;
-          if (cells[c] != -1)
+          if (cells[c] != -1 || zones.blocked(center(c).x, center(c).y, 0))
             continue;
           for (int sub = 0; sub < 4; ++sub) {
             Pose p = samplePoint(c, sub);
             float dx = p.x - pose.x, dy = p.y - pose.y;
             float forward = dx * cs + dy * sn, left = -dx * sn + dy * cs;
-            uint8_t bit = uint8_t(1u << (sub + pass * 4));
+            uint8_t bit = uint8_t(1u << (sub + passSlot() * 4));
+            uint8_t &coverage = !carpetPass() ? covered[c] : zoneCovered[c];
             if (in.cleaningActive && fabsf(forward - cfg.brushOffset) <= cfg.brushDepth / 2 &&
-                fabsf(left) <= cfg.brushWidth / 2 && !(covered[c] & bit)) {
-              covered[c] |= bit;
+                fabsf(left) <= cfg.brushWidth / 2 && wantsPass(c) && !(coverage & bit)) {
+              coverage |= bit;
               ++completedCells;
             }
             if (in.sideBrushActive &&
@@ -345,6 +408,21 @@ public:
   }
 
   Output tick(const Input &in, bool remote = false) {
+    Output out = tickCore(in, remote);
+    if ((out.action == Action::Drive && !zoneMotionAllowed(in.pose, out.speed, out.turn)) ||
+        (out.action == Action::SeekDock && zones.hasBarriers() && !cfg.stationaryDockSimulation)) {
+      fault(Reason::MapBoundary);
+      return Output();
+    }
+    if (out.action == Action::Drive && out.pwm && zones.boostAt(in.pose.x, in.pose.y)) {
+      out.pwm = 127; // command maximum, not measured RPM or suction
+      if (out.sidePwm != 0) out.sidePwm = 127;
+      if (out.speed > .12f) out.speed = .12f;
+    }
+    return out;
+  }
+private:
+  Output tickCore(const Input &in, bool remote) {
     Output stop;
     if (state == State::Idle || state == State::Paused || state == State::Fault ||
         state == State::Complete)
@@ -542,16 +620,16 @@ public:
       }
       return out;
     }
-    const uint8_t bit = uint8_t(15u << (pass * 4));
+    const uint8_t bit = uint8_t(15u << (passSlot() * 4));
     // DirtDetect is observation-only until physical calibration. It must not
     // change coverage, motor PWM or trajectory here.
-    if (!exploring_ && target_ >= 0 && (covered[target_] & (1u << (targetSub_ + pass * 4)))) {
+    if (!exploring_ && target_ >= 0 && (passCoverage(target_) & (1u << (targetSub_ + passSlot() * 4)))) {
       target_ = -1;
       pathLength_ = 0;
     }
     if (target_ < 0) {
       target_ = coverageTarget(current, bit);
-      if (target_ < 0 && frontierVisits < 32) {
+      if (target_ < 0 && pass < passes && frontierVisits < 32) {
         target_ = frontierTarget(current);
         if (target_ >= 0) {
           exploring_ = true;
@@ -560,7 +638,7 @@ public:
         }
       }
       if (target_ < 0) {
-        if (pass + 1 < passes) {
+        if (pass + 1 < totalPasses()) {
           ++pass;
           target_ = -1;
           pathLength_ = 0;
@@ -577,7 +655,7 @@ public:
       }
       float best = 1e9f;
       for (int sub = 0; sub < 4; ++sub) {
-        if (covered[target_] & (1u << (sub + pass * 4)))
+        if (passCoverage(target_) & (1u << (sub + passSlot() * 4)))
           continue;
         Pose p = samplePoint(target_, sub);
         float d = distance(p.x, p.y, in.pose.x, in.pose.y);
@@ -606,6 +684,7 @@ public:
     return out;
   }
 
+public:
   void updateMap(const Input &in) {
     memset(hits_, 0, sizeof hits_);
     memset(free_, 0, sizeof free_);
@@ -702,7 +781,7 @@ public:
               break;
             }
           }
-        safe[c] = ok;
+        safe[c] = ok && !zoneBlocked[c];
       }
   }
 
@@ -792,7 +871,7 @@ private:
     parent_[start] = -1;
     while (head < tail) {
       int c = queue_[head++];
-      if ((goal >= 0 && c == goal) || (goal < 0 && (covered[c] & bit) != bit && !excluded[c]))
+      if ((goal >= 0 && c == goal) || (goal < 0 && (passCoverage(c) & bit) != bit && !excluded[c] && wantsPass(c)))
         return c;
       const int x = c % cfg.cols, y = c / cfg.cols;
       const int horizontal[4] = {x + 1 < cfg.cols ? c + 1 : -1, x ? c - 1 : -1,
@@ -819,7 +898,7 @@ private:
     float best = 1e9f;
     int sx = start % cfg.cols, sy = start / cfg.cols;
     for (int c = 0; c < count(); ++c) {
-      if (parent_[c] == -2 || !roomMask[c] || excluded[c] || (covered[c] & mask) == mask)
+      if (parent_[c] == -2 || !roomMask[c] || excluded[c] || !wantsPass(c) || (passCoverage(c) & mask) == mask)
         continue;
       int x = c % cfg.cols, y = c / cfg.cols;
       int across = pass == 0 ? abs(y - sy) : abs(x - sx);
@@ -1144,7 +1223,7 @@ private:
               if (cells[k] != -1)
                 continue;
               for (int sub = 0; sub < 4; ++sub) {
-                if ((covered[k] & (1u << (sub + pass * 4))) || (sideCovered[k] & (1u << sub)) ||
+                if (!wantsPass(k) || (passCoverage(k) & (1u << (sub + passSlot() * 4))) || (sideCovered[k] & (1u << sub)) ||
                     (gapTried[k] & (1u << sub)))
                   continue;
                 Pose q = samplePoint(k, sub);

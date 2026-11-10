@@ -39,3 +39,8 @@ python3 tests/check_oi_map.py
   -Ilib/RooNavigation/src tests/navigation_native_test.cpp \
   -o "$build_dir/navigation-test"
 "$build_dir/navigation-test"
+
+"${CXX:-clang++}" -std=c++11 -Wall -Wextra -Werror -pedantic \
+  -fsanitize=address,undefined -fno-omit-frame-pointer \
+  -Ilib/RooNavigation/src tests/map_zones_native_test.cpp -o "$build_dir/map-zones-test"
+"$build_dir/map-zones-test"

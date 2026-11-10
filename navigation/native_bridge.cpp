@@ -5,10 +5,40 @@ using namespace roonav;
 extern "C" {
 void *roo_create() {
   Config c;
+  c.stationaryDockSimulation = true;
   c.cols = 48;
   c.rows = 36;
   c.originX = c.originY = 0;
   return new (std::nothrow) Navigator(c);
+}
+int roo_set_zones(void *p, const float *values, int count, int validateOnly, float x, float y) {
+  if (count < 0 || count > int(MapZones::Capacity)) return 0;
+  Navigator &n = *static_cast<Navigator *>(p);
+  MapZone items[MapZones::Capacity];
+  MapZones trial;
+  trial.count = unsigned(count);
+  for (int i = 0; i < count; ++i) {
+    const float *v = values + i * 9;
+    MapZone &z = items[i];
+    z.kind = MapZone::Kind(int(v[0]));
+    z.x1 = v[1]; z.y1 = v[2]; z.x2 = v[3]; z.y2 = v[4];
+    z.enabled = v[5] != 0; z.present = v[6] != 0; z.boost = v[7] != 0;
+    z.extraPasses = uint8_t(v[8]);
+    if (!z.valid()) return 0;
+    trial.items[i] = z;
+  }
+  float clearance = n.cfg.radius + n.cfg.margin + n.cfg.resolution * .707107f;
+  if (trial.blocked(x, y, clearance) || trial.blocked(n.dock.x, n.dock.y, clearance)) return 0;
+  return validateOnly ? 1 : n.setZones(items, unsigned(count));
+}
+void roo_zone_status(void *p, int *v, int *map) {
+  Navigator &n = *static_cast<Navigator *>(p);
+  v[0] = n.totalPasses();
+  for (int c = 0; c < n.count(); ++c) {
+    map[c * 3] = n.zoneBlocked[c];
+    map[c * 3 + 1] = n.zoneExtra[c];
+    map[c * 3 + 2] = n.zoneCovered[c];
+  }
 }
 void roo_destroy(void *p) { delete static_cast<Navigator *>(p); }
 void roo_command(void *p, int command, int deep, unsigned now, float x, float y, float yaw) {

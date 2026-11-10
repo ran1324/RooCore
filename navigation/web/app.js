@@ -63,7 +63,7 @@ function render(s) {
   $("coverage").innerHTML = `${s.coverage}<span>%</span>`;
   $("battery").innerHTML = `${s.battery}<span>%</span>`;
   $("pass").textContent =
-    `${s.pass} / ${s.passes} ${s.pass_axis === "horizontal" ? "↔" : "↕"}`;
+    `${s.pass > (s.base_passes || s.passes) ? "שטיח " : ""}${s.pass} / ${s.passes} ${s.pass_axis === "horizontal" ? "↔" : "↕"}`;
   $("clock").textContent = clock(s.time);
   $("stats").textContent =
     `מרחק ${s.distance} מ׳ · התנגשויות ${s.collisions} · מברשות מרכזיות ${s.truth_coverage}% מהרצפה · כולל צד ${s.truth_combined}%`;
@@ -126,6 +126,7 @@ function render(s) {
         String(f === "cliff" ? s.flags[f] : !s.flags[f]),
       );
   }
+  window.RooZones?.state(s);
   draw();
 }
 function draw() {
@@ -150,6 +151,7 @@ function draw() {
     ctx.fillStyle = v === 1 ? "#687f81" : v === 0 ? "#bdc9c7" : "#f8faf7";
     ctx.fillRect(x, y, scale * s.resolution + 0.3, scale * s.resolution + 0.3);
   });
+  window.RooZones?.background(ctx, p, scale, s);
   function paintSamples(samples, color) {
     ctx.fillStyle = color;
     for (const index of samples || []) {
@@ -166,8 +168,11 @@ function draw() {
       );
     }
   }
-  paintSamples(s.side_covered, "#f2ce8c");
-  paintSamples(s.fine_covered, "#b7ddc6");
+  if (!window.RooZones?.planning()) {
+    paintSamples(s.side_covered, "#f2ce8c");
+    paintSamples(s.fine_covered, "#b7ddc6");
+  }
+  window.RooZones?.draw(ctx, p, scale, s);
   ctx.strokeStyle = "#b4462b";
   ctx.lineWidth = 2;
   for (const cell of s.contacts || []) {
@@ -205,8 +210,10 @@ function draw() {
     ctx.stroke();
     ctx.setLineDash([]);
   }
-  line(s.trace, "#7fbaa2", 2);
-  line([[s.pose.x, s.pose.y], ...s.path], "#00a6ac", 3, [6, 4]);
+  if (!window.RooZones?.planning()) {
+    line(s.trace, "#7fbaa2", 2);
+    line([[s.pose.x, s.pose.y], ...s.path], "#00a6ac", 3, [6, 4]);
+  }
   if (s.dirt) {
     const [x, y] = p(...s.dirt);
     ctx.strokeStyle = "#dca658";
@@ -351,3 +358,10 @@ fetch("/api/state")
   .then((r) => r.json())
   .then(render)
   .catch((e) => ($("reason").textContent = e.message));
+
+window.RooZonesBeforeEdit = async () => {
+  running = false;
+  generation++;
+  if (state && !["READY", "PAUSED", "FAULT", "COMPLETE"].includes(state.state))
+    await api("pause");
+};

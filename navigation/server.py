@@ -7,15 +7,19 @@ from pathlib import Path
 import threading
 from urllib.parse import urlparse
 from .sim import Simulation
+from .zone_service import ZoneService
+from .zones import Conflict
 
 WEB = Path(__file__).with_name("web")
 
 
 class Server(ThreadingHTTPServer):
-    def __init__(self, address):
+    def __init__(self, address, zones_path="recordings/maps"):
         super().__init__(address, Handler)
         self.sim = Simulation()
         self.lock = threading.Lock()
+        self.zones = ZoneService(zones_path)
+        self.zones.activate(self.sim)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -38,18 +42,23 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = urlparse(self.path).path
-        if path == "/api/state":
+        if path == "/api/zones":
+            with self.server.lock:
+                self.reply(self.server.zones.describe(self.server.sim.state()))
+        elif path == "/api/state":
             with self.server.lock:
                 self.reply(self.server.sim.state())
         elif path == "/api/checkpoint":
             with self.server.lock:
                 self.reply(self.server.sim.mission.snapshot())
-        elif path in ("/", "/app.js", "/style.css"):
+        elif path in ("/", "/app.js", "/style.css", "/zones.js", "/zones.css"):
             name = "index.html" if path == "/" else path[1:]
             mime = {
                 "index.html": "text/html",
                 "app.js": "text/javascript",
                 "style.css": "text/css",
+                "zones.css": "text/css",
+                "zones.js": "text/javascript",
             }[name]
             self.reply((WEB / name).read_bytes(), mime=mime + "; charset=utf-8")
         else:
@@ -69,7 +78,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             if (
-                not 0 < length <= 4096
+                not 0 < length <= (32768 if self.path == "/api/zones" else 4096)
                 or self.headers.get("Content-Type", "").split(";")[0]
                 != "application/json"
             ):
@@ -78,10 +87,13 @@ class Handler(BaseHTTPRequestHandler):
             action = self.path
             with self.server.lock:
                 sim = self.server.sim
+                if action == "/api/zones":
+                    return self.reply(self.server.zones.save(sim.state(), body, sim))
                 if action == "/api/reset":
                     sim = self.server.sim = Simulation(
                         body.get("scenario", "furniture"), body.get("profile", "daily")
                     )
+                    self.server.zones.activate(sim)
                 elif action == "/api/start":
                     if sim.mission.state != "READY":
                         raise ValueError(
@@ -111,6 +123,8 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     return self.reply({"error": "not found"}, 404)
                 self.reply(sim.state())
+        except Conflict as exc:
+            self.reply({"error": str(exc)}, 409)
         except (ValueError, KeyError, TypeError) as exc:
             self.reply({"error": str(exc)}, 400)
 

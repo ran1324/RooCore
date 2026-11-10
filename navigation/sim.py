@@ -247,6 +247,11 @@ class Simulation:
         m = self.mission
         navigable_truth = self.truth_floor
         reachable = m.grid.safe
+        blocked = set(getattr(m, "zone_blocked", []))
+        extra_only = isinstance(m, NativeMission) and m.pass_index >= m.base_passes
+        eligible = {c for c, v in enumerate(m.grid.cells) if v == -1 and c not in blocked
+                    and (not extra_only or m.zone_extra[c] > m.pass_index - m.base_passes)}
+        eligible_samples = {c * 4 + sub for c in eligible for sub in range(4)}
         return {
             "scenario": self.scenario,
             "profile": m.profile,
@@ -259,19 +264,18 @@ class Simulation:
             "collisions": self.collisions,
             "pass": m.pass_index + 1,
             "passes": len(m.covered),
+            "base_passes": getattr(m, "base_passes", len(m.covered)),
+            "zone_blocked": getattr(m, "zone_blocked", []),
+            "zone_extra": getattr(m, "zone_extra", []),
+            "zones": getattr(m, "zones", []),
             "coverage": (
                 round(
                     100
                     * len(
                         set(getattr(m, "fine_covered", [[]])[m.pass_index])
-                        & {
-                            c * 4 + sub
-                            for c, v in enumerate(m.grid.cells)
-                            if v == -1
-                            for sub in range(4)
-                        }
+                        & eligible_samples
                     )
-                    / max(1, 4 * sum(v == -1 for v in m.grid.cells)),
+                    / max(1, 4 * len(eligible)),
                     1,
                 )
                 if isinstance(m, NativeMission)
@@ -312,8 +316,8 @@ class Simulation:
             "pending_main_m2": (
                 round(
                     (
-                        4 * sum(v == -1 for v in m.grid.cells)
-                        - len(m.fine_covered[m.pass_index])
+                        4 * len(eligible)
+                        - len(set(m.fine_covered[m.pass_index]) & eligible_samples)
                     )
                     * 0.0025,
                     2,

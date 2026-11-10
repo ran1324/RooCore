@@ -7,6 +7,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from .core import Pose, Grid
+from .zones import KINDS
 
 ROOT = Path(__file__).resolve().parents[1]
 STATES = (
@@ -103,6 +104,9 @@ def library():
     ]
     lib.roo_path.argtypes = [C.c_void_p, C.POINTER(C.c_int), C.c_int]
     lib.roo_path.restype = C.c_int
+    lib.roo_set_zones.argtypes = [C.c_void_p, C.POINTER(C.c_float), C.c_int, C.c_int, C.c_float, C.c_float]
+    lib.roo_set_zones.restype = C.c_int
+    lib.roo_zone_status.argtypes = [C.c_void_p, C.POINTER(C.c_int), C.POINTER(C.c_int)]
     LIB = lib
     return lib
 
@@ -134,6 +138,8 @@ class NativeMission:
         self._v = (C.c_int * 16)()
         self._f = (C.c_float * 16)()
         self._map = (C.c_int * (48 * 36 * 8))()
+        self.zones = []
+        self._zone_map = (C.c_int * (48 * 36 * 3))()
         self.refresh()
 
     def __del__(self):
@@ -147,7 +153,12 @@ class NativeMission:
         self.state = STATES[v[0]]
         self.reason = REASONS[v[1]]
         self.pass_index = v[2]
-        self.passes = v[3]
+        self.base_passes = v[3]
+        zv = (C.c_int * 1)()
+        self.lib.roo_zone_status(self.handle, zv, self._zone_map)
+        self.passes = zv[0]
+        self.zone_blocked = [i for i, v in enumerate(self._zone_map[0::3]) if v]
+        self.zone_extra = list(self._zone_map[1::3])
         self.cleared_obstacles = v[11]
         self.obstacle_waits = v[12]
         self.contacts = [c for c, m in enumerate(self._map[7::8]) if m]
@@ -160,18 +171,20 @@ class NativeMission:
         self.grid.cells = list(self._map[0::8])
         self.grid.safe = {i for i, x in enumerate(self._map[3::8]) if x}
         masks = self._map[1::8]
+        extra = self._zone_map[2::3]
+        pass_masks = [(masks, p) for p in range(self.base_passes)] + [(extra, p) for p in range(self.passes - self.base_passes)]
         self.covered = [
-            {c for c, m in enumerate(masks) if m & (15 << (p * 4)) == (15 << (p * 4))}
-            for p in range(self.passes)
+            {c for c, m in enumerate(pm) if m & (15 << (p * 4)) == (15 << (p * 4))}
+            for pm, p in pass_masks
         ]
         self.fine_covered = [
             [
                 c * 4 + sub
-                for c, m in enumerate(masks)
+                for c, m in enumerate(pm)
                 for sub in range(4)
                 if m & (1 << (sub + p * 4))
             ]
-            for p in range(self.passes)
+            for pm, p in pass_masks
         ]
         self.side_covered = [
             c * 4 + sub
@@ -192,6 +205,21 @@ class NativeMission:
                 }
             )
             self.events = self.events[-100:]
+
+    def _zones_array(self, zones):
+        flat = [v for z in zones for v in (KINDS.index(z["kind"]), z["x1"], z["y1"], z["x2"], z["y2"],
+                                           z["enabled"], z["present"], z["boost"], z["extra_passes"])]
+        return (C.c_float * len(flat))(*flat)
+
+    def validate_zones(self, zones, pose):
+        if not self.lib.roo_set_zones(self.handle, self._zones_array(zones), len(zones), 1, pose.x, pose.y):
+            raise ValueError("zones overlap the robot or dock clearance")
+
+    def set_zones(self, zones):
+        if not self.lib.roo_set_zones(self.handle, self._zones_array(zones), len(zones), 0, self.dock.x, self.dock.y):
+            raise ValueError("cannot apply zones in this mission state")
+        self.zones = zones
+        self.refresh()
 
     def _command(self, command, pose):
         self.lib.roo_command(
