@@ -1,5 +1,11 @@
 # Integrated LiDAR power sequencing
 
+## Brush geometry and navigation fix — 2026-11-12
+
+Integrated a 160×70 mm rectangle, estimated −35 mm centre offset and 70 mm side radius. Removed the redundant start-cell recentering that caused repeated waits/skips near a furniture corner until `NoProgress`. Cleaning targets now place the brush centre over the floor sample instead of the axle. Clearance, time and retry limits remain in force. See [measurements, assumptions and failure analysis](ROBOT_GEOMETRY.md).
+
+Both full-firmware configurations compiled with `--warnings all` and no warnings in the log: defaults 539463 bytes Flash / 151708 static RAM; enabled fixture 547895 / 151716. BatteryMonitor and LinkSetup also built. [Current build log](../sources/geometry-firmware-build.txt) · [C++ ASan/UBSan tests](../sources/geometry-native-tests.txt). The enabled configuration is synthetic only; nothing was flashed.
+
 ## Charging, dock protection and progress dashboard — revision 6
 
 Firmware now has a local charge supervisor, active-time accounting excluding charging/pauses, explicit return causes, reusable occupancy and coherent `/progress` snapshots. Dock protection checks the swept body/side-brush envelope with qualified approach/departure corridors. IR is not a distance measurement. Unknown-frame motion stays held even if a provisional local map exists.

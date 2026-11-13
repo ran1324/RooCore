@@ -317,13 +317,19 @@ function draw() {
   ctx.arc(0, 0, 0.17 * scale, 0, Math.PI * 2);
   ctx.fill();
   ctx.shadowBlur = 0;
-  // Central strip and right side brush have their own measured/configurable footprint.
-  ctx.fillStyle = "#e7fff0";
-  ctx.fillRect(-0.02 * scale, -0.08 * scale, 0.04 * scale, 0.16 * scale);
-  ctx.strokeStyle = "#e6a33e";
-  ctx.beginPath();
-  ctx.arc(0.1 * scale, 0.13 * scale, 0.1 * scale, 0, Math.PI * 2);
-  ctx.stroke();
+  // Draw the actual reported configuration; older telemetry may omit geometry.
+  const g = s.geometry || {};
+  if ([g.brush_width, g.brush_depth, g.brush_offset].every(Number.isFinite)) {
+    ctx.fillStyle = "#e7fff0";
+    ctx.fillRect((g.brush_offset - g.brush_depth / 2) * scale,
+      -g.brush_width / 2 * scale, g.brush_depth * scale, g.brush_width * scale);
+  }
+  if ([g.side_x, g.side_y, g.side_radius].every(Number.isFinite) && g.side_radius > 0) {
+    ctx.strokeStyle = "#e6a33e";
+    ctx.beginPath();
+    ctx.arc(g.side_x * scale, -g.side_y * scale, g.side_radius * scale, 0, Math.PI * 2);
+    ctx.stroke();
+  }
   ctx.strokeStyle = "white";
   ctx.lineWidth = 3;
   ctx.beginPath();

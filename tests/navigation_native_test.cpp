@@ -255,14 +255,62 @@ static void obstacleWaitSafety() {
   clockAt(i, 1400);
   assert(n.tick(i).action == Action::Stop && n.reason == Reason::Battery);
 }
+static void cornerReplanStartsAtActualPose() {
+  Config c;
+  c.cols = 48; c.rows = 36; c.originX = c.originY = 0;
+  Navigator n(c);
+  Input i = healthy();
+  Pose home; home.x = 3.25f; home.y = .35f;
+  n.start(false, home, i.now);
+  for (int k = 0; k < n.count(); ++k) n.cells[k] = -1;
+  // Recorded failure pose: recentering at (3.35, .45) points into the corner;
+  // the destination is in the opposite direction and has a clear path.
+  i.pose.x = 3.3441f; i.pose.y = .4361f; i.pose.yaw = 1.0875f;
+  const std::vector<Box> boxes = {{3.5f, .6f, 4.1f, 1.2f}};
+  n.goHome(i, false);
+  for (int step = 0; step < 400 && n.state != State::Docking; ++step) {
+    clockAt(i, 100 + step * 200);
+    for (int k = 0; k < 180; ++k)
+      i.ranges[k] = ray(i.pose, i.pose.yaw + k * Pi / 90, boxes);
+    Output out = n.tick(i);
+    assert(n.state != State::Fault);
+    if (!step) {
+      assert(n.state == State::Returning && out.action == Action::Drive);
+      assert(out.speed == 0 && out.turn != 0); // turn away, do not recenter or wait
+    }
+    for (int sub = 0; sub < 10 && out.action == Action::Drive; ++sub) {
+      i.pose.x += out.speed * cosf(i.pose.yaw + out.turn * .01f) * .02f;
+      i.pose.y += out.speed * sinf(i.pose.yaw + out.turn * .01f) * .02f;
+      i.pose.yaw = wrap(i.pose.yaw + out.turn * .02f);
+      assert(!collision(i.pose, boxes));
+    }
+  }
+  assert(n.state == State::Docking && n.obstacleWaits == 0);
+}
+static void reportedBrushFootprint() {
+  Config c;
+  c.cols = 40; c.rows = 30; c.originX = c.originY = 0;
+  Navigator n(c);
+  Input i = healthy(); i.pose.x = 1.07f; i.pose.y = 1.025f;
+  i.sideBrushActive = true;
+  n.start(false, i.pose, i.now);
+  for (int k = 0; k < n.count(); ++k) n.cells[k] = -1;
+  n.recordSweep(i);
+  assert(n.covered[n.cell(1.025f, 1.025f)] & 1); // 45 mm behind axle, under brush
+  assert(!(n.covered[n.cell(1.075f, 1.025f)] & 2)); // 5 mm ahead, outside brush
+  assert(n.sideCovered[n.cell(1.175f, .925f)] & 2); // 30 mm from side pivot
+  assert(!(n.sideCovered[n.cell(1.175f, .975f)] & 8)); // 80 mm exceeds 70 mm radius
+}
 static void brushGeometry() {
   Config c;
+  c.brushOffset = 0; // isolate rotation/interpolation from the separate rear-offset test
   c.cols = 40;
   c.rows = 30;
   c.originX = c.originY = 0;
   Navigator n(c);
   Input i = healthy();
-  i.pose.x = i.pose.y = 1.025f;
+  i.pose.x = 1.0f;
+  i.pose.y = 1.025f;
   n.start(false, i.pose, i.now);
   for (int k = 0; k < n.count(); ++k)
     n.cells[k] = -1;
@@ -277,6 +325,7 @@ static void brushGeometry() {
     return false;
   };
   n.recordSweep(i);
+  assert(has(.975f, 1.025f, 0)); // +/-25 mm depth samples fit inside 70 mm
   assert(has(1.025f, 1.025f, 0));
   assert(has(1.025f, 1.075f, 0));
   assert(!has(1.125f, 1.025f, 0)); // body over it, but main brush never crossed it
@@ -320,7 +369,7 @@ static void brushGeometry() {
   assert(invalid.state == State::Fault); // cannot choose lanes wider than brush minus overlap
 }
 static void scenario(bool furniture, bool deep, bool battery, bool doorway = false,
-                     bool touch = false, bool moving = false) {
+                     bool touch = false, bool moving = false, bool zeroBrushOffset = false) {
   Config cfg;
   cfg.cols = 48;
   cfg.rows = 36;
@@ -328,6 +377,8 @@ static void scenario(bool furniture, bool deep, bool battery, bool doorway = fal
   cfg.originX = cfg.originY = 0;
   cfg.margin = .03;
   cfg.wallTouch = touch;
+  if (zeroBrushOffset)
+    cfg.brushOffset = 0; // original 70 mm-depth regression before the axle-offset report
   Navigator n(cfg);
   Input i = healthy();
   i.pose.x = i.pose.y = .675;
@@ -571,6 +622,8 @@ static void arbitration() {
 int main() {
   dynamicOccupancy();
   obstacleWaitSafety();
+  cornerReplanStartsAtActualPose();
+  reportedBrushFootprint();
   assistancePolicy();
   brushGeometry();
   noProgress();
@@ -585,5 +638,6 @@ int main() {
   scenario(false, false, false, true);
   scenario(false, false, false, false, true);
   scenario(false, false, false, false, false, true);
+  scenario(true, false, false, false, false, false, true); // original 70 mm/zero-offset failure
   puts("Native navigation tests passed");
 }

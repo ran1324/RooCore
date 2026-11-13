@@ -16,7 +16,8 @@ struct HostController {
     DockGuard::Config c;
     c.configured=c.verified=c.simulationOnly=true; c.anchorRevision=1;
     c.frontX=.25f; c.frontY=.675f; c.yaw=0; c.depth=.20f; c.halfWidth=.16f;
-    c.margin=.03f; c.bodyRadius=.17f; c.sideX=.10f; c.sideY=-.13f; c.sideRadius=.10f;
+    c.margin=nav.cfg.margin; c.bodyRadius=nav.cfg.radius;
+    c.sideX=nav.cfg.sideX; c.sideY=nav.cfg.sideY; c.sideRadius=nav.cfg.sideRadius;
     c.corridorMinX=.16f; c.corridorMaxX=.80f; c.corridorHalfWidth=.12f;
     c.headingTolerance=.12f; c.maxLinearSpeed=.3f; c.maxAngularSpeed=1.5f;
     c.maxHorizonMs=500; c.maxAccessMs=30000;
@@ -112,6 +113,12 @@ void roo_zone_status(void *p, int *v, int *map) {
   }
 }
 void roo_destroy(void *p) { delete static_cast<HostController *>(p); }
+void roo_geometry(void *p, float *values) {
+  const Config &c = static_cast<HostController *>(p)->nav.cfg;
+  values[0] = c.radius * 2;
+  values[1] = c.brushWidth; values[2] = c.brushDepth; values[3] = c.brushOffset;
+  values[4] = c.sideX; values[5] = c.sideY; values[6] = c.sideRadius;
+}
 void roo_command(void *p, int command, int deep, unsigned now, float x, float y, float yaw) {
   HostController &host = *static_cast<HostController *>(p);
   Navigator &n = host.nav;

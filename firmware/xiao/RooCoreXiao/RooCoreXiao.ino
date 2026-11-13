@@ -775,6 +775,11 @@ void publish(uint32_t now) {
   s += "],\"contact_count\":" + String(contactCount);
   s += ",\"frontier_visits\":" + String(navigator->frontierVisits);
   s += ",\"brush_width_m\":" + String(navigator->cfg.brushWidth, 3);
+  s += ",\"brush_depth_m\":" + String(navigator->cfg.brushDepth, 3);
+  s += ",\"brush_offset_m\":" + String(navigator->cfg.brushOffset, 3);
+  s += ",\"side_brush_x_m\":" + String(navigator->cfg.sideX, 3);
+  s += ",\"side_brush_y_m\":" + String(navigator->cfg.sideY, 3);
+  s += ",\"side_brush_radius_m\":" + String(navigator->cfg.sideRadius, 3);
   s += ",\"geometry_calibrated\":" + String(ROO_BRUSH_GEOMETRY_CALIBRATED ? "true" : "false");
   s += ",\"pass_axis\":\"" + String(navigator->pass == 0 ? "horizontal" : "vertical") + "\"";
   const char *floorNames[] = {"unknown", "hard_estimate", "carpet_estimate"};

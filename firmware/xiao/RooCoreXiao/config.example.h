@@ -45,14 +45,16 @@
 #define ROO_DOCK_MAX_LINEAR_MPS 0.0f
 #define ROO_DOCK_MAX_ANGULAR_RPS 0.0f
 
-// Provisional geometry accepted for development; replace after measuring the robot.
+// Approximate user dimensions, 2026-11-12; not floor-contact calibration.
+// Offset assumes axle aligned with the leading edge of the 160 x 70 mm rectangle.
+// Side pivot remains provisional; see docs/assembly/ROBOT_GEOMETRY.md.
 #define ROO_BRUSH_GEOMETRY_CALIBRATED false
 #define ROO_BRUSH_WIDTH_METERS 0.16f
-#define ROO_BRUSH_DEPTH_METERS 0.04f
-#define ROO_BRUSH_OFFSET_METERS 0.0f
+#define ROO_BRUSH_DEPTH_METERS 0.07f
+#define ROO_BRUSH_OFFSET_METERS -0.035f
 #define ROO_SIDE_BRUSH_X_METERS 0.10f
 #define ROO_SIDE_BRUSH_Y_METERS -0.13f // right of centre, positive Y is left
-#define ROO_SIDE_BRUSH_RADIUS_METERS 0.10f
+#define ROO_SIDE_BRUSH_RADIUS_METERS 0.07f
 #define ROO_PERIMETER_ENABLED true // bench-test wall clearance before commissioning
 
 #define ROO_WALL_TOUCH_VERIFIED false // optional 1.5 cm/s contact; verify bumper and stop latency first

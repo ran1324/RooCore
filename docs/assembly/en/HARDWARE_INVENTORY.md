@@ -19,6 +19,10 @@
 
 Product links are retained in the [illustrated guide](RooCore-assembly.html#bom) and its source list.
 
+## Robot dimensions — user report, 2026-11-12
+
+Body diameter is about 33 cm (photographs show 32–33), and the main-brush region is about 16 cm across by 7 cm along travel. The side-brush arm is about 6 cm **from the arm start to the bristle tip**, not from the screw centre. The user then reported 7 cm from the screw centre to the tip: a 70 mm side radius and calculated 140 mm sweep diameter. The user also reports up to 5 cm protrusion beyond the body edge; pivot position is not yet calibrated to that reach. These are approximate reported/photo dimensions, not floor-contact verification. The dimensions are now integrated after fixing route planning: 160×70 mm and a 70 mm side radius, with an estimated 3.5 cm rearward main offset based on the wheel-position description. The collision envelope remains 340 mm and side pivot position remains provisional. The follow-up 17×8 cm rectangle is recorded separately because frame versus active-region boundaries remain unresolved. See the [measurement record and assumptions](ROBOT_GEOMETRY.md). No robot was operated and calibration remains disabled.
+
 ## Corrections that must be preserved
 
 - **VCC/3V3/VCCA/VCCB are not ground.** Never connect them directly to GND. TXB0104 IC pin names are not a verified NOYITO module connector map.

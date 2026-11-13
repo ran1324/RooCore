@@ -3,7 +3,7 @@
 from copy import deepcopy
 import guide_content as source
 
-REVISION = '2026-11-10 • electronics + esp32-development • Revision 6 — charging, dock protection and progress reporting'
+REVISION = '2026-11-12 • electronics + esp32-development • Revision 7 — user-reported body and brush dimensions'
 SOURCES = deepcopy(source.SOURCES)
 source_titles = [
     'Pololu D36V28F5 — model and pins', 'Pololu #2810 — operation and schematic',
@@ -17,7 +17,8 @@ source_titles = [
     'electronics — skill used for the review', 'esp32-development — skill used for the review',
     'Espressif — GPIO configuration and internal pulls',
     'Espressif Arduino 3.3.12 — UART detachment and RX pull configuration',
-    'Integration in the full RooCoreXiao firmware', 'Permanent UART wiring and power sequence — code and qualification'
+    'Integration in the full RooCoreXiao firmware', 'Permanent UART wiring and power sequence — code and qualification',
+    'Body and brush dimensions — user reports and integration status'
 ]
 assert len(source_titles) == len(SOURCES)
 for key, title in zip(SOURCES, source_titles):
@@ -126,6 +127,7 @@ for step in STEPS:
         row['gauge'], row['check'] = row_text[row['id']-1]
 
 PENDING = [
+ ('Body and brush dimensions — approximate measurements', 'User report: body about 33 cm, main brushes 16×7 cm, side radius 7 cm and up to 5 cm protrusion beyond the body. Code now uses 160×70 mm, an estimated 35 mm rearward offset and a 70 mm side radius. Planning no longer recentres at the start cell and stalls at a furniture corner; cleaning targets now account for brush offset. Clearance checks were not weakened. The collision envelope remains 340 mm; side pivot and the 17×8 frame discrepancy remain uncalibrated. Calibration stays false. See ROBOT_GEOMETRY.md.'),
  ('One NOYITO for Roomba; the other is spare', 'The Roomba UART uses 5V levels and the controller uses 3.3V, so one module remains planned for that interface. Its VCC/3V3 and OE routing must be established before wiring. LiDAR already uses 3.3V UART with software power sequencing, so the second module is unnecessary. Do not add R9/R10/R11 or C1–C4.'),
  ('UART is integrated; hardware qualification remains', 'Wires 12–13 connect D4→RX and TX→D5. RooCoreXiao uses UART2 and a shared shutdown path; configure rail settling only after measurement. Flashing, signal levels, reset and total power loss remain untested. This is not hardware fault isolation; see LIDAR_POWER_UART.md.'),
  ('Q1/Q2 — reference pinout found', 'These are two 2N3904 transistors, not two new models. The onsemi TO-92 reference is E–B–C left to right with the flat face toward you and leads down. No matching BOJACK specification was found for the supplied parts. Match markings/manufacturer or identify E/B/C appropriately; a two-diode test identifies the base only. Q1 for EN and Q2 for BRC are not wired yet.'),

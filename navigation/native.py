@@ -106,6 +106,7 @@ def library():
     lib.roo_set_zones.argtypes = [C.c_void_p, C.POINTER(C.c_float), C.c_int, C.c_int, C.c_float, C.c_float]
     lib.roo_set_zones.restype = C.c_int
     lib.roo_zone_status.argtypes = [C.c_void_p, C.POINTER(C.c_int), C.POINTER(C.c_int)]
+    lib.roo_geometry.argtypes = [C.c_void_p, C.POINTER(C.c_float)]
     LIB = lib
     return lib
 
@@ -127,6 +128,13 @@ class NativeMission:
         self.handle = self.lib.roo_create()
         if not self.handle:
             raise MemoryError("navigation allocation failed")
+        dimensions = (C.c_float * 7)()
+        self.lib.roo_geometry(self.handle, dimensions)
+        self.geometry = dict(zip(
+            ("diameter", "brush_width", "brush_depth", "brush_offset", "side_x", "side_y", "side_radius"),
+            (round(v, 6) for v in dimensions),
+        ))
+        self.geometry["calibrated"] = False
         self.profile = profile
         self.dock = Pose(0.675, 0.675)
         self.grid = Grid(resolution=0.1)
@@ -304,7 +312,8 @@ class NativeMission:
             "fine_covered": self.fine_covered,
             "side_covered": self.side_covered,
             "geometry_calibrated": False,
-            "brush_width_m": 0.16,
+            "brush_width_m": self.geometry["brush_width"],
+            "geometry": dict(self.geometry),
             "rooms": self.rooms,
             "edge_incomplete": self.edge_incomplete,
             "note": "Inspection export; hardware resumes from its own checksummed LittleFS snapshot.",

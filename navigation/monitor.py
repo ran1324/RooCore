@@ -279,7 +279,13 @@ class Monitor:
             dock=dock,
             trace=self.segments[-1] if self.segments else [], trace_segments=deepcopy(self.segments),
             flags={"lidar": s["scan_valid"], "localization": pose_valid, "cliff": s["cliff"]},
-            geometry={"calibrated": s.get("geometry_calibrated", False)},
+            geometry=dict({"calibrated": s.get("geometry_calibrated", False)}, **{
+                key: s[field] for key, field in (
+                    ("brush_width", "brush_width_m"), ("brush_depth", "brush_depth_m"),
+                    ("brush_offset", "brush_offset_m"), ("side_x", "side_brush_x_m"),
+                    ("side_y", "side_brush_y_m"), ("side_radius", "side_brush_radius_m"),
+                ) if _finite(s.get(field))
+            }),
             identity={"robot_id": self.robot_id, "battery_id": self.battery_id, "mission_id": data["mission_id"],
                 "map_id": data["map_id"], "map_revision": data["map_revision"], "boot_id": data["boot_id"]},
             charging={"phase": s.get("charge_phase"), "held_reason": s.get("charge_reason"),

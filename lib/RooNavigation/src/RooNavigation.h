@@ -98,9 +98,11 @@ struct Config {
   float resolution = .1f;
   float originX = -6.4f, originY = -6.4f;
   float radius = .17f, margin = .03f;
-  // Provisional brush geometry, NOT manufacturer dimensions. Calibrate on robot.
-  float brushWidth = .16f, brushDepth = .04f, brushOffset = 0;
-  float sideX = .10f, sideY = -.13f, sideRadius = .10f;
+  // Approximate user dimensions, 2026-11-12. Rearward offset assumes the axle
+  // aligns with the main rectangle's leading edge. Side pivot remains provisional.
+  // See docs/assembly/ROBOT_GEOMETRY.md; these values are not floor-contact calibration.
+  float brushWidth = .16f, brushDepth = .07f, brushOffset = -.035f;
+  float sideX = .10f, sideY = -.13f, sideRadius = .07f;
   float overlap = .04f;
   uint16_t wallIRTarget = 0; // zero disables uncalibrated signal-to-steering correction
   bool homeKnown = true;
@@ -374,10 +376,15 @@ public:
     return p;
   }
   Pose targetPose() const {
-    return target_ < 0 ? Pose()
-           : state == State::Cleaning && !roomTransit_ && !exploring_
-               ? samplePoint(target_, targetSub_)
-               : center(target_);
+    if (target_ < 0)
+      return Pose();
+    if (state != State::Cleaning || roomTransit_ || exploring_)
+      return center(target_);
+    Pose p = samplePoint(target_, targetSub_);
+    p.x -= cfg.brushOffset * cosf(targetYaw_);
+    p.y -= cfg.brushOffset * sinf(targetYaw_);
+    p.yaw = targetYaw_;
+    return p;
   }
   // Only estimated floor samples inside the moving brush footprint receive credit.
   // Interpolation is bounded and never connects across stopped motors or stale/teleported poses.
@@ -749,11 +756,26 @@ private:
         if (passCoverage(target_) & (1u << (sub + passSlot() * 4)))
           continue;
         Pose p = samplePoint(target_, sub);
-        float d = distance(p.x, p.y, in.pose.x, in.pose.y);
-        if (d < best) {
-          best = d;
-          targetSub_ = sub;
+        // Place the brush centre over the floor sample, rather than stopping
+        // the axle there. Try both lane headings, retaining full body clearance.
+        for (int direction = 0; direction < 2; ++direction) {
+          float yaw = (pass == 0 ? 0 : Pi / 2) + direction * Pi;
+          float x = p.x - cfg.brushOffset * cosf(yaw);
+          float y = p.y - cfg.brushOffset * sinf(yaw);
+          int body = cell(x, y);
+          if (!exploring_ && (body < 0 || !safe[body] || !roomMask[body]))
+            continue;
+          float d = distance(x, y, in.pose.x, in.pose.y);
+          if (d < best) {
+            best = d;
+            targetSub_ = sub;
+            targetYaw_ = yaw;
+          }
         }
+      }
+      if (!exploring_ && best == 1e9f) {
+        skip(target_, in);
+        return stop;
       }
       targetSince_ = progressSince_ = in.now;
       bestDistance_ = 1e9f;
@@ -890,6 +912,7 @@ private:
   uint32_t lastMapScan_ = 0;
   bool haveMapScan_ = false, wasBumper_ = false;
   State waitResume_ = State::Cleaning;
+  float targetYaw_ = 0;
   int blockedGoal_ = -1;
   unsigned pathLength_ = 0;
   unsigned skipStreak_ = 0, skipCoverage_ = 0, waitStreak_ = 0, waitCoverage_ = 0;
@@ -1023,16 +1046,24 @@ private:
     pathLength_ = 0;
     for (int c = goal; c >= 0; c = parent_[c])
       path_[pathLength_++] = int16_t(c);
+    // The route starts at the actual pose, already inside a safe cell. Its
+    // centre is not a required waypoint: recentering can point into a nearby
+    // obstacle even when the next cell leads away. Keep a same-cell goal.
+    if (pathLength_ > 1)
+      --pathLength_;
     return true;
   }
   Output follow(const Input &in, int goal, bool &reached, uint8_t pwm) {
     Output out;
     const int current = cell(in.pose.x, in.pose.y);
+    const bool cleaningGoal = state == State::Cleaning && !roomTransit_ && !exploring_;
+    const Pose aim = cleaningGoal ? targetPose() : center(goal);
+    const int routeGoal = cleaningGoal ? cell(aim.x, aim.y) : goal;
     bool broken = pathLength_ == 0;
     for (unsigned i = 0; i < pathLength_; ++i)
       if (!safe[path_[i]])
         broken = true;
-    if (broken && !plan(current, goal)) {
+    if (broken && !plan(current, routeGoal)) {
       if (state == State::Cleaning) {
         skip(goal, in);
       } else if (state == State::Edging || state == State::Touchup)
@@ -1054,6 +1085,19 @@ private:
       progressSince_ = in.now;
     }
     if (!pathLength_) {
+      // A displaced brush also needs the selected lane heading at the goal.
+      // Do not invent cleaned credit or reset the target's time budget while turning.
+      if (cleaningGoal && fabsf(cfg.brushOffset) > .0001f &&
+          fabsf(wrap(aim.yaw - in.pose.yaw)) > .08f) {
+        if (uint32_t(in.now - targetSince_) > cfg.targetTimeoutMs) {
+          skip(goal, in);
+          return out;
+        }
+        out.action = Action::Drive;
+        out.turn = fmaxf(-1.f, fminf(1.f, wrap(aim.yaw - in.pose.yaw) * 3));
+        out.pwm = pwm;
+        return out;
+      }
       reached = true;
       return out;
     }

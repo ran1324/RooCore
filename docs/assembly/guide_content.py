@@ -1,7 +1,7 @@
 # coding: utf-8
 """Module-specific preparation instructions. No unverified pin mapping is executable."""
 
-REVISION = '2026-11-10 • electronics + esp32-development • גרסה 6 — טעינה, הגנת עמדה ומפת התקדמות'
+REVISION = '2026-11-12 • electronics + esp32-development • גרסה 7 — מידות הגוף והמברשות לפי המשתמש'
 SOURCES = {
     'buck': ('Pololu D36V28F5 — דגם ופינים', 'https://www.pololu.com/product/3782'),
     'switch': ('Pololu #2810 — שימוש וסכמה', 'https://www.pololu.com/product/2810'),
@@ -24,6 +24,7 @@ SOURCES = {
     'uart_core': ('Espressif Arduino 3.3.12 — ניתוק UART ומשיכת RX', 'https://github.com/espressif/arduino-esp32/blob/3.3.12/cores/esp32/esp32-hal-uart.c'),
     'firmware': ('שילוב הרצף בקושחת RooCoreXiao המלאה', 'FIRMWARE_INTEGRATION.md'),
     'lidar_power': ('חיבור קבוע ורצף כיבוי הליידר — קוד ותנאי בדיקה', 'LIDAR_POWER_UART.md'),
+    'geometry': ('מידות הגוף והמברשות — דיווחי המשתמש ומצב השילוב', 'ROBOT_GEOMETRY.md'),
 }
 
 # Each row is one real external wire. The diagram, CSV, JSON and Markdown use these same rows.
@@ -131,6 +132,7 @@ STEPS = [
 ]
 
 PENDING = [
+    ('מידות הגוף והמברשות — מדידות משוערות', 'דיווח המשתמש: גוף כ־33 ס״מ, מברשות ראשיות 16×7 ס״מ, רדיוס צד 7 ס״מ ובליטה עד 5 ס״מ מעבר לגוף. בקוד שולבו מלבן 160×70 מ״מ, היסט משוער 35 מ״מ לאחור ורדיוס צד 70 מ״מ. תוקן מסלול שחזר למרכז תא ההתחלה ונחסם ליד פינת רהיט; גם יעדי הניקוי מתחשבים כעת בהיסט המברשות. בדיקות המרחק לא הוחלשו. מעטפת ההתנגשות נשארה 340 מ״מ; מיקום ציר הצד והבדל המסגרת 17×8 אינם מכוילים. הכיול נשאר false. פירוט ב־ROBOT_GEOMETRY.md.'),
     ('NOYITO אחד לרומבה; השני ספייר', 'הרומבה משתמשת ב־UART של 5V והבקר ב־3.3V, ולכן מודול אחד נשאר בתכנון התקשורת שלה. מיפוי מסילות VCC/3V3 ו־OE בלוח הזה עדיין נדרש לפני חיווטו. הליידר כבר 3.3V ויש לו רצף כיבוי בתוכנה; המודול השני אינו נדרש עבורו. אין R9/R10/R11 או C1–C4 להוספה.'),
     ('UART — משולב בקושחה; נותרה בדיקת חומרה', 'חוטים 12–13 מחברים D4→RX ו־TX→D5. RooCoreXiao משתמש ב־UART2 וברצף כיבוי אחיד; זמן ההתייצבות מוגדר רק אחרי מדידה. נותרו צריבה, רמות אות, reset ואובדן הזנה כולל. זה אינו בידוד חומרתי מתקלות; פירוט ב־LIDAR_POWER_UART.md.'),
     ('Q1/Q2 — נמצאה מפת ייחוס', 'אלה שני 2N3904, לא שני דגמים חדשים. במפרט onsemi TO-92: פנים שטוחות אליך ורגליים למטה, משמאל E–B–C. לא נמצא מפרט BOJACK שמאשר את החלק המסופק. יש להתאים סימון/יצרן או לזהות E/B/C בבדיקה מתאימה; בדיקת שתי דיודות מזהה בסיס בלבד. Q1 ל־EN ו־Q2 ל־BRC עדיין מחוץ לחיווט.'),

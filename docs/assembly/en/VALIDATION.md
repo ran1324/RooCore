@@ -1,5 +1,15 @@
 # Guide and firmware validation
 
+## Revision 7 — brush geometry and route fix, 2026-11-12
+
+All **101 Python tests** passed in an isolated environment with the CI-declared NumPy dependency. All C++ checks passed with ASan/UBSan, including eight navigation scenarios, the furniture-corner regression with zero and updated offsets, rearward brush coverage and a return-to-dock route from the previously stuck pose. The focused corner test fails when old recentering behavior is restored and passes with the fix. Clearance checks and retry limits were not weakened.
+
+The combined zones/charging simulation completed both passes, retaining extra-carpet coverage through charging, with zero collisions and zero brush contacts with the dock. Reported geometry propagation, absent geometry in older telemetry and JavaScript syntax were checked. This revision makes no claim of visual browser inspection or hardware validation.
+
+Both firmware configurations and both examples compiled without warnings. Defaults: 539463 bytes Flash / 151708 static RAM; enabled fixture: 547895 / 151716. [Python log](../sources/geometry-python-tests.txt) · [C++ log](../sources/geometry-native-tests.txt) · [Build log](../sources/geometry-firmware-build.txt) · [Measurements and analysis](ROBOT_GEOMETRY.md). Guides, source snapshots, tables and portable kit were rebuilt and checked with `build_guide.py` and `check_artifacts.py`. Calibration and activation flags remain disabled; no firmware was flashed.
+
+## Previous validation record — revision 6
+
 2026-11-10 · Revision 6. File, browser, host-model and compilation checks only. No flashing, robot operation, physical power cycles or LiDAR measurements.
 
 The combined map-zones integration passed all 100 Python tests, C++ ASan/UBSan checks and four XIAO builds (two examples and two full-application configurations). Charging during an extra carpet pass resumed through completion with coverage retained and no collisions. The map editor was independently checked in the browser, including a 390px layout.

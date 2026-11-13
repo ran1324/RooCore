@@ -75,6 +75,10 @@ class Simulation:
         self.mission = (
             NativeMission(profile) if engine == "native" else Mission(profile)
         )
+        self.geometry = (dict(self.mission.geometry) if isinstance(self.mission, NativeMission) else {
+            "diameter": 0.34, "brush_width": 0.16, "brush_depth": 0.04, "brush_offset": 0.0,
+            "side_x": 0.10, "side_y": -0.13, "side_radius": 0.10, "calibrated": False,
+        })  # Historical Python planner retains its original geometry.
         if isinstance(self.mission, NativeMission):
             self.world.low_obstacles = [(0.05, 0.515, 0.25, 0.835)]
         self.pose = self.mission.dock
@@ -181,9 +185,10 @@ class Simulation:
                         break
                     self.pose = Pose(x, y, yaw)
                     if isinstance(self.mission, NativeMission) and self.mission.dock_guard["mode"] == 0:
-                        bx = x + .10 * math.cos(yaw) + .13 * math.sin(yaw)
-                        by = y + .10 * math.sin(yaw) - .13 * math.cos(yaw)
-                        if any(math.hypot(bx - max(a, min(c, bx)), by - max(b, min(d, by))) < .10
+                        g = self.geometry
+                        bx = x + g["side_x"] * math.cos(yaw) - g["side_y"] * math.sin(yaw)
+                        by = y + g["side_x"] * math.sin(yaw) + g["side_y"] * math.cos(yaw)
+                        if any(math.hypot(bx - max(a, min(c, bx)), by - max(b, min(d, by))) < g["side_radius"]
                                for a, b, c, d in self.world.low_obstacles):
                             self.dock_brush_contacts += 1
                     self.distance += abs(cmd.speed) * dt / 10
@@ -242,11 +247,13 @@ class Simulation:
                 dy = y - self.pose.y
                 forward = dx * cs + dy * sn
                 left = -dx * sn + dy * cs
-                if cmd.cleaning_pwm and abs(forward) <= 0.02 and abs(left) <= 0.08:
+                g = self.geometry
+                if (cmd.cleaning_pwm and abs(forward - g["brush_offset"]) <= g["brush_depth"] / 2
+                        and abs(left) <= g["brush_width"] / 2):
                     self.cleaned_truth.add((ix, iy))
                 if (
                     getattr(cmd, "side_pwm", cmd.cleaning_pwm)
-                    and math.hypot(forward - 0.10, left + 0.13) <= 0.10
+                    and math.hypot(forward - g["side_x"], left - g["side_y"]) <= g["side_radius"]
                 ):
                     self.side_truth.add((ix, iy))
 
@@ -375,15 +382,7 @@ class Simulation:
             "engine": (
                 "native C++" if isinstance(m, NativeMission) else "Python reference"
             ),
-            "geometry": {
-                "diameter": 0.34,
-                "brush_width": 0.16,
-                "brush_depth": 0.04,
-                "side_x": 0.10,
-                "side_y": -0.13,
-                "side_radius": 0.10,
-                "calibrated": False,
-            },
+            "geometry": dict(self.geometry),
             "charger": {"valid": self.charger_valid, "state": self.observation().charger_state,
                         "source": "synthetic", "accelerated": True, "charge_rate_pct_s": self.charge_rate},
             "cells": m.grid.cells,

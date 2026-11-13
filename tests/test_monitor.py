@@ -60,6 +60,18 @@ class MonitorTests(unittest.TestCase):
         self.assertEqual(view["history"]["missions"][0]["coverage"], 25)
         self.assertIsNone(view["truth_coverage"])
 
+    def test_brush_geometry_comes_from_telemetry_without_inventing_missing_fields(self):
+        self.monitor.ingest(frame())
+        self.assertEqual(self.monitor.state()["geometry"], {"calibrated": False})
+        data = frame(2000)
+        data["status"].update(brush_width_m=.16, brush_depth_m=.07, brush_offset_m=-.035,
+                              side_brush_x_m=.10, side_brush_y_m=-.13, side_brush_radius_m=.07)
+        self.monitor.ingest(data)
+        self.assertEqual(self.monitor.state()["geometry"], {
+            "calibrated": False, "brush_width": .16, "brush_depth": .07, "brush_offset": -.035,
+            "side_x": .10, "side_y": -.13, "side_radius": .07,
+        })
+
     def test_invalid_pose_freezes_marker_stale_duplicate_does_not_refresh(self):
         self.monitor.ingest(frame())
         bad = frame(2000, localized=False, pose={"x": 5., "y": 5., "yaw": 1., "valid": False})

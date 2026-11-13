@@ -1,9 +1,10 @@
 {
-  "docs/assembly/guide_content.py": "a96e2a77ec1f54bdc47bcfc2e86229e097958eb1c2bb6c7b2e8da81dd9f17d29",
-  "docs/assembly/FIRMWARE_INTEGRATION.md": "7f793cdea11a5b0086b029e881f64d5665bab7e9ac5beafcfd6267aa2eaebb66",
+  "docs/assembly/guide_content.py": "534abe83cef8aed1a8d7bbba48d2ac187b706086f1a07479784d1f1f22312266",
+  "docs/assembly/FIRMWARE_INTEGRATION.md": "9cfd03aa52915ec346166cf3fa32acd3bac67b6acbc6c18f27f240a2bc0f2118",
   "docs/assembly/LIDAR_POWER_UART.md": "0731ec30593d32dae639328476b0b97ca732c04a133ad599315db21fb8babbee",
   "docs/assembly/ELECTRICAL_REVIEW.md": "03fcde0fe730d402af10693656aed66fb11b9d89304918251f7452afaaa65272",
   "docs/assembly/MODULE_AUDIT.md": "f05a869ef5a92bbd1ff14934cc5904476f6f3cc1f4bf9ca413b2694f9c6c7a7a",
-  "docs/assembly/VALIDATION.md": "1865b53f3d80905c8d8a9106f93bcc669f809baf26d70be41176197571ec2c41",
-  "HARDWARE_INVENTORY.md": "b7f42bbed9e34766bb35be56c9f79b77284c3c6616465f50fa248c86d0fd44c9"
+  "docs/assembly/VALIDATION.md": "82be8648f7d2809d358c9eed32dc452f7a36f3a0d59a19847d7aff7d4b42e11d",
+  "HARDWARE_INVENTORY.md": "87296d8e3203bddfc08d17048d6a6ab7bd99169f5519b4f45b6309ba7735b63a",
+  "docs/assembly/ROBOT_GEOMETRY.md": "48adf85daa4ce3db969dc2414339157f333b0b46e354c86a7912f52d057b502c"
 }

@@ -1,12 +1,12 @@
 {
   "source_root": ".",
-  "branch": "codex/map-zones",
-  "base_commit": "1b165f186abab299f6c44dcb192126a82b36adfa",
+  "branch": "main",
+  "base_commit": "fc630c6a0715c56b46cdd2bc057219cc41006d6d",
   "arduino_core": "3.3.12",
   "physical_validation": false,
   "sha256": {
-    "firmware/xiao/RooCoreXiao/RooCoreXiao.ino": "1e84baf76e327b0639e6fa929b1f03c22961535fc7720ac38dd0a14496cb0f00",
-    "firmware/xiao/RooCoreXiao/config.example.h": "a65b772d40d1d26c4dcb5fa350234012e1ad1c414b858e4e5879be9e466db2a5",
+    "firmware/xiao/RooCoreXiao/RooCoreXiao.ino": "34063af80bc661797e4a46298c286683fb0637ed07e109bdad08a68ce9100093",
+    "firmware/xiao/RooCoreXiao/config.example.h": "2ba2793d0ead8dfdd3aa8a6b6c8a4b3eee02e8f33bae77570f7865eb8381c0b3",
     "lib/RooCoreLidarPower/src/LidarPowerSequence.h": "9c21fc5eddc39f0d40a102f202f6d79b474ddf1909b2f7bbfcd856e0fed0ca40",
     "lib/RooCoreLidarPower/src/RooCoreLidarPower.h": "5eda1bbee756031107779be45b0d3691d6abace3808d8e72b9fcb6de9a1f661d",
     "lib/RooNavigation/src/CarpetBoost.h": "419cd15b160a551c010bd5811b9731a15b3eeeb2f8b3c4902dbce1ed437ee144",
@@ -18,16 +18,23 @@
     "lib/RooNavigation/src/NavigationHelp.h": "b1424be6018bd514ce9ca2d9c1f6893a4b29973d1fc298cb47cff6916cd69965",
     "lib/RooNavigation/src/PowerShutdown.h": "a4f0d4666091141d551c4b3f70069106c60cb34731662048f0521f6dfb636d54",
     "lib/RooNavigation/src/PowerShutdownOI.h": "687c256a1f838f6bc1e6983b4458b51d101f76af84463c403bc6735a3394718e",
-    "lib/RooNavigation/src/RooNavigation.h": "57dac2d391979d0adfa4a90351d4b58430508846eeca559c28c32bde2bef986b",
+    "lib/RooNavigation/src/RooNavigation.h": "96c704f2a0d6c9c3c2f01e9f4f453d5c7ca4a0d9201b067af71743e3ca00048a",
     "lib/RooNavigation/src/TminiPlus.h": "859a365f3c3f428778acf5179094f719fa09356e0f67b54dcb5244f8b2fbbe41",
     "tests/build_xiao.sh": "bee4e999af5e5fc35f75b82abbbc6d15814d543541432341d21f82adb6346b58",
     "tests/charge_resume_test.cpp": "5ee86fc77a2b9100820746726aa0d5363b5921cd12e76d2c590fcda03406ec4e",
     "tests/dock_guard_test.cpp": "a8a7330f924c6cecc206571c54adc00915d7845dac2a16eba1195a3593569408",
     "tests/lidar_power_test.cpp": "4781257febeb1f79daf673a37c96f1d144a369f01fc462ada287f49d18e55edd",
     "tests/map_zones_native_test.cpp": "3e8dd0bbcf24487b0304f6d3e4a5bb1a062af5e38dc2e27f44c5e66fce9a2621",
-    "tests/navigation_native_test.cpp": "b033b5e76074eb980678c1326eeb3bf0bc8d5652e492452a07aa5fca1095b26e",
-    "tests/run.sh": "e3175c5ce286ca845d29c40286c6a081c2d1e4534724e2b175dcd4f85443bf86"
+    "tests/navigation_native_test.cpp": "64a25cf738211126cc2ac2df52bafd96cc3cab931b5257e1b4bcc39c95336039",
+    "tests/run.sh": "e3175c5ce286ca845d29c40286c6a081c2d1e4534724e2b175dcd4f85443bf86",
+    "navigation/native.py": "467e3bf52a3d919799b39ff1e35117e2bc214914f4c591ed3e454e27e8aa1b5a",
+    "navigation/native_bridge.cpp": "1cea67315cf6e413291ca3cab9de1b7fe17d873bea281700dcecfaef5b225d71",
+    "navigation/sim.py": "f3ad04ea973be38b8b102751f22206d9ce699284c3a9ea6fd03922b7da5948a0",
+    "navigation/monitor.py": "3e199ce02b1cfaf484d589753273d476429873fa9d5064edd033e4ed0bd6893c",
+    "navigation/web/app.js": "2276d28bbe457b7532cab56208a0ab0ceae405bf759bc0a7678a5eeaa115c210",
+    "tests/test_native_sim.py": "cc5ea27950aac6bec3d8811306640147655282376e2fb5b078bd8a3fc370cc9d",
+    "tests/test_monitor.py": "daf5bedb309d996e3bc564bc93eb6d941702a7d5b111da5fba177e88f6dfc57f"
   },
-  "validation_date": "2026-11-10",
-  "source_state": "integrated charge/dock and map zones; source hashes bind the verified build"
+  "validation_date": "2026-11-12",
+  "source_state": "local working-tree geometry integration; corner replan and offset-brush targets fixed; XIAO builds, C++ ASan/UBSan and 101 Python tests passed; no hardware validation"
 }
