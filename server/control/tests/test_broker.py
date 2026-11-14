@@ -28,11 +28,12 @@ def broker(tmp_path_factory):
         port = s.getsockname()[1]
     acl = Path(__file__).resolve().parent.parent / "mosquitto/acl"
     config = folder / "mosquitto.conf"
-    config.write_text(f"listener {port} 127.0.0.1\nallow_anonymous false\n"
-                      f"user {pwd.getpwuid(os.getuid()).pw_name}\npassword_file {passwd}\n"
+    user = f"user {pwd.getpwuid(os.getuid()).pw_name}\n" if os.geteuid() == 0 else ''
+    config.write_text(f"listener {port} 127.0.0.1\nallow_anonymous false\n" + user +
+                      f"password_file {passwd}\n"
                       f"acl_file {acl}\nretain_available false\npersistence false\nlog_dest stderr\n")
     process = subprocess.Popen(["mosquitto", "-c", str(config)], stdout=subprocess.DEVNULL,
-                               stderr=subprocess.DEVNULL)
+                               stderr=subprocess.PIPE)
     try:
         for _ in range(50):
             try:
@@ -41,7 +42,8 @@ def broker(tmp_path_factory):
             except OSError:
                 time.sleep(.1)
         else:
-            raise RuntimeError("Isolated test broker did not start")
+            detail = process.communicate(timeout=2)[1].decode(errors='replace') if process.poll() is not None else 'startup timed out'
+            raise RuntimeError("Isolated test broker did not start: " + detail)
         yield port, password
     finally:
         process.terminate()
