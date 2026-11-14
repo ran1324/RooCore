@@ -4,7 +4,7 @@
 
 The chosen arrangement uses two permanent UART wires and prepares their GPIO states before switching LiDAR power off. It uses the purchased XIAO ESP32S3, Pololu #2810 and GH cable, with no additional resistor, capacitor, transistor, diode or level shifter in this path.
 
-The sequence is integrated into the full RooCoreXiao firmware on `main`. Builds and host tests passed; no flashing or physical measurements have been performed. It handles intentional LiDAR shutdown while XIAO remains powered, including the step before a D10 whole-system cutoff request. Software sequencing does not provide hardware isolation during reset, unexpected power loss or electrical faults.
+The sequence is integrated into the full RooCoreXiao firmware on `main`. Builds and host tests passed; no flashing or physical measurements have been performed. It handles intentional LiDAR shutdown while XIAO remains powered, ESP32 firmware decides routine shutdown and S1 #2810 performs the power switching through D3→ON. Whole-add-on undervoltage protection is separate: the EN 10kΩ+1kΩ divider. The old D10/Q1 path is inactive. Software sequencing does not provide hardware isolation during reset, unexpected power loss or electrical faults.
 
 [Stage 7](RooCore-assembly.html#s-uart) · [Photo wiring](photo-uart.svg) · [Combined view](combined-wiring.html) · [Schematic](electrical-schematic.svg) · [Hebrew](../LIDAR_POWER_UART.md)
 
@@ -48,7 +48,7 @@ Stopping byte writes or calling `flush()` alone is insufficient because idle UAR
 
 Arduino-ESP32 **3.3.12** was inspected and used for builds. Its `enableRxInternalPull(false)` is called before `begin()`. `end()` detaches pin routing and removes the UART driver; explicit GPIO setup follows. Recheck behavior and builds when changing core version.
 
-`setup()` calls `lidarPort.begin()` before networking/tasks. Afterward, `controlTask` owns UART2 and the three pins; UART1 remains for Roomba. `lidarPower(true)` calls `requestOn(now, ROO_LIDAR_RISE_MS)`. `serviceLidar(now)` advances startup and sends `A5 60` once. `lidarPower(false)` is the shared shutdown path, also called by `FirmwarePowerPort::quiesce()` before D10. It clears stale parser data and scan validity. There is no D6/D7 LiDAR UART or D8/OE control.
+`setup()` calls `lidarPort.begin()` before networking/tasks. Afterward, `controlTask` owns UART2 and the three pins; UART1 remains for Roomba. `lidarPower(true)` calls `requestOn(now, ROO_LIDAR_RISE_MS)`. `serviceLidar(now)` advances startup and sends `A5 60` once. `lidarPower(false)` is the shared shutdown path, also used by the active power-policy stop. `FirmwarePowerPort::quiesce()` belongs to the legacy cutoff adapter; active firmware does not drive D10. It clears stale parser data and scan validity. There is no D6/D7 LiDAR UART or D8/OE control.
 
 States are `off`, `warming`, `ready` and `fault`. `ready` means UART ready, not valid fresh scans. UART/command failure enters `fault` with power off. Repeated enable requests cannot cycle power; an explicit normal off transition is required before another attempt.
 

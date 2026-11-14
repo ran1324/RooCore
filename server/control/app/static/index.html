@@ -153,7 +153,7 @@
                 <div>
                   <dt>
                     <span class="service-icon">MQ</span
-                    ><span>תקשורת הבקר<small>MQTT</small></span>
+                    ><span>תקשורת שרת<small>MQTT / HTTPS</small></span>
                   </dt>
                   <dd id="mqtt-state" class="service-state">בודק</dd>
                 </div>
@@ -181,7 +181,9 @@
               <div>
                 <span class="step-mark" aria-hidden="true"></span>
                 <h3>חיבור הבקר</h3>
-                <p>שילוב MQTT בקושחה וחיבור מוגן מהרשת הביתית.</p>
+                <p>
+                  קוד HTTPS שולב; נדרשים הגדרה פרטית, צריבה ובדיקת שידור מהבקר.
+                </p>
               </div>
               <div>
                 <span class="step-mark" aria-hidden="true"></span>
@@ -284,8 +286,8 @@
                   <dd><bdi>roomba-620</bdi></dd>
                 </div>
                 <div>
-                  <dt>דיווח MQTT בקושחה</dt>
-                  <dd>טרם שולב</dd>
+                  <dt>דיווח HTTPS בקושחה</dt>
+                  <dd>שולב בקוד; טרם נבדק על הבקר</dd>
                 </div>
                 <div>
                   <dt>אימות SCI/OI ברובוט</dt>
@@ -365,6 +367,10 @@
               <div class="map-toolbar">
                 <label>שם המפה<input id="map-name" maxlength="80" /></label
                 ><span id="map-revision"></span
+                ><button id="map-deploy" class="button" type="button">
+                  שליחת אזורים לבקר</button
+                ><button id="map-refresh" class="button" type="button">
+                  טעינת מפות מהשרת</button
                 ><button id="map-save" class="button primary">
                   שמירה בענן
                 </button>

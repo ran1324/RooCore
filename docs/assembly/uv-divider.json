@@ -1,0 +1,47 @@
+{
+  "status": "CONDITIONAL: unpowered preparation only; no hardware measurements",
+  "viewing_direction": "Manufacturer component-side photograph; five outer pads at left: EN VIN GND GND VOUT",
+  "construction": "Inline series pair, no separate PCB; short flexible insulated signal leads, individually heat-shrunk joints, removable strain relief; verify cover clearance with all power removed",
+  "parts": [
+    {
+      "ref": "R_UV_A",
+      "value_ohm": 10000,
+      "tolerance_percent": 1,
+      "power_watt": 0.25,
+      "identity": "ELEGOO B072BL2VX1 assortment; individual manufacturer MPN not published"
+    },
+    {
+      "ref": "R_UV_B",
+      "value_ohm": 1000,
+      "tolerance_percent": 1,
+      "power_watt": 0.25,
+      "identity": "ELEGOO B072BL2VX1 assortment; individual manufacturer MPN not published"
+    }
+  ],
+  "connections": [
+    {
+      "net": "EN_SENSE",
+      "first": "U3 D36V28F5 #3782 P1 EN",
+      "last": "R_UV_A lead 1"
+    },
+    {
+      "net": "UV_MID",
+      "first": "R_UV_A lead 2",
+      "last": "R_UV_B lead 1"
+    },
+    {
+      "net": "GND",
+      "first": "R_UV_B lead 2",
+      "last": "U3 D36V28F5 #3782 P3 or P4 GND"
+    }
+  ],
+  "intentionally_unconnected": [
+    "U3 P6 PG",
+    "UV_MID to every other circuit"
+  ],
+  "internal_pullup_ohm": 100000,
+  "internal_pullup_tolerance": "UNKNOWN",
+  "nominal_off_volt": 12.109090909090908,
+  "nominal_on_volt": 13.622727272727275,
+  "source": "https://www.pololu.com/product/3782#connections"
+}

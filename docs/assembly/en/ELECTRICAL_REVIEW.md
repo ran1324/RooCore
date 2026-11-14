@@ -49,7 +49,7 @@ The purchased BOJACK B07T61SY9Y assortment also includes other transistor types.
 
 For an isolated, unpowered NPN in diode mode, red on B and black on either other lead should show the two forward junctions; reversing polarity should not show ordinary forward conduction. This identifies the base/type, not E versus C with certainty. Do not infer E/C solely from a tiny difference in diode drops. A matching datasheet or a suitable E/B/C identification test resolves that gap; no new tester purchase is being requested.
 
-Q1 is planned to pull EN down and Q2 to pull BRC down; they do not carry LiDAR load current. The onsemi 40V/200mA values are absolute limits, not operating targets. Neither circuit is included in the 13-wire harness.
+Q1 belonged to the superseded EN path and is not needed for the current 10kΩ+1kΩ divider; Q2 is still planned to pull BRC down; they do not carry LiDAR load current. The onsemi 40V/200mA values are absolute limits, not operating targets. Neither circuit is included in the 13-wire harness.
 
 ## NOYITO: IC pins are not module connector holes
 
@@ -123,7 +123,9 @@ GPIO4 is not a strapping pin (GPIO0/3/45/46), USB GPIO19/20 or a memory line. ES
 
 The [supplied R3 PDF](../sources/R3.MainPCA.Pwr.n.Gnd.pdf) is a preliminary drawing, not proof that every 500/600 board revision is identical. A continuity beep cannot distinguish the sides of 0.05Ω. Do not select solder pads from that document alone or substitute charging contacts for the intended battery branch.
 
-## EN thresholds are not installation settings
+## Superseded EN calculation — not assembly instructions
+
+**14 November 2026 update:** The active trial divider is a series 10kΩ+1kΩ pair from EN to GND, inline without a PCB or Q1/D10. New nominal calculations are 12.11V off and 13.62V on, not measurements. Routine LiDAR shutdown is an ESP32 decision through #2810 D3→ON after UART quiescence. [Current design and checks](POWER_DOCKING_PLAN.md). The following analysis preserves the old draft only.
 
 Nominally, an external 100k in parallel with the internal 100k gives 50k; 4.7k+470Ω gives 5.17k. The ratio `1+50/5.17 ≈ 10.6712` maps 1.20V/1.35V EN levels to approximately 12.805V/14.406V input.
 

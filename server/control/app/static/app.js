@@ -2,6 +2,16 @@
 const $ = (id) => document.getElementById(id);
 const labels = {
   idle: "בהמתנה",
+  cleaning: "מנקה",
+  returning: "חוזר לעמדה",
+  docking: "ניגש לעמדה",
+  resuming: "מחדש משימה",
+  settling: "מתייצב",
+  recovering: "מתאושש",
+  complete: "הושלם",
+  edging: "ניקוי היקפי",
+  touchup: "השלמת ניקוי",
+  yielding: "ממתין למעבר",
   charging: "בטעינה",
   held: "עצור",
   fault: "תקלה",

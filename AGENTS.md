@@ -47,6 +47,8 @@ Retain safe behavior on communication loss and distinguish host simulation from 
 
 Keep wiring, module, power-sequence and other assembly corrections in `docs/assembly/RooCore-assembly.html`, the inventory and the relevant Markdown. The HTML in the primary checkout is the user's assembly guide. A correction made in another worktree must reach that copy too.
 
+This is a standing user requirement: do not wait for a separate request to update the guide. Before finishing any change to hardware, mounting, wiring, power thresholds/sequencing, firmware installation, calibration, or integrated feature status, review and synchronize the canonical HTML and English companion. Put actionable assembly updates in a visible section with diagrams/tables as applicable, not only in a pending note or linked Markdown. Include setup-relevant server and simulator status without implying physical integration. Preserve unrelated local work. A task is not fully delivered until the primary-checkout guide is rebuilt and artifact checks are run; report any remaining failure honestly, and never refresh build-evidence hashes merely to silence a check.
+
 Edit the owning guide data/builders, regenerate with `python3 docs/assembly/build_guide.py`, and run `python3 docs/assembly/check_artifacts.py`. Keep the HTML, MD, photo views, schematic, CSV/JSON, draw.io and portable ZIP consistent. Preserve the distinction between preparation, a compiled example, integrated firmware and actual hardware validation. LiDAR routine shutdown uses the sequence in `docs/assembly/LIDAR_POWER_UART.md`; do not reintroduce an instruction to manually unplug TX/RX on every cycle.
 
 ## Current firmware checkout and low-height OI harness

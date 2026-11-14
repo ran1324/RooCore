@@ -44,6 +44,12 @@ def link(value):
         return '../RooCore-assembly.html'
     if value == '../../HARDWARE_INVENTORY.md':
         return 'HARDWARE_INVENTORY.md'
+    if value == '../APPLE_HOME-he.md':
+        return '../../APPLE_HOME.md'
+    if value == '../../server/control/README-he.md':
+        return '../../../server/control/README.md'
+    if value.startswith('uv-divider.'):
+        return '../'+value
     if value.startswith(('assets/','sources/','firmware-source/')) or value in ('firmware-integration.json','RooCore-assembly-kit.zip'):
         return '../'+value
     return value

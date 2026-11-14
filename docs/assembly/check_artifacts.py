@@ -9,10 +9,29 @@ import re
 import xml.etree.ElementTree as ET
 from urllib.parse import unquote, urlsplit
 from zipfile import ZipFile
-from guide_content import ENDPOINTS, STEPS
+from guide_content import ENDPOINTS, STEPS, SETUP_SECTION
 
 out = Path(__file__).resolve().parent
 repo = out.parents[1]
+# Fail on stale prose/builders as well as stale wiring. Rebuild the canonical guide.
+stamp = json.loads((out / 'guide-build.json').read_text())
+assert stamp['physical_validation'] is False
+for name,digest in stamp['sources'].items():
+    path = repo / name
+    # Portable kits omit Python guide builders; check every source present there.
+    if (out / 'build_guide.py').is_file():
+        assert path.is_file(), ('missing guide source', name)
+    if path.is_file():
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == digest, ('guide source changed; rebuild guide', name)
+for name,digest in stamp['outputs'].items():
+    assert hashlib.sha256((out / name).read_bytes()).hexdigest() == digest, ('stale generated guide', name)
+uv = json.loads((out / 'uv-divider.json').read_text())
+with (out / 'uv-divider.csv').open(encoding='utf-8-sig', newline='') as f:
+    assert list(csv.DictReader(f)) == uv['connections']
+assert [part['value_ohm'] for part in uv['parts']] == [10000,1000]
+assert uv['connections'][0]['first'].endswith('P1 EN')
+assert uv['connections'][-1]['last'].endswith('P3 or P4 GND')
+
 rows = json.loads((out / 'connections.json').read_text())
 expected = [r for step in STEPS for r in step['rows']]
 assert len(rows) == len(expected) == 13
@@ -79,6 +98,8 @@ if (source / 'firmware/xiao/RooCoreXiao/RooCoreXiao.ino').is_file():
         assert hashlib.sha256((source / name).read_bytes()).hexdigest() == digest, ('changed since build', name)
     for name in ['RooCoreXiao.ino', 'config.example.h']:
         assert (out / 'firmware-source' / name).read_bytes() == (source / 'firmware/xiao/RooCoreXiao' / name).read_bytes()
+    for name in ['PowerManagement.h', 'PowerShutdownOI.h', 'NativeCapture.h', 'BatteryLearning.h', 'BatteryLearningStore.h', 'CloudPolicy.h', 'CloudTrust.h', 'WifiSetup.h', 'WifiSetupPage.h', 'WifiProvisioning.h']:
+        assert (out / 'firmware-source' / name).read_bytes() == (source / 'lib/RooNavigation/src' / name).read_bytes()
     for path in (repo / 'lib/RooCoreLidarPower').rglob('*'):
         if path.is_file() and not path.name.startswith('.'):
             assert path.read_bytes() == (source / path.relative_to(repo)).read_bytes(), ('library copy mismatch', path)
@@ -116,6 +137,8 @@ active = [p for p in out.glob('*.md') if not p.name.startswith('._')] + [out / n
 active += [repo / n for n in ['HARDWARE_INVENTORY.md', 'WIRING_GUIDE.md', 'POWER_DESIGN.md',
                               'POWER_SHUTDOWN.md', 'lib/RooCoreLidarPower/README.md',
                               'docs/POWER_SHUTDOWN.md', 'docs/POWER_SHUTDOWN-he.md', 'docs/diagrams/wiring-xiao.svg',
+                              'docs/POWER_MANAGEMENT.md', 'docs/POWER_MANAGEMENT-he.md',
+                              'docs/BATTERY_LEARNING.md', 'docs/BATTERY_LEARNING-he.md',
                               'hardware/README.md']]
 english = out / 'en'
 active += [p for p in english.glob('*.md') if not p.name.startswith('._')] + [english / n for n in ['RooCore-assembly.html', 'combined-wiring.html']]
@@ -160,10 +183,33 @@ with ZipFile(out / 'RooCore-assembly-kit.zip') as z:
     for path in (repo / 'lib/RooCoreLidarPower').rglob('*'):
         if path.is_file() and not path.name.startswith('.'):
             assert z.read(path.relative_to(repo).as_posix()) == path.read_bytes()
-    for path in [out / 'firmware-integration.json', out / 'sources/firmware-integration-build.txt',
-                 out / 'firmware-source/RooCoreXiao.ino', out / 'firmware-source/config.example.h']:
+    for path in [out / 'guide-build.json', out / 'uv-divider.json', out / 'uv-divider.csv', out / 'uv-divider.svg', out / 'uv-divider.drawio', out / 'firmware-integration.json', out / 'sources/firmware-integration-build.txt',
+                 out / 'firmware-source/RooCoreXiao.ino', out / 'firmware-source/config.example.h',
+                 out / 'firmware-source/PowerManagement.h', out / 'firmware-source/PowerShutdownOI.h',
+                 out / 'firmware-source/NativeCapture.h',
+                 out / 'firmware-source/BatteryLearning.h', out / 'firmware-source/BatteryLearningStore.h']:
         assert z.read(path.relative_to(repo).as_posix()) == path.read_bytes(), ('stale packaged firmware', path)
     assert z.read('hardware/check_shutdown.py') == (repo / 'hardware/check_shutdown.py').read_bytes()
+
+# The initial setup must be readable inline in both primary HTML and Markdown,
+# with matching translated steps, not only as an external document link.
+import guide_english
+for folder,content in [(out,SETUP_SECTION),(english,guide_english.SETUP_SECTION)]:
+    page=(folder/'RooCore-assembly.html').read_text()
+    markdown=(folder/'README.md').read_text()
+    assert 'href="#initial-setup"' in page
+    assert 'id="initial-setup"' in page
+    for step in content['steps']:
+        assert 'id="setup-'+step['id']+'"' in page
+        assert step['title'] in html.unescape(page) and step['title'] in markdown
+        for action in step['actions']:
+            assert action in html.unescape(page) and action in markdown, ('missing inline setup action',folder,step['id'])
+        if step['code']:
+            assert step['code'] in html.unescape(page) and step['code'] in markdown
+    for row in content['trouble_rows']+content['config_rows']:
+        for value in row:
+            assert value in html.unescape(page) and value in markdown
+print('PASS: complete bilingual inline setup, credential roles, guarded flash procedure and troubleshooting.')
 
 print('PASS: 13 wires; 7 separate nets; two drawing maps; XML; 13 draw.io pages;')
 print(f'{count} local links in both languages; identical English wiring geometry; firmware hashes/pin map; ZIP CRC and document/code parity. Not hardware validation.')

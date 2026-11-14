@@ -2,7 +2,13 @@
 
 Roomba 620 control and telemetry. The current controller target is the **plain XIAO ESP32S3**; the older ESP-01S recorder is preserved below as a separate application.
 
+## Linux management server
+
+[RooCore Server](server/control/README.md) · [עברית](server/control/README-he.md): native FastAPI, authenticated MQTT, SQLite and a Hebrew monitoring UI, managed by Linux services without Docker. This is a separate, receive-only server: the XIAO firmware is not yet integrated with its MQTT contract, and hardware commands remain unconditionally blocked pending SCI/OI and physical safety validation. Access is private through SSH. [Deployment evidence](server/control/DEPLOYMENT.md).
+
 ## XIAO cleaning and navigation
+
+[Apple Home simulator](docs/APPLE_HOME.md) · [עברית](docs/APPLE_HOME-he.md): a separate native Matter-over-Wi-Fi sketch for XIAO ESP32S3, with no always-on computer or robot drivers. Host simulation tested and firmware compiled; not flashed or paired with Apple Home. [Validation](docs/APPLE_HOME_VALIDATION.md).
 
 [Real firmware](firmware/xiao/RooCoreXiao/RooCoreXiao.ino) · [Behavior and hardware setup](docs/XIAO_NAVIGATION.md) · [Optional Nav2 computer](docs/ROS2_NAVIGATION.md)
 
@@ -17,6 +23,8 @@ The [dashboard](docs/DASHBOARD.md) ([Hebrew](docs/DASHBOARD-he.md)) now supports
 The [smart cleaning plan](docs/SMART_CLEANING_PLAN.md) ([Hebrew](docs/SMART_CLEANING_PLAN-he.md)) tracks the implemented stages and remaining work. History/dirt-driven extra passes, complete edge-segment accounting and the rear-exhaust experiment remain separate pending stages; observation-only dirt logging does not activate them.
 
 The [hardware inventory](HARDWARE_INVENTORY.md) and [purchase record](AMAZON_ORDER.md) list the project parts. Check the [module audit](docs/assembly/en/MODULE_AUDIT.md) and [electrical review](docs/assembly/en/ELECTRICAL_REVIEW.md) for verified connections and the physical checks still needed. The power-cutoff sequence is documented in [English](docs/POWER_SHUTDOWN.md) and [Hebrew](docs/POWER_SHUTDOWN-he.md).
+
+The chosen trial voltage thresholds, 11 kΩ hardware cutoff and approval-gated native docking fallback are preserved in the [Hebrew power and docking plan](docs/assembly/POWER_DOCKING_PLAN.md) ([English companion](docs/assembly/en/POWER_DOCKING_PLAN.md)). The policy is [integrated in firmware](docs/POWER_MANAGEMENT.md) ([Hebrew](docs/POWER_MANAGEMENT-he.md)); all new hardware gates remain disabled until qualification, with no flashing or physical validation.
 
 ## Roomba Open Interface library
 
@@ -145,3 +153,11 @@ clang++ -std=c++11 -Ifirmware/include tests/core_test.cpp -o /tmp/roocore-core-t
 [Protocol](docs/protocol.md) · [Upstream changes](docs/upstream-baseline.md) · [Validation](docs/validation.md)
 
 Coverage geometry, perpendicular passes, room/perimeter ordering, IR/bumper limits and bounded server-assisted recovery are documented in [COVERAGE_AND_RECOVERY.md](docs/COVERAGE_AND_RECOVERY.md).
+
+
+### Native-cleaning baseline capture on XIAO
+
+[הקלטת חיישנים ואנרגיה ועדכון אלחוטי](docs/assembly/NATIVE_RECORDING.md) · [English](docs/assembly/en/NATIVE_RECORDING.md). Integrated in RooCoreXiao; first USB installation and hardware qualification remain pending.
+
+
+[מעקב ולמידת הסוללה](docs/BATTERY_LEARNING-he.md) · [Battery learning](docs/BATTERY_LEARNING.md): היסטוריית מחזורים, הערכת קיבולת ורזרבה לחזרה מוקדמת; ספי המתח והניתוק החומרתי נשארים קבועים. חומרה ושמירה חסומות עד כיול.

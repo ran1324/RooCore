@@ -37,7 +37,7 @@ class MapBody(BaseModel):
     geometry: dict
     cells: list[int] = Field(max_length=65536)
     zones: list[dict] = Field(max_length=32)
-    source: Literal['planning', 'simulation', 'hardware_import'] = 'planning'
+    source: Literal['planning', 'simulation', 'hardware_import', 'hardware_stream'] = 'planning'
     source_map_id: str | None = Field(default=None, max_length=200)
 
 
@@ -112,6 +112,7 @@ def install(app, store, current):
             # Geometry and provenance are immutable for this identity. Import creates a new map.
             if document['geometry'] != row.document['geometry'] or document['source'] != row.document['source'] or document['source_map_id'] != row.document.get('source_map_id'):
                 raise HTTPException(409, 'Create a new map for different geometry or source')
+            document.update({k:v for k,v in row.document.items() if k in ("coverage", "device_map_revision")})
             row.name, row.document, row.revision = body.name, document, row.revision + 1
             s.add(Audit(actor=user['id'], action='map_updated', target=map_id))
             return describe(row)

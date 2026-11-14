@@ -13,6 +13,12 @@ python3 tests/check_oi_map.py
 
 "${CXX:-clang++}" -std=c++11 -Wall -Wextra -Werror -pedantic \
   -fsanitize=address,undefined -fno-omit-frame-pointer \
+  -Ilib/RoombaOI/src -Ilib/RooNavigation/src lib/RoombaOI/src/RoombaOI.cpp \
+  tests/power_management_test.cpp -o "$build_dir/power-management-test"
+"$build_dir/power-management-test"
+
+"${CXX:-clang++}" -std=c++11 -Wall -Wextra -Werror -pedantic \
+  -fsanitize=address,undefined -fno-omit-frame-pointer \
   -Ilib/RooCoreLidarPower/src tests/lidar_power_test.cpp -o "$build_dir/lidar-power-test"
 "$build_dir/lidar-power-test"
 
@@ -50,3 +56,22 @@ for case in dock_guard charge_resume; do
     -Ilib/RooNavigation/src "tests/${case}_test.cpp" -o "$build_dir/${case}-test"
   "$build_dir/${case}-test"
 done
+
+"${CXX:-clang++}" -std=c++11 -Wall -Wextra -Werror -pedantic \
+  -fsanitize=address,undefined -fno-omit-frame-pointer \
+  -Ilib/RoombaOI/src -Ilib/RooNavigation/src lib/RoombaOI/src/RoombaOI.cpp \
+  tests/native_capture_test.cpp -o "$build_dir/native-capture-test"
+"$build_dir/native-capture-test"
+
+"${CXX:-clang++}" -std=c++11 -Wall -Wextra -Werror -pedantic \
+  -fsanitize=address,undefined -fno-omit-frame-pointer \
+  -Ilib/RooNavigation/src tests/battery_learning_test.cpp -o "$build_dir/battery-learning-test"
+"$build_dir/battery-learning-test"
+
+"${CXX:-clang++}" -std=c++11 -Wall -Wextra -Werror -pedantic \
+  -fsanitize=address,undefined -fno-omit-frame-pointer \
+  -Ilib/RooNavigation/src tests/cloud_policy_test.cpp -o "$build_dir/cloud-policy-test"
+"$build_dir/cloud-policy-test" tests/fixtures/cloud-policy-v1.bin
+
+${CXX:-c++} -std=c++11 -Wall -Wextra -Werror -fsanitize=address,undefined -Ilib/RooNavigation/src tests/wifi_setup_test.cpp -o "$build_dir/wifi_setup_test"
+"$build_dir/wifi_setup_test"

@@ -36,8 +36,9 @@ with at most 20 maps per robot and 32 zones per map. Zones can be drawn or edite
 by their coordinates. Cloud saves are included in SQLite backups.
 
 Cleaning a room and going to a target create **draft plans only** bound to a map
-revision. Nothing queues a hardware command, publishes MQTT, starts a drive or
-activates map barriers. The existing command endpoint remains unconditionally
+revision. Draft plans never queue a hardware command, publish MQTT or start a
+drive. Explicit map-policy deployment now uses the separate device channel, with
+local persistence/acknowledgement in firmware code; see ../../docs/CLOUD_STREAM.md. The existing command endpoint remains unconditionally
 locked after permission checks. A future hardware path must independently validate
 localization, current map identity/revision, robot footprint, exclusions and
 controller-local safety, and receive an explicit policy acknowledgement.

@@ -1,0 +1,30 @@
+PASS: 707 checks (wire fixtures, parsing, errors, leases, fuzz, capability gates)
+PASS: map covers 30 opcodes (including alias), 52 individual packets, 11 groups and both BRC operations
+Power management: thresholds, scoped approval, safety, persistence and OI stop passed
+PASS: LiDAR off-source invariant; 100 nonblocking cycles; startup cancellation; wraparound; busy TX; stale RX; failure latch; write guards; reinitialization
+Power cutoff policy and OI stop/resync transport tests passed (synthetic; no hardware)
+Dirt observation / simulated OI traffic and Stasis tests passed
+Carpet estimation policy tests passed
+native scenario furniture=0 deep=0 battery=0 state=10 cells=5907 skips=0 distance=149.5
+axis horizontal 128.5/5.6 vertical 0.0/0.0 contacts 0 rooms 1 edges 1 incomplete 0
+native scenario furniture=1 deep=0 battery=0 state=10 cells=5001 skips=2 distance=158.7
+axis horizontal 115.3/16.4 vertical 0.0/0.0 contacts 0 rooms 6 edges 24 incomplete 1
+native scenario furniture=1 deep=1 battery=0 state=10 cells=9378 skips=5 distance=288.7
+axis horizontal 121.1/15.3 vertical 9.7/111.3 contacts 0 rooms 11 edges 24 incomplete 1
+native scenario furniture=0 deep=0 battery=1 state=10 cells=5906 skips=0 distance=156.4
+axis horizontal 129.1/5.6 vertical 0.0/0.0 contacts 0 rooms 1 edges 1 incomplete 0
+native scenario furniture=0 deep=0 battery=0 state=10 cells=5261 skips=0 distance=147.1
+axis horizontal 104.5/13.7 vertical 0.0/0.0 contacts 0 rooms 3 edges 14 incomplete 0
+native scenario furniture=0 deep=0 battery=0 state=10 cells=5974 skips=0 distance=150.1
+axis horizontal 128.5/5.6 vertical 0.0/0.0 contacts 4 rooms 1 edges 1 incomplete 0
+native scenario furniture=0 deep=0 battery=0 state=10 cells=5907 skips=1 distance=148.4
+axis horizontal 127.4/5.7 vertical 0.0/0.0 contacts 0 rooms 1 edges 1 incomplete 0
+native scenario furniture=1 deep=0 battery=0 state=10 cells=4974 skips=5 distance=165.6
+axis horizontal 115.5/17.2 vertical 0.0/0.0 contacts 0 rooms 8 edges 23 incomplete 1
+Native navigation tests passed
+PASS: persistent exclusion, footprint/forward/reverse guards, carpet overlap/presence, independent passes and cliff priority
+dock guard: synthetic geometry, swept turns/reverse, corridor, freshness and exact IR passed
+Charge supervisor, mission clock, saved-map reuse and return-event tests passed (synthetic).
+PASS native capture: atomic base/extended frames, checksum rejection, loss, passive-only writes, OTA hold
+PASS battery learning: integration, gaps, gauge-referenced capacity, bounded reserve, reboot and torn snapshots (17408-byte state)
+cloud policy cross-language, truncation/corruption, offline barrier tests passed

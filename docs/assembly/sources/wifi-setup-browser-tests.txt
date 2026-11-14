@@ -1,0 +1,6 @@
+2026-11-14 | actual WifiSetupPage.h served by localhost mock, not ESP32 hardware.
+Playwright: scan; select network; submit synthetic SSID/password/nonce; saved state.
+Hostile <img src=x onerror=alert(1)> SSID remained option text; injectedImages=0.
+390x844: horizontalOverflow=false; passwordCleared=true; saved=true.
+Only favicon404; no application JavaScript exception.
+No RF, NVS or real-board behavior verified.

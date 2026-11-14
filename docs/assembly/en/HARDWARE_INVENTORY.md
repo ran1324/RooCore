@@ -2,6 +2,8 @@
 
 2026-11-10 · English companion to the [complete purchase record and history](../../../HARDWARE_INVENTORY.md). Purchase records do not establish delivery or physical validation. No new purchase is requested here.
 
+**New trial power decision (14 November 2026):** The [power and docking plan](POWER_DOCKING_PLAN.md) records 13.8/13.5/13.0/12.5 V software states, a nominal 11 kΩ EN-to-GND divider for calculated cutoff near 12.1 V, and native fallback only with explicit user approval and a local safety check. The thresholds, approval and safety gate are now integrated in firmware; hardware flags remain false and measured values zero. No robot connection, flashing or calibration was performed. [Implementation](../../POWER_MANAGEMENT.md). The purchased kit records 10 kΩ and 1 kΩ, but no single 11 kΩ resistor; physical availability is unconfirmed. The older EN divider and 12.81/14.41 V calculations are superseded for this trial.
+
 | Part | Purchased identity | Current role / limitation |
 |---|---|---|
 | Plain XIAO ESP32S3 | B0DJ6NQFKX, pack of 3 | 5V/GND power; D3/GPIO4 control; D4/GPIO5 TX and D5/GPIO6 RX for LiDAR |
@@ -11,8 +13,8 @@
 | YDLIDAR | T-mini Plus, B0BJ2LWDM9 | Switched 5V power and two permanent 3.3V UART wires |
 | GH cable kit | EGSCST GH1.25, B0H3Q98C58 | Four-position plug, 28AWG, 15cm tails; map contacts before wiring |
 | XT30 pairs | Yiqigou/Amass XT30U, B0CFJKK6BX, two pairs | 18AWG; load side is before regulation; source half disconnected during preparation |
-| Transistor assortment | BOJACK B07T61SY9Y | Two 2N3904 NPN parts planned for EN/BRC. Confirm supplied-part E/B/C against the reference before wiring |
-| Resistor assortment | ELEGOO 525, B072BL2VX1 | No added resistor in the current 13-wire preparation harness; EN/BRC circuits remain pending |
+| Transistor assortment | BOJACK B07T61SY9Y | Q2 is planned for BRC and requires supplied-part E/B/C identification. Legacy Q1 is not needed for the new EN divider |
+| Resistor assortment | ELEGOO 525, B072BL2VX1 | No resistor in the 13-wire harness; the separate EN section uses an inline 10kΩ+1kΩ pair without PCB. Thresholds and Q2/BRC remain unverified |
 | Fuses and holders | QBGTFAK 5×20, B07BC8DW3L; recorded 12 holders / 110 fuses | Already purchased. Series with positive project branch near the source and before XT30/U3. Value, DC rating and interrupt capability remain unqualified |
 | Wire and assembly materials | Purchased 18AWG/22AWG wire, heat shrink, solder boards and retention materials | No duplicate order needed. Check the actual board's pad connectivity before assigning holes |
 | Earlier ESP-01S and 3.3V converter boards | Four ESP-01S and five converter boards in October records | Spares/other applications, not connected here; the listed 23V converter limit does not establish battery cutoff |
@@ -48,3 +50,30 @@ Identify the Roomba NOYITO supply/OE routing, confirm the supplied 2N3904 pinout
 Height sensors, an I²C multiplexer, camera/Sense/microSD additions and older shopping-cart suggestions are not approved additions to this harness. Historical cart entries are not purchases. The October order's delivery status was not physically verified.
 
 The user requires relevant corrections in the canonical Hebrew HTML, the English companion, Markdown, photographs and wire tables together. Rebuild with `python3 docs/assembly/build_guide.py` and validate with `python3 docs/assembly/check_artifacts.py`.
+
+
+## Capture and updates — software status
+
+RooCoreXiao now provides record-start/record-stop, computer-side OI sensor logging and energy estimates. Extended data require opt-in; internal PWM and separate vacuum current are not reported. Password-protected OTA requires stopped service hold, fresh telemetry and a measured voltage floor; it defaults off. Initial USB installation and physical qualification remain required. See NATIVE_RECORDING.md. No extra component or wiring-map change. [Details](NATIVE_RECORDING.md).
+
+
+**Battery learning:** current integration, cycle history and two-slot persistence are integrated. No new components or wiring. OI coverage of all RooCore loads, current/gauge error, Flash floor and docking margin remain unqualified; flags and measured values remain false/0. [Details](../../BATTERY_LEARNING.md).
+
+**Two-resistor EN preparation (14 November 2026):** R_UV_A=10kΩ and R_UV_B=1kΩ, each 1%, at least 0.25W, in series: U3 EN → 10kΩ → 1kΩ → U3 GND. [Schematic, physical pad map and checks](POWER_DOCKING_PLAN.md). No Q1 or external 100kΩ is needed for this divider. Unpowered preparation only; actual thresholds and robot connection remain unverified.
+
+**LiDAR shutdown versus EN:** Routine shutdown is decided by ESP32, driving #2810 D3→ON after UART quiescence. EN is separate undervoltage protection for the whole add-on. The EN resistor pair is inline without a PCB, with insulation, strain relief and an unpowered cover-clearance check.
+
+## Software update — cloud stream and local zone policy
+
+Firmware now has an outbound HTTPS device channel and locally persisted map
+zones. No component or wire is added. Cloud mode requires a saved policy and
+holds motion without it. Native docking/fallback cannot run with map barriers.
+Hardware commissioning flags remain disabled. Nothing was flashed or tested
+on the assembly. See [the integration boundary](../../CLOUD_STREAM.md).
+
+
+## Private Wi-Fi setup — 14 November 2026
+
+Added protected AP/network selection, NVS commit/readback after connection and stopped BOOT re-entry. Internet loss never opens the AP or erases zones. A unique AP password is provisioned outside the repository; no secret in the template, no new component or wire. Software/compiler checks only; not flashed or physically tested. See `docs/WIFI_SETUP.md` at project root for conditions and limitations.
+
+The complete process is now inline in the [assembly guide — initial setup](RooCore-assembly.html#initial-setup): 11 steps for private configuration, conditional building/flashing, Wi-Fi selection, server verification and map policy, plus troubleshooting. This is a procedure to perform; hardware-validation status is unchanged.

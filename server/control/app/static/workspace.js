@@ -168,6 +168,9 @@
       list.append(row);
     }
   }
+  let livePose = null,
+    liveOnline = false,
+    liveMapId = null;
   function mapBody(m) {
     return {
       name: el("map-name").value || m.name,
@@ -214,8 +217,21 @@
     if (!map) return;
     el("map-name").value = map.name;
     el("map-revision").textContent =
-      `${map.source === "planning" ? "מפת תכנון" : map.source === "simulation" ? "סימולציה" : "מפה מיובאת, לא מאומתת"} · גרסה ${map.revision}${dirty ? " · לא נשמר" : ""}`;
+      `${map.source === "planning" ? "מפת תכנון" : map.source === "simulation" ? "סימולציה" : map.source === "hardware_stream" ? "מפה ששודרה מהבקר" : "מפה מיובאת, לא מאומתת"} · גרסה ${map.revision}${dirty ? " · לא נשמר" : ""}`;
     const edit = can(el("map-robot").value, "map_edit");
+    el("map-deploy").disabled =
+      !edit ||
+      dirty ||
+      !map.id ||
+      !["hardware_stream", "simulation"].includes(map.source);
+    message(
+      "map-notice",
+      map.robot_acknowledged
+        ? "הבקר דיווח שהאזורים נשמרו מקומית. זו הצהרת תוכנה; האכיפה הפיזית עדיין דורשת בדיקה."
+        : map.application === "pending_controller"
+          ? "השינוי ממתין לאישור שמירה מהבקר. האזורים החדשים עדיין אינם מאושרים."
+          : "האזורים נשמרו בשרת. יש לשלוח לבקר ולהמתין לאישור לפני הסתמכות עליהם.",
+    );
     for (const id of [
       "map-name",
       "map-save",
@@ -335,6 +351,65 @@
       ctx.fillText(z.name, px(z.x2) - 4, py(z.y2) + 20);
     }
   }
+  async function syncLive() {
+    if (!me || !el("map-robot").value || document.hidden) return;
+    const robot = el("map-robot").value;
+    const stream = await api("/api/robots/" + robot + "/stream");
+    liveMapId = stream.cloud_map_id;
+    liveOnline = stream.online;
+    livePose = stream.snapshot?.status?.localized ? stream.snapshot.pose : null;
+    if (dirty) return;
+    const fresh = (await api("/api/robots/" + robot + "/maps")).maps;
+    if (robot !== el("map-robot").value || dirty) return;
+    maps = fresh;
+    const selected = map?.id || el("map-select").value;
+    el("map-select").replaceChildren(
+      option("בחרו מפה", ""),
+      ...maps.map((m) => option(m.name, m.id)),
+    );
+    el("map-select").value = selected || "";
+    if (selected)
+      map = structuredClone(maps.find((m) => m.id === selected) || null);
+    renderMap();
+    if (map && livePose && liveMapId === map.id) {
+      const c = el("map-canvas"),
+        ctx = c.getContext("2d"),
+        g = map.geometry;
+      const x = ((livePose.x - g.origin_x) / (g.cols * g.resolution)) * c.width;
+      const y =
+        c.height -
+        ((livePose.y - g.origin_y) / (g.rows * g.resolution)) * c.height;
+      ctx.beginPath();
+      ctx.fillStyle = liveOnline ? "#167044" : "#58616d";
+      ctx.arc(x, y, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.strokeStyle = ctx.fillStyle;
+      ctx.moveTo(x, y);
+      ctx.lineTo(
+        x + 14 * Math.cos(livePose.yaw),
+        y - 14 * Math.sin(livePose.yaw),
+      );
+      ctx.stroke();
+    }
+  }
+  run("map-refresh", async () => {
+    if (dirty) throw Error("שמרו את השינויים לפני טעינה מחדש.");
+    await syncLive();
+  });
+  run("map-deploy", async () => {
+    await api(
+      "/api/robots/" + el("map-robot").value + "/maps/" + map.id + "/deploy",
+      { revision: map.revision },
+    );
+    map.application = "pending_controller";
+    map.robot_acknowledged = false;
+    renderMap();
+  });
+  setInterval(() => {
+    if (location.hash === "#maps")
+      syncLive().catch((e) => message("map-notice", e.message));
+  }, 5000);
   function addZone() {
     if (!map || !can(el("map-robot").value, "map_edit")) return;
     const previous = map.zones.find((z) => z.id === editing);

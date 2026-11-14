@@ -1,0 +1,4 @@
+﻿net,first,last
+EN_SENSE,U3 D36V28F5 #3782 P1 EN,R_UV_A lead 1
+UV_MID,R_UV_A lead 2,R_UV_B lead 1
+GND,R_UV_B lead 2,U3 D36V28F5 #3782 P3 or P4 GND

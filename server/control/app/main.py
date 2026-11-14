@@ -1,12 +1,15 @@
 from contextlib import asynccontextmanager
 import platform
 from pathlib import Path
+from starlette.concurrency import run_in_threadpool
 
 from fastapi import FastAPI, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from .accounts import Accounts, COOKIE, PUBLIC_ORIGIN, permitted
 from .account_routes import install as install_accounts
 from .maps import install as install_maps
+from .device_stream import install as install_device_stream, DEVICE_PATH, DeviceStream
+import time
 
 from .config import Settings
 from .mqtt import Receiver
@@ -42,19 +45,30 @@ def create_app(settings=None, receiver_factory=Receiver):
     app.state.accounts = accounts
     authenticate, administrator = install_accounts(app, accounts)
     install_maps(app, store, authenticate)
+    install_device_stream(app, store, authenticate)
 
     @app.middleware("http")
     async def headers(request, call_next):
         if request.headers.get('x-forwarded-proto') == 'http':
             return RedirectResponse(PUBLIC_ORIGIN + request.url.path, status_code=308)
         if request.method not in ('GET', 'HEAD', 'OPTIONS'):
-            if request.headers.get('origin') != PUBLIC_ORIGIN:
+            if request.url.path != DEVICE_PATH and request.headers.get('origin') != PUBLIC_ORIGIN:
                 return JSONResponse({'detail': 'Invalid origin'}, status_code=403)
+            public_auth = {'/api/auth/login','/api/auth/resend','/api/auth/verify','/api/auth/forgot','/api/auth/reset'}
+            try:
+                if request.url.path == DEVICE_PATH:
+                    await run_in_threadpool(app.state.authenticate_device, request)
+                elif request.url.path not in public_auth:
+                    await run_in_threadpool(authenticate, request)
+            except HTTPException as error:
+                return JSONResponse({'detail': error.detail}, status_code=error.status_code,
+                                    headers={**(error.headers or {}), 'Cache-Control':'no-store'})
+            limit = 16384 if request.url.path in public_auth else 1024 * 1024
             body = bytearray()
             async for chunk in request.stream():
-                body.extend(chunk)
-                if len(body) > 1024 * 1024:
+                if len(body) + len(chunk) > limit:
                     return JSONResponse({'detail': 'Request too large'}, status_code=413)
+                body.extend(chunk)
             request._body = bytes(body)
         response = await call_next(request)
         response.headers.update({
@@ -106,13 +120,27 @@ def create_app(settings=None, receiver_factory=Receiver):
     @app.get("/api/status", dependencies=[Depends(authenticate)])
     def status(user=Depends(authenticate)):
         store.healthy()
+        rows = store.robots(receiver.connected, receiver.fresh_after, settings.stale_seconds)
+        with store.session() as session:
+            for row in rows:
+                stream = session.get(DeviceStream, row['id'])
+                if stream:
+                    age = max(0, time.time() - stream.received)
+                    state = stream.snapshot['status']
+                    states = ['idle','cleaning','returning','docking','charging','resuming','settling','recovering','held','fault','complete','edging','touchup','yielding']
+                    row.update(online=stream.received >= app.state.device_fresh_after and age < 5, age_seconds=round(age,1),
+                               last_seen=__import__('datetime').datetime.fromtimestamp(stream.received,__import__('datetime').timezone.utc).isoformat(),
+                               telemetry=dict(battery_percent=state.get('battery') if state.get('battery_valid') else None,
+                                              battery_mv=None,state=states[state['state']],
+                                              firmware=state.get('firmware_version','unknown'),local_safety='unverified'),
+                               transport='https_device', cloud_map_id=stream.cloud_map_id)
         return dict(mode="telemetry_only", database="ready", mqtt_connected=receiver.connected,
                     hardware_commands_enabled=False, sci_verified=False,
-                    firmware_mqtt_integrated=False, physical_safety_verified=False,
+                    firmware_mqtt_integrated=False, firmware_https_integrated=True, physical_safety_verified=False,
                     stale_after_seconds=settings.stale_seconds,
                     rejected_messages=receiver.rejected,
                     runtime={"os": os_name, "python": platform.python_version(), "started_at": started_at},
-                    robots=[r for r in store.robots(receiver.connected, receiver.fresh_after, settings.stale_seconds) if permitted(user, r["id"])])
+                    robots=[r for r in rows if permitted(user, r["id"])])
 
     @app.get("/assets/fonts/{filename}")
     def font(filename: str):

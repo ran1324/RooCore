@@ -1,6 +1,10 @@
 # Controller and cloud transport boundary
 
-2026-11-14. Source inspection only; no hardware connection, flash or operation.
+2026-11-14. Outbound HTTPS streaming and map-policy synchronization are now
+integrated in source and deployed on the server. Public checks use sim-620 only;
+firmware flashing and the physical sensor/controller link remain unverified.
+See [the implemented contract](../../docs/CLOUD_STREAM.md).
+The local/legacy transports below remain separate. No hardware was operated.
 
 | Existing source | Present behavior | Cloud integration |
 |---|---|---|

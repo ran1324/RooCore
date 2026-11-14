@@ -164,3 +164,20 @@ Sources consulted: [Mosquitto configuration and ACL](https://mosquitto.org/man/m
 [official installation routes](https://mosquitto.org/download/),
 [FastAPI authentication](https://fastapi.tiangolo.com/advanced/security/http-basic-auth/),
 [SQLite WAL behavior](https://sqlite.org/wal.html). These are software references, not robot tests.
+
+## Native firmware HTTPS channel
+
+The additional `/api/device/v1/snapshot` endpoint uses a device-only credential;
+it never accepts a web session as device authentication. Root provisioning:
+`venv/bin/python scripts/provision_device.py roomba-620` (or `sim-620` for tests).
+The generated token is written to `/root/roocore-access/<identity>-https-token`
+without printing it; only its hash is stored in the application database. Use
+`--rotate` to invalidate the old token. No home address or inbound home port is
+needed. Keep the existing MQTT broker private; this channel does not open it.
+
+The map editor can request a policy only for the current device-observed map.
+Changes stay pending until the exact revision is reported as durably stored.
+The native firmware holds on missing/corrupt required policy and cannot use
+stock docking/fallback to bypass barriers. No cloud motor dispatcher was added.
+Server streaming state/map data are included in daily SQLite backups. See
+[firmware contract and physical verification limits](../../docs/CLOUD_STREAM.md).

@@ -1,10 +1,15 @@
 {
-  "docs/assembly/guide_content.py": "534abe83cef8aed1a8d7bbba48d2ac187b706086f1a07479784d1f1f22312266",
-  "docs/assembly/FIRMWARE_INTEGRATION.md": "9cfd03aa52915ec346166cf3fa32acd3bac67b6acbc6c18f27f240a2bc0f2118",
-  "docs/assembly/LIDAR_POWER_UART.md": "0731ec30593d32dae639328476b0b97ca732c04a133ad599315db21fb8babbee",
-  "docs/assembly/ELECTRICAL_REVIEW.md": "03fcde0fe730d402af10693656aed66fb11b9d89304918251f7452afaaa65272",
-  "docs/assembly/MODULE_AUDIT.md": "f05a869ef5a92bbd1ff14934cc5904476f6f3cc1f4bf9ca413b2694f9c6c7a7a",
-  "docs/assembly/VALIDATION.md": "82be8648f7d2809d358c9eed32dc452f7a36f3a0d59a19847d7aff7d4b42e11d",
-  "HARDWARE_INVENTORY.md": "87296d8e3203bddfc08d17048d6a6ab7bd99169f5519b4f45b6309ba7735b63a",
-  "docs/assembly/ROBOT_GEOMETRY.md": "48adf85daa4ce3db969dc2414339157f333b0b46e354c86a7912f52d057b502c"
+  "docs/assembly/guide_content.py": "69b1dea28c1818a5423df398f9976939b64208e1bcf46dc8cfaa0d0696c9f2bf",
+  "docs/assembly/FIRMWARE_INTEGRATION.md": "cbf4837caab320d3ff7fd1266c0fd45ea4f6bad2bf57496e41ca10692e1c2ed4",
+  "docs/assembly/LIDAR_POWER_UART.md": "6a4c7999d162a62de524e08124038467118ff0e1a4983b7aaa9e6ef4bcb9e10b",
+  "docs/assembly/ELECTRICAL_REVIEW.md": "c747af51e7a393765779fca7e5cb124d68b18684f4859b7bf9bb8a3bd693020c",
+  "docs/assembly/MODULE_AUDIT.md": "54d092d73eb887f361199f85d2a29f1e5a1a9e313adf81f35ee83641bb9e34c0",
+  "docs/assembly/VALIDATION.md": "7c7b10c7f86ad6a6c7cebad5e772310e0d2a89fc529e4e823f007b8d09786a7f",
+  "HARDWARE_INVENTORY.md": "a162033faa599aee37f3b3ac0ff808b22f4babd15fc1f8f3795f0bb5112b5ddf",
+  "docs/assembly/ROBOT_GEOMETRY.md": "48adf85daa4ce3db969dc2414339157f333b0b46e354c86a7912f52d057b502c",
+  "docs/assembly/POWER_DOCKING_PLAN.md": "cf0e8dbfbafc753ac2603742cceaea2edd17347c1265a6acd4bd6445ef6df2c2",
+  "docs/POWER_MANAGEMENT-he.md": "a29c8f6d5caf8423641fff0796aa4d17375c3f5c7d822b98fd0b8acfef58843a",
+  "docs/BATTERY_LEARNING-he.md": "d82a7c05bcde73cece076d299e2e34319cd46b31b7c1981f4bec9da79e0f2afb",
+  "docs/CLOUD_STREAM-he.md": "a08f3a735b355ed08a4a21c21f635f8cae72657b6a3549eb66ffa40e6830a6f3",
+  "docs/WIFI_SETUP-he.md": "c29700b345b52d0faeeb95cd69069e09ebd696ad8813bac3723955f541e10041"
 }

@@ -81,3 +81,11 @@ The optional current-based floor estimate and independent vacuum boost are descr
 `daily`/`deep` now preserve occupancy in the current map frame and clear only the new mission's coverage and retry state. `map-clear` is explicit; restored snapshots still require local anchoring and matching geometry. Map/mission/boot identities and return-cause events accompany coherent `/progress` snapshots. Serialization occurs in the web task from bounded PSRAM copies; the default 1-second cadence is an initial software setting, not a measured real-time guarantee. The [dashboard adapter](DASHBOARD.md) stores reports without sending motion commands.
 
 The [dock guard](DOCK_GUARD.md) excludes the measured base/cable footprint, checks swept body/brush motion and admits only bounded approach/departure corridors. Geometry and motion limits have no usable hardware defaults. IR codes are not distances. Automatic BRC wake remains disabled pending a verified interface and sleep/wake behavior; the MCU holds and reports unavailable telemetry instead of asking the server to wake the robot blindly.
+
+
+## Native baseline recording and application OTA
+
+[Capture/OTA guide](assembly/en/NATIVE_RECORDING.md) · [עברית](assembly/NATIVE_RECORDING.md). The full XIAO firmware now has an explicit native observation hold, base/extended frame capture and firmware-only service OTA. The defaults keep OTA and extended probing disabled. The computer collector preserves gaps and estimates battery energy; native PWM and vacuum-current telemetry do not exist in OI. No physical capture, flashing or OTA has been performed.
+
+
+2026-11-14: The new outbound cloud firmware path supersedes the earlier annotation-only deployment limit. Map-bound policy is persisted and acknowledged locally in code; actual flashing and physical enforcement remain unverified. Native docking/fallback is held when barriers exist. See [CLOUD_STREAM.md](CLOUD_STREAM.md) and [עברית](CLOUD_STREAM-he.md).
