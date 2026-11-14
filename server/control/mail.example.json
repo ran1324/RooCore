@@ -1,0 +1,6 @@
+{
+  "sender": "no-reply@saymour.co.il",
+  "alert_to": "thfcxv@gmail.com",
+  "key_file": "/etc/roocore/secrets/mailgun_sending_key",
+  "domain": "saymour.co.il"
+}

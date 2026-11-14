@@ -1,0 +1,40 @@
+[Unit]
+Description=RooCore telemetry server and management UI
+After=network.target mosquitto.service
+Wants=mosquitto.service
+StartLimitIntervalSec=60
+StartLimitBurst=10
+
+[Service]
+Type=simple
+User=roocore
+Group=roocore
+WorkingDirectory=/opt/roocore/current
+ExecStart=/opt/roocore/current/venv/bin/uvicorn app.main:app_factory --factory --host 127.0.0.1 --port 8780 --workers 1 --no-proxy-headers --no-access-log --limit-concurrency 24 --timeout-keep-alive 5
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+UMask=0077
+StateDirectory=roocore
+StateDirectoryMode=0700
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+ReadWritePaths=/var/lib/roocore
+MemoryMax=384M
+CPUQuota=100%
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target

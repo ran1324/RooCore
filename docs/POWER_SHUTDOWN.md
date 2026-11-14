@@ -1,6 +1,10 @@
-# Automatic shutdown through D10
+# Historical D10 shutdown implementation
+
+**Current firmware:** [Power management and approval-gated docking](POWER_MANAGEMENT.md) replaces this D10 path. The text below records the previous implementation; it is not the active XIAO power policy.
 
 The shutdown sequence was implemented in the XIAO firmware on 2026-11-08. LiDAR shutdown was integrated on 2026-11-10, and the full firmware was built in two configurations and tested in software. See [the integration record](assembly/FIRMWARE_INTEGRATION.md). No firmware was flashed or measurements taken on the robot.
+
+**New trial decision, 14 November 2026:** The [power and docking plan](assembly/en/POWER_DOCKING_PLAN.md) selects an 11 kΩ EN-to-GND divider (calculated 12.11 V off, 13.62 V on) and offers native iRobot fallback at 12.5 V only with explicit user approval and a local safety check. That divider and policy are not integrated and calibrated in the current firmware. The 12.81/14.41 V circuit below describes the older implementation draft and is superseded for this trial.
 
 The planned [circuit](diagrams/wiring-xiao.svg) connects D10/GPIO9 through a 10k resistor to the 2N3904 base to pull D36V28F5 EN to ground. It would disconnect the add-on 5V and 3.3V supplies while leaving the original Roomba connected to its battery. No new component is required for the software implementation, but the transistor connection is not yet approved for assembly. Q1/Q2 connections and battery thresholds still need physical verification. No physical voltage values have been approved, so the default is `unconfigured`: data reading is available, while motion and D10 HIGH are blocked. Before enabling the sequence, verify that the firmware and electrical interfaces match the installed modules. Entering voltage values alone is not enough.
 

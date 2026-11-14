@@ -2,7 +2,15 @@
 // Copy to config.local.h (gitignored). Initial builds are telemetry-only.
 #define ROO_WIFI_SSID ""
 #define ROO_WIFI_PASSWORD ""
+// Unique 12-63 printable characters, provision privately; empty disables the setup AP.
+#define ROO_SETUP_AP_PASSWORD ""
 #define ROO_API_TOKEN "" // at least 24 random characters; trusted LAN only
+// Outbound HTTPS to roocore.saymour.co.il. Separate per-device key; never use an admin password.
+#define ROO_CLOUD_ENABLED false
+#define ROO_CLOUD_DEVICE_TOKEN "" // provision privately; minimum 32 random characters
+#define ROO_CLOUD_INTERVAL_MS 1000 // latest sensors/scan, software transport budget; not sensor acquisition rate
+#define ROO_CLOUD_MAP_INTERVAL_MS 10000 // full map/coverage every 10 snapshots; no offline backlog
+#define ROO_CLOUD_REQUIRE_POLICY true // hold until exact map zones are durably stored locally
 #define ROO_COMMISSIONED false // true ONLY after the checks in docs/XIAO_NAVIGATION.md
 #define ROO_ENCODERS_VERIFIED false // packets 43/44 verified on this Roomba 620
 // Permanent 3.3V UART: D4/GPIO5 -> LiDAR RX, D5/GPIO6 <- LiDAR TX; D3/GPIO4 -> S1 ON.
@@ -85,12 +93,39 @@
 #define ROO_DIRT_REVISIT_BUDGET_MS 20000 // advisory plan / passive comparison limit
 #define ROO_STASIS_VERIFIED false // optional packet 58; verify on this 620 first
 
-// Automatic D10 -> NPN -> D36 EN cutoff. Complete code; hardware calibration required.
-// With missing/invalid calibration, telemetry works but commissioned motion is held.
-// See docs/POWER_SHUTDOWN.md. Do NOT copy synthetic build-test values to a robot.
-#define ROO_POWER_CUTOFF_VERIFIED false
-#define ROO_POWER_CUTOFF_MV 0 // loaded voltage: stop and prepare after 2 s continuously low
-#define ROO_POWER_RECOVER_MV 0 // stable voltage before allowing a new explicit motion request
-#define ROO_POWER_RESTART_MIN_MV 0 // measured LOWEST EN turn-on voltage across conditions
-#define ROO_POWER_REBOUND_MARGIN_MV 0 // measured post-cut rebound + voltage-measurement error
-#define ROO_POWER_SAVE_MIN_MV 0 // measured safe flash-write voltage above hardware EN cutoff
+// Trial policy: 13.8V warning; 13.5V for 5s return; 13.0V urgent; 12.5V stop.
+// No D10/NPN software cutoff: the external 11k EN divider owns hardware cutoff.
+// All verification flags stay false. Old ROO_POWER_CUTOFF_VERIFIED configs do not enable this.
+#define ROO_POWER_POLICY_VERIFIED false
+#define ROO_POWER_PASSIVE_STOP_VERIFIED false // confirmed stationary Safe -> Passive on this 620
+#define ROO_POWER_HW_OFF_MAX_MV 0 // measured highest hardware cutoff across qualified conditions
+#define ROO_POWER_RECOVER_MV 0 // measured/qualified rearm voltage, strictly above 13.8V
+#define ROO_POWER_SAVE_MIN_MV 0 // measured safe flash-write floor, above hardware cutoff and <=12.5V
+#define ROO_NATIVE_FALLBACK_VERIFIED false // Seek Dock and powered-off UART qualified on this 620
+#define ROO_FALLBACK_CLEARANCE_VERIFIED false // full add-on height/envelope in the anchored dock corridor
+// There is no default/precompiled approval. Explicit boot+mission-scoped approval is required.
+
+// Passive recorder: base packet group 6; group 100 is an explicit unverified probe.
+// This flag permits requesting extensions; it does NOT mark them hardware verified.
+#define ROO_RECORD_EXTENDED_ENABLED false
+// OTA is firmware-only, authenticated and restricted to explicit stopped service hold.
+// No guessed battery threshold: qualify voltage stability/flash writes before enabling.
+#define ROO_OTA_ENABLED false
+#define ROO_OTA_PASSWORD "" // separate random secret, >=24 characters; never reuse API token
+#define ROO_OTA_POWER_VERIFIED false
+#define ROO_OTA_MIN_MV 0 // measured safe flash-write floor, including hardware cutoff margin
+#define ROO_FIRMWARE_VERSION "native-recorder-v1"
+
+// Battery observations and learned software return reserve. No hardware threshold writes.
+#define ROO_BATTERY_PACK_ID "" // stable label for THIS physical battery; empty = no durable/qualified model
+#define ROO_BATTERY_CALIBRATION_ID "" // measurement record ID; changing it isolates old learning
+#define ROO_BATTERY_CURRENT_VERIFIED false // includes all RooCore loads and both charge/discharge signs
+#define ROO_BATTERY_GAUGE_VERIFIED false // SOC reference qualified on the installed replacement pack
+#define ROO_BATTERY_FULL_REFERENCE_VERIFIED false // native maintenance/full indication physically qualified
+#define ROO_BATTERY_CURRENT_ERROR_MA 0.0f // measured worst-case current error, not a guessed accuracy
+#define ROO_BATTERY_GAUGE_ERROR_MAH 0.0f // measured/reference bound for reported charge changes
+#define ROO_BATTERY_MIN_C 0 // qualified measurement/model temperature domain
+#define ROO_BATTERY_MAX_C 0
+#define ROO_BATTERY_RESERVE_MARGIN_MAH 0.0f // measured additional docking reserve; 0 blocks adaptive return
+#define ROO_BATTERY_ADAPTIVE_RETURN_ENABLED false // qualified learning may ONLY advance return
+#define ROO_BATTERY_STORAGE_VERIFIED false // bounded Flash writes while already stopped at safe voltage

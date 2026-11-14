@@ -276,6 +276,11 @@ static void cornerReplanStartsAtActualPose() {
     assert(n.state != State::Fault);
     if (!step) {
       assert(n.state == State::Returning && out.action == Action::Drive);
+      std::vector<int> path;
+      for (unsigned k = 0; k < n.pathLength(); ++k) path.push_back(n.pathCell(k));
+      assert(std::isfinite(n.routeToDockMeters(i.pose)));
+      assert(path.size() == n.pathLength());
+      for (unsigned k = 0; k < path.size(); ++k) assert(path[k] == n.pathCell(k));
       assert(out.speed == 0 && out.turn != 0); // turn away, do not recenter or wait
     }
     for (int sub = 0; sub < 10 && out.action == Action::Drive; ++sub) {

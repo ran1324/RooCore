@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>RooCore · כניסה</title>
+  <link rel="stylesheet" href="/assets/style.css"><script src="/assets/account.js" defer></script>
+</head>
+<body class="login-page"><main class="login-box">
+  <a class="brand" href="/" dir="ltr">RooCore</a>
+  <h1 id="auth-title" tabindex="-1">כניסה למערכת</h1>
+  <p id="auth-note">החשבון האישי שלך לניהול הבית והרומבה.</p>
+  <form id="login-form">
+    <label>שם משתמש<input id="username" name="username" autocomplete="username" required maxlength="64" dir="ltr"></label>
+    <label>סיסמה<input id="password" name="password" type="password" autocomplete="current-password" required maxlength="128" dir="ltr"></label>
+    <p>לאחר הסיסמה נשלח קוד אימות למייל שלך.</p>
+    <button class="button primary" type="submit">המשך לקבלת קוד</button>
+  </form>
+  <form id="code-form" hidden>
+    <label>קוד אימות<input id="login-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9\s]{8,16}" maxlength="16" required dir="ltr" aria-describedby="code-help auth-message"></label>
+    <p id="code-help">קוד בן 8 ספרות, תקף ל־10 דקות ולשימוש אחד בלבד. אפשר להדביק אותו כאן.</p>
+    <button class="button primary" type="submit">אימות וכניסה</button>
+    <button id="resend-code" class="button" type="button" disabled>שליחת קוד חדש</button>
+  </form>
+  <form id="forgot-form" hidden>
+    <label>כתובת דוא״ל<input id="email" name="email" type="email" autocomplete="email" required maxlength="254" dir="ltr"></label>
+    <button class="button primary">שליחת קישור לשחזור</button>
+  </form>
+  <form id="reset-form" hidden>
+    <label>סיסמה חדשה · לפחות 15 תווים<input id="new-password" name="new-password" type="password" autocomplete="new-password" minlength="15" maxlength="128" required dir="ltr"></label>
+    <label>אימות סיסמה<input id="confirm-password" name="confirm-password" type="password" autocomplete="new-password" minlength="15" maxlength="128" required dir="ltr"></label>
+    <button class="button primary">שמירת הסיסמה</button>
+  </form>
+  <p id="auth-message" role="status" aria-live="polite" tabindex="-1"></p>
+  <button id="forgot-toggle" type="button" class="button">שכחתי סיסמה</button>
+  <p><a id="back-login" href="/login" hidden>חזרה לכניסה</a></p>
+</main></body></html>

@@ -1,5 +1,35 @@
 # Integrated LiDAR power sequencing
 
+## Revision 11 — HTTPS stream and local map policy
+
+The firmware adds a separate network task for sensor/LiDAR/map upload, verified
+TLS and a device-only key, map-bound zone validation and dual checkpoint policy
+persistence (format 6), with readback before acknowledgement. Missing/stale
+required policy holds motion. Healthy local navigation does not depend on WAN;
+native docking/fallback is blocked with map barriers. Checkpoint scratch storage
+now uses PSRAM. No new cloud actuator path is enabled. Public examples have no
+secrets and hardware flags stay disabled. Nothing was flashed or physically
+validated. See [the contract and test plan](../../CLOUD_STREAM.md).
+
+
+## Revision 10 — battery monitoring and learning, 14 November 2026
+
+`BatteryLearning.h` and `BatteryLearningStore.h` are integrated in the RooCoreXiao control task: current/energy integration, 32 cycle summaries and 256 traces, OI-gauge-referenced capacity, full-charge anchoring and return reserve. Alternating LittleFS snapshots use CRC/readback; writes require qualified stationary Passive power and at least five minutes between checkpoints. Authenticated read/pagination APIs and explicit boot/history-scoped reset are implemented. Unreliable localization, gaps or a missing anchor block reserve use. Learned return can only begin earlier; fallback approval and hardware EN remain independent.
+
+All `tests/run.sh` checks passed with ASan/UBSan; the latest battery tests also ran separately after adding restored-model and return-frame cases. Coverage includes integration, sign crossings, gaps, clock wrap, invalid gauges, temperature domain, OI-dependent capacity, bounded reserve, detour/unreachable routes, preservation of the active path, ring retention and torn-write/reboot recovery. HTTP on a real controller and physical Flash writes were not tested.
+
+Both XIAO builds passed `--warnings all` with no warnings in the log: **621247 bytes Flash / 172484 static RAM** for defaults; **653711 / 174556** for the synthetic qualification fixture. The fixture enables learning/storage branches for compilation only. BatteryMonitor and LinkSetup also built. Source defaults retain empty battery/calibration IDs, false verification/adaptive/storage flags and zero measured values. No flashing, wiring or hardware operation occurred.
+
+[Behavior, limits and API](../../BATTERY_LEARNING.md) · [Host checks](../sources/battery-learning-host-tests.txt) · [Build](../sources/battery-learning-build.txt) · [Source hashes/results](../firmware-integration.json).
+
+
+## Power management and explicit native handoff — 14 November 2026
+
+`PowerManagement.h` is integrated in RooCoreXiao: 13.8V warning, 13.5V return after 5 seconds, 13.0V urgent return and 12.5V stop. A marker is saved before a mission; approval is boot/mission-scoped and also required at the final dock approach. Local safety requires a dock corridor qualified for the add-on height/envelope, fresh OI/pose/IR and no hazard. New height sensors are not integrated. D10 is unused; hardware EN remains independent.
+
+Hardware activation stays disabled with false verification flags and zero measured fields. [Behavior and API](../../POWER_MANAGEMENT.md) · [Policy source snapshot](../firmware-source/PowerManagement.h). Current build sizes and results are in the validation record; older numbers below describe historical builds. No flashing or physical tests were performed.
+
+
 ## Brush geometry and navigation fix — 2026-11-12
 
 Integrated a 160×70 mm rectangle, estimated −35 mm centre offset and 70 mm side radius. Removed the redundant start-cell recentering that caused repeated waits/skips near a furniture corner until `NoProgress`. Cleaning targets now place the brush centre over the floor sample instead of the axle. Clearance, time and retry limits remain in force. See [measurements, assumptions and failure analysis](ROBOT_GEOMETRY.md).
@@ -65,3 +95,13 @@ The temporary enabled fixture uses synthetic calibration, including **25ms solel
 - One NOYITO is planned for Roomba after board supply mapping. The second is spare; direct 3.3V LiDAR UART does not use it.
 
 [Power/UART sequence and pending hardware tests](LIDAR_POWER_UART.md) · [Artifact validation](VALIDATION.md).
+
+
+## Native-cleaning capture and wireless XIAO updates
+
+RooCoreXiao now provides record-start/record-stop, computer-side OI sensor logging and energy estimates. Extended data require opt-in; internal PWM and separate vacuum current are not reported. Password-protected OTA requires stopped service hold, fresh telemetry and a measured voltage floor; it defaults off. Initial USB installation and physical qualification remain required. See NATIVE_RECORDING.md. [Commands and checks](NATIVE_RECORDING.md).
+
+
+## Private Wi-Fi setup — 14 November 2026
+
+Added protected AP/network selection, NVS commit/readback after connection and stopped BOOT re-entry. Internet loss never opens the AP or erases zones. A unique AP password is provisioned outside the repository; no secret in the template, no new component or wire. Software/compiler checks only; not flashed or physically tested. See `docs/WIFI_SETUP.md` at project root for conditions and limitations.

@@ -1,0 +1,33 @@
+{
+  "sources": {
+    "HARDWARE_INVENTORY.md": "a162033faa599aee37f3b3ac0ff808b22f4babd15fc1f8f3795f0bb5112b5ddf",
+    "AMAZON_ORDER.md": "31521e663a0a7e7901a077d0133d278f82dc4115aa717e1ed7764d9bf2e3852c",
+    "docs/assembly/guide_content.py": "69b1dea28c1818a5423df398f9976939b64208e1bcf46dc8cfaa0d0696c9f2bf",
+    "docs/assembly/guide_english.py": "6821c598c415170db13f81367e7cd395bc500eb0ae785a6c5dd1b738c350b252",
+    "docs/assembly/ui.en.json": "bb9afb8791580f3b658e56df3d9af08e06943bebe31c0ad91bde12f0ab1c1297",
+    "docs/assembly/build_verified_guide.py": "13afceda36eccc8a1a3313f1853734e87806e27fd377aaa525bf5f6a19ece12b",
+    "docs/assembly/build_english.py": "c6b726868279393f0260eb94f60ff59d752d8def6ba66c01325c62a98ceaded5",
+    "docs/assembly/build_uv_divider.py": "091a00d7454d298ab48756e3e804263eebca25149028b6e202bf7b7f4a47ba84",
+    "docs/assembly/POWER_DOCKING_PLAN.md": "cf0e8dbfbafc753ac2603742cceaea2edd17347c1265a6acd4bd6445ef6df2c2",
+    "docs/assembly/en/POWER_DOCKING_PLAN.md": "86c9be5c8bd0f6ca64a72451439f7baa4a205f40d6ddd2a3232a33206c9eb863",
+    "docs/assembly/LIDAR_POWER_UART.md": "6a4c7999d162a62de524e08124038467118ff0e1a4983b7aaa9e6ef4bcb9e10b",
+    "docs/assembly/en/LIDAR_POWER_UART.md": "0c0988399afc6d8cfc2a6a85c9b51950df2ef3d2ecbf0bd087c82476311c78a4",
+    "docs/assembly/firmware-integration.json": "b694938234ec6f527d6192b5ebf465b7afe9dbd3b7721194765f00083eb77f6a",
+    "docs/assembly/en/HARDWARE_INVENTORY.md": "881ed7ee7264fb10a67b334615f7159280826dd532a5e341ce49941897442aa1",
+    "docs/APPLE_HOME-he.md": "4abbbfbe4491a5b6c44f3b28ce00869e18b0e3c4fc623be3a782ce71af814c70",
+    "docs/APPLE_HOME.md": "001d54869ed34429dac972facb1244796f12a99d21873d21f9119d314db13712",
+    "server/control/README-he.md": "b59b418aaa995142a577b48e02d28d5ae98f106ebd7ace80af4eac126009576e",
+    "server/control/README.md": "5372f57b1e0379d1773f2447745734d58b52d370b8fc43d85e1d9d12e3f85cd6"
+  },
+  "outputs": {
+    "RooCore-assembly.html": "dba94a092a3936b6d90c38c93ee5090550ecf16ce3dc0c18ea7236e7f7896434",
+    "en/RooCore-assembly.html": "6b954b2fd97a9062200daccc4eb3309ff5ba1171e9b6448c90754c510c54da51",
+    "README.md": "b85128e9480483b05c4f0b67561fa51ad941dc05fae664f0cad098cdcc13b2fb",
+    "en/README.md": "13508cda4dc3ee9e977c944073c7b9f1c270a473f33f13348eb073aaecbe8a0c",
+    "uv-divider.svg": "7215bd9f206520908e719667fc1a1b710bf2f23f4965dbae332503242d1c1d77",
+    "uv-divider.drawio": "8ef2c8730ddc28ce75661bfe0028486cf7cee2816c0692cea1137bb03c5cafc8",
+    "uv-divider.csv": "0c8cd6e2541a933db410613e24d5bd8ada1af87f12cbed943a629707bf025e3c",
+    "uv-divider.json": "8191d5195029c4bf274c2cfc0349c8f5b3638c3dd28f56355d4fb066a2d8f407"
+  },
+  "physical_validation": false
+}

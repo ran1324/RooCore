@@ -165,5 +165,6 @@
   "מה עדיין אינו מאושר": "What remains unqualified",
   "מקורות": "Sources",
   "בדיקות ונקודות מדידה מפורטות:": "Detailed checks and test points:",
-  "תוצאות בדיקת הקבצים:": "Artifact validation results:"
+  "תוצאות בדיקת הקבצים:": "Artifact validation results:",
+  "זוג נגדי EN מופיע בסעיף הנפרד. רשימת R1–R7 הישנה ו־Q1 אינם הוראת הרכבה; Q2/BRC עדיין דורש אימות.": "The EN resistor pair is in its separate section. The old R1–R7 list and Q1 are not assembly instructions; Q2/BRC still requires qualification."
 }

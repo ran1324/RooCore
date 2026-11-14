@@ -144,6 +144,8 @@ public:
   uint8_t pass = 0, passes = 1, recoveries = 0;
   unsigned skipped = 0, completedCells = 0;
   bool finished = false;
+  // Firmware may supply the independent loaded-voltage policy; host sims retain percent policy.
+  bool externalVoltagePolicy = false;
   uint32_t activeMs = 0, returnAt = 0, returnSequence = 0;
   ReturnCause returnCause = ReturnCause::None;
   bool (*ordinaryCenterAllowed)(void *, float, float) = nullptr;
@@ -449,6 +451,29 @@ public:
   }
   unsigned pathLength() const { return pathLength_; }
   int pathCell(unsigned i) const { return i < pathLength_ ? path_[i] : -1; }
+  // Control-task-only distance estimate for energy budgeting. Reuses search
+  // scratch space but never replaces the active route or grants movement.
+  float routeToDockMeters(const Pose &pose) {
+    if (!cfg.homeKnown || !configureValid() || !isfinite(pose.x) || !isfinite(pose.y)) return NAN;
+    const int start = cell(pose.x,pose.y), goal = cell(dock.x,dock.y);
+    if (start < 0 || goal < 0 || !safe[start] || !safe[goal]) return NAN;
+    if (start == goal) return distance(pose.x,pose.y,dock.x,dock.y);
+    for (int i = 0; i < count(); ++i) parent_[i] = -2;
+    int head = 0, tail = 0; queue_[tail++] = int16_t(start); parent_[start] = -1;
+    while (head < tail && parent_[goal] == -2) {
+      const int c = queue_[head++], x = c % cfg.cols, y = c / cfg.cols;
+      const int ns[] = {x ? c-1 : -1, x+1 < cfg.cols ? c+1 : -1,
+                        y ? c-cfg.cols : -1, y+1 < cfg.rows ? c+cfg.cols : -1};
+      for (int n : ns) if (n >= 0 && safe[n] && parent_[n] == -2) {
+        parent_[n] = int16_t(c); queue_[tail++] = int16_t(n);
+      }
+    }
+    if (parent_[goal] == -2) return NAN;
+    unsigned steps = 0;
+    for (int c = goal; c != start && steps < unsigned(count()); c = parent_[c]) ++steps;
+    const Pose a = center(start), b = center(goal);
+    return steps * cfg.resolution + distance(pose.x,pose.y,a.x,a.y) + distance(dock.x,dock.y,b.x,b.y);
+  }
   State savedState() const {
     State s = state == State::Fault || state == State::Paused ? resume_ : state;
     return s == State::Yielding ? waitResume_ : s;
@@ -658,11 +683,11 @@ private:
       beginYield(in, target_);
       return stop;
     }
-    if (state == State::Edging && in.battery <= 25 && !safe[current])
+    if (!externalVoltagePolicy && state == State::Edging && in.battery <= 25 && !safe[current])
       edgePhase_ = 4;
     if ((state == State::Cleaning || state == State::Edging || state == State::Touchup ||
          state == State::Resuming) &&
-        in.battery <= 25 && safe[current])
+        !externalVoltagePolicy && in.battery <= 25 && safe[current])
       goHome(in, false, ReturnCause::Battery);
     if (state == State::Returning || state == State::Resuming) {
       const int goal = state == State::Returning ? home : cell(checkpoint.x, checkpoint.y);
@@ -969,7 +994,7 @@ private:
       return Reason::Cliff;
     if (in.overcurrent)
       return Reason::Overcurrent;
-    if (in.battery <= 6 && !(in.chargerValid && (in.chargerSources & 2)))
+    if (!externalVoltagePolicy && in.battery <= 6 && !(in.chargerValid && (in.chargerSources & 2)))
       return Reason::Battery;
     if (state == State::Charging)
       return Reason::None;

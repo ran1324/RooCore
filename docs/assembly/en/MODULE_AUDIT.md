@@ -20,11 +20,11 @@
 | Solder board/wires/insulation | Purchased materials recorded | No invented hole map. Check empty-board connectivity; keep 5V and GND junctions separate; no load power through Dupont/breadboard |
 | ESP-01S and spare 3.3V boards | Earlier purchases/spares | Not connected here. Camera and height sensors are not additions to this assembly |
 
-Q1 and Q2 are **two copies of the same 2N3904 type**, planned for EN and BRC. The missing evidence is a match to the supplied parts, not the absence of any online 2N3904 pinout. Similarly, the NOYITO gap is board routing, not a generic TXB0104 datasheet.
+Q1 and Q2 are **two copies of the same 2N3904 type**, originally planned for EN and BRC. Q1 belongs to the superseded EN path and is not needed for the current 10kΩ+1kΩ divider; Q2/BRC still awaits qualification. The missing evidence is a match to the supplied parts, not the absence of any online 2N3904 pinout. Similarly, the NOYITO gap is board routing, not a generic TXB0104 datasheet.
 
 The electronics and esp32-development skills were read along with relevant references. Checks covered component identity, connector views, supply/drop/startup current, ON drive, return paths, USB/UART while off, EN tolerance and consistency between tables and diagrams. [Recorded skill sources](../sources/skill-sources.json).
 
-Nominal EN divider calculations are not measured battery thresholds or a latching cutoff. Unit thresholds, Q1 identity, battery rebound, fuse selection and actual source/return pads remain unresolved. Generic service voltages do not replace measurements of this harness. A current-limited bench supply was not found in the reviewed purchase record; do not use the battery as the first-test substitute.
+Nominal EN divider calculations are not measured battery thresholds or a latching cutoff. Unit thresholds, battery rebound, fuse selection and actual source/return pads remain unresolved. Generic service voltages do not replace measurements of this harness. A current-limited bench supply was not found in the reviewed purchase record; do not use the battery as the first-test substitute.
 
 The active guide, Markdown, tables, SVG and draw.io share the same 13-wire list. Unidentified connections are not executable rows. Earlier contradictory drawings were retired; the historical archive is separate from the active kit. Firmware integration is complete in software, while flashing and electrical validation remain pending.
 

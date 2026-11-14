@@ -1,12 +1,12 @@
 {
   "source_root": ".",
-  "branch": "main",
-  "base_commit": "fc630c6a0715c56b46cdd2bc057219cc41006d6d",
+  "branch": "codex/roocore-server",
+  "base_commit": "3508d0d8aabf5f24b771ab63df30161d8782d033",
   "arduino_core": "3.3.12",
   "physical_validation": false,
   "sha256": {
-    "firmware/xiao/RooCoreXiao/RooCoreXiao.ino": "34063af80bc661797e4a46298c286683fb0637ed07e109bdad08a68ce9100093",
-    "firmware/xiao/RooCoreXiao/config.example.h": "2ba2793d0ead8dfdd3aa8a6b6c8a4b3eee02e8f33bae77570f7865eb8381c0b3",
+    "firmware/xiao/RooCoreXiao/RooCoreXiao.ino": "a879b18da3e057d786e530890596151ac160eaf0b88c45497128a01d8bed97dc",
+    "firmware/xiao/RooCoreXiao/config.example.h": "6ebfb247700aa8a6158ea595e15471bbd626d8dfdb9d6e414c096346bcc7a890",
     "lib/RooCoreLidarPower/src/LidarPowerSequence.h": "9c21fc5eddc39f0d40a102f202f6d79b474ddf1909b2f7bbfcd856e0fed0ca40",
     "lib/RooCoreLidarPower/src/RooCoreLidarPower.h": "5eda1bbee756031107779be45b0d3691d6abace3808d8e72b9fcb6de9a1f661d",
     "lib/RooNavigation/src/CarpetBoost.h": "419cd15b160a551c010bd5811b9731a15b3eeeb2f8b3c4902dbce1ed437ee144",
@@ -17,24 +17,156 @@
     "lib/RooNavigation/src/MapZones.h": "de4e2abc3a2f1852707267337ef7bb5b8a5cf40a73656c88e616fddbbf6255d3",
     "lib/RooNavigation/src/NavigationHelp.h": "b1424be6018bd514ce9ca2d9c1f6893a4b29973d1fc298cb47cff6916cd69965",
     "lib/RooNavigation/src/PowerShutdown.h": "a4f0d4666091141d551c4b3f70069106c60cb34731662048f0521f6dfb636d54",
-    "lib/RooNavigation/src/PowerShutdownOI.h": "687c256a1f838f6bc1e6983b4458b51d101f76af84463c403bc6735a3394718e",
-    "lib/RooNavigation/src/RooNavigation.h": "96c704f2a0d6c9c3c2f01e9f4f453d5c7ca4a0d9201b067af71743e3ca00048a",
+    "lib/RooNavigation/src/PowerShutdownOI.h": "521bbaf1635967011638ef59a294cfb153a413008134f28831ae61788ba00026",
+    "lib/RooNavigation/src/RooNavigation.h": "7492c09a61793b6243949d3ead07416bf66b7b3e2e0d43afe15e1ceaff531a08",
     "lib/RooNavigation/src/TminiPlus.h": "859a365f3c3f428778acf5179094f719fa09356e0f67b54dcb5244f8b2fbbe41",
-    "tests/build_xiao.sh": "bee4e999af5e5fc35f75b82abbbc6d15814d543541432341d21f82adb6346b58",
+    "tests/build_xiao.sh": "781efd6cdb7bf161fa5aee12c1f0fe2725c17cd8712ce498514030ccfe2e4333",
     "tests/charge_resume_test.cpp": "5ee86fc77a2b9100820746726aa0d5363b5921cd12e76d2c590fcda03406ec4e",
     "tests/dock_guard_test.cpp": "a8a7330f924c6cecc206571c54adc00915d7845dac2a16eba1195a3593569408",
     "tests/lidar_power_test.cpp": "4781257febeb1f79daf673a37c96f1d144a369f01fc462ada287f49d18e55edd",
     "tests/map_zones_native_test.cpp": "3e8dd0bbcf24487b0304f6d3e4a5bb1a062af5e38dc2e27f44c5e66fce9a2621",
-    "tests/navigation_native_test.cpp": "64a25cf738211126cc2ac2df52bafd96cc3cab931b5257e1b4bcc39c95336039",
-    "tests/run.sh": "e3175c5ce286ca845d29c40286c6a081c2d1e4534724e2b175dcd4f85443bf86",
+    "tests/navigation_native_test.cpp": "012df13fa689f5824a086d336fbe4c1d4a22813b02dfd7f63695794ba0645a2c",
+    "tests/run.sh": "2f7d968c590169bb70707491ba22573151f08d5a114abe3b77a923b91a418192",
     "navigation/native.py": "467e3bf52a3d919799b39ff1e35117e2bc214914f4c591ed3e454e27e8aa1b5a",
     "navigation/native_bridge.cpp": "1cea67315cf6e413291ca3cab9de1b7fe17d873bea281700dcecfaef5b225d71",
     "navigation/sim.py": "f3ad04ea973be38b8b102751f22206d9ce699284c3a9ea6fd03922b7da5948a0",
     "navigation/monitor.py": "3e199ce02b1cfaf484d589753273d476429873fa9d5064edd033e4ed0bd6893c",
     "navigation/web/app.js": "2276d28bbe457b7532cab56208a0ab0ceae405bf759bc0a7678a5eeaa115c210",
     "tests/test_native_sim.py": "cc5ea27950aac6bec3d8811306640147655282376e2fb5b078bd8a3fc370cc9d",
-    "tests/test_monitor.py": "daf5bedb309d996e3bc564bc93eb6d941702a7d5b111da5fba177e88f6dfc57f"
+    "tests/test_monitor.py": "daf5bedb309d996e3bc564bc93eb6d941702a7d5b111da5fba177e88f6dfc57f",
+    "lib/RooNavigation/src/PowerManagement.h": "c79855364fe1788c822f6fbeb5049644b3fa267fb4159f019a968d3fde0df027",
+    "lib/RooNavigation/src/NativeCapture.h": "3fe52a982edfe20dfe7b97a41aee17be90074ec1701013213778372426d66d60",
+    "tests/power_management_test.cpp": "4e2f1f5fceb9d190d86a1c87e92af09327c5bfa15036b3018f8be8df779f6494",
+    "tests/native_capture_test.cpp": "e43b1e2ba9c3bd503e59237bc10eb2d8eafad0ffd21940f82024b906516df8c5",
+    "tools/xiao_capture.py": "2ddf3080f2b9bf58caabc62d6d5be938a6bf6a14bd5ca101baa0685bdc00fefe",
+    "tools/build_xiao_ota.sh": "b081acbe5b49e24b0f2db396bb4e141d88e2e58e99d1c1417d6fbd708cab5187",
+    "tests/test_xiao_capture.py": "71a7b2a648e134d8a7540a1989488a17ea1fea5d5bb7617fc340d4e55a5ef0b1",
+    "lib/RooNavigation/src/BatteryLearning.h": "6729f380016738576f5af34fc257bc17dec443718b4c3f441b971af24ad1ecc4",
+    "lib/RooNavigation/src/BatteryLearningStore.h": "cfda113dbe19ba9928480fc83c050325736e153b988d9eba6f8b3102796eb348",
+    "tests/battery_learning_test.cpp": "91d57f1e23fbf68df4858144159a7677ec5470b636284c9fd72d8222bed855dc",
+    "lib/RooNavigation/src/CloudPolicy.h": "3f4ea6d0922b7bd36b70c4515cb1dfd8064e835ecb0c558cb9411a41bf997098",
+    "lib/RooNavigation/src/CloudTrust.h": "b9d8f9b0b83526830c8280be1b9bf50015cbea3d51d966f83ef04946b60c5162",
+    "tests/cloud_policy_test.cpp": "bda564db19d5dd4534651b5577e29c7e73c921a38432b6577ba79dbc28640b20",
+    "tests/fixtures/cloud-policy-v1.bin": "a17ba103a8bec778318aca192fd4ba0f490ca3e67b8775cc6dfae80eae221572",
+    "server/control/app/device_stream.py": "ea49ac0b15d7f477c80773ea67ecedc2312073589e05d60717de53d2de5559f4",
+    "server/control/app/main.py": "2d0d2d3fdc8d3fee43172040f230b16d5f808671527ba352496e0e380b762b89",
+    "server/control/tests/test_device_stream.py": "c325970df981c0d025420544a4ede08f524efbfba481c22e27a44d9eeaea34ac",
+    "lib/RooNavigation/src/WifiSetup.h": "12f8148c44f8a590bad75390dea6aa90ae9ee989117920119f167f8ed9564de0",
+    "lib/RooNavigation/src/WifiSetupPage.h": "de74a1bf16e2edf99ae97d473d61db365a51f318ffb49263b56bcae8d7972896",
+    "lib/RooNavigation/src/WifiProvisioning.h": "048a354f1c6151f780e5f00c13c4287ef4cab6f91a54acd715188965494f761c",
+    "tests/wifi_setup_test.cpp": "c9933df63c14950bf5bb056c8fd0503689f1eec6d5d039cd30832d86a967391b"
   },
-  "validation_date": "2026-11-12",
-  "source_state": "local working-tree geometry integration; corner replan and offset-brush targets fixed; XIAO builds, C++ ASan/UBSan and 101 Python tests passed; no hardware validation"
+  "validation_date": "2026-11-14",
+  "source_state": "Local working tree: persistent battery monitoring/capacity and reserve learning integrated with trial voltage policy, approval-gated native handoff and native recorder/OTA. C++ ASan/UBSan suite, focused current battery tests and both XIAO compiler configurations passed. All battery qualification/adaptive/storage defaults remain blocked; no flashing or physical validation.",
+  "power_management": {
+    "trial_mv": {
+      "warning": 13800,
+      "return": 13500,
+      "urgent": 13000,
+      "critical": 12500
+    },
+    "return_ms": 5000,
+    "hardware_cutoff_nominal_mv": 12110,
+    "software_d10_cutoff": false,
+    "approval": "explicit boot- and mission-scoped; no default permission",
+    "clearance": "physically qualified dock corridor only",
+    "height_sensors_integrated": false,
+    "hardware_defaults": "false verification flags and zero measured values"
+  },
+  "builds": {
+    "battery_monitor": {
+      "flash_bytes": 289795,
+      "static_ram_bytes": 23724
+    },
+    "link_setup": {
+      "flash_bytes": 291239,
+      "static_ram_bytes": 23740
+    },
+    "default": {
+      "flash_bytes": 621247,
+      "static_ram_bytes": 172484
+    },
+    "synthetic_qualified_fixture": {
+      "flash_bytes": 653711,
+      "static_ram_bytes": 174556
+    }
+  },
+  "native_recording": {
+    "schema": 1,
+    "base_packet_group": 6,
+    "extended_packet_group": 100,
+    "frame_capacity": 256,
+    "extended_probe_default": false,
+    "power_estimate": "reported battery voltage/current; gaps excluded",
+    "native_pwm_available": false,
+    "physical_validation": false
+  },
+  "ota": {
+    "framework": "ArduinoOTA 3.3.12",
+    "default_enabled": false,
+    "partition_scheme": "default_8MB",
+    "app_slot_bytes": 3342336,
+    "admission": "explicit service hold; qualified stop/encoders; fresh Safe/stationary data and measured voltage floor",
+    "postboot_automatic_rollback_verified": false,
+    "hardware_tested": false
+  },
+  "battery_learning": {
+    "schema": 1,
+    "cycle_retention": 32,
+    "trace_retention": 256,
+    "trace_ms": 30000,
+    "maximum_gap_ms": 200,
+    "minimum_checkpoint_interval_ms": 300000,
+    "minimum_qualified_cycles": 3,
+    "minimum_gauge_span_permille": 250,
+    "capacity_reference": "OI SOC fraction and integrated current; not independent capacity measurement",
+    "reserve": "earlier return only; 3 qualified same-frame trips, measured margin, within observed route domain",
+    "persistence": "two alternating CRC32/readback snapshots; no moving writes; safe Passive power qualification required",
+    "reboot": "history/model retained; remaining-charge anchor invalidated",
+    "default_qualified": false,
+    "default_adaptive": false,
+    "default_storage": false,
+    "hardware_cutoff_modified": false,
+    "physical_validation": false,
+    "api": "authenticated /battery, /battery/history, /battery/samples; explicit scoped battery-reset"
+  },
+  "cloud_stream": {
+    "protocol": 1,
+    "transport": "outbound_verified_HTTPS",
+    "source_integrated": true,
+    "default_enabled": false,
+    "telemetry_interval_ms": 1000,
+    "full_map_interval_ms": 10000,
+    "policy": "map-bound monotonically versioned local dual-checkpoint/readback before acknowledgement",
+    "checkpoint_format": 6,
+    "internal_checkpoint_workspace": "moved to PSRAM",
+    "commands": "no new cloud actuator dispatcher",
+    "native_fallback": "blocked with map barriers",
+    "physical_validation": false,
+    "tests": "cross-language policy fixture, truncation/corruption and offline barrier checks; server device identity/replay/permissions tests",
+    "build": {
+      "default_flash": 1250226,
+      "default_static_ram": 76668,
+      "synthetic_enabled_flash": 1277182,
+      "synthetic_enabled_static_ram": 78484
+    },
+    "policy_commit_gate": "fresh qualified encoders, existing 2-second stable-wheel software window, no cleaning commands, safe sensors and qualified flash-save voltage floor"
+  },
+  "wifi_setup": {
+    "source_integrated": true,
+    "hardware_tested": false,
+    "default_ap_password": "empty/disables_AP",
+    "first_setup": "uncommissioned USB-only without robot link, or qualified stopped robot",
+    "runtime_request": "BOOT GPIO0 for3s while stopped; no deferred moving request",
+    "security": "WPA2-PSK/CCMP unique private password, one client, exact Host/Origin, fresh128bit nonce, bounded512byte normal POST",
+    "persistence": "single versioned/checksummed NVS blob after join with readback; separate from mission LittleFS",
+    "outage": "no setup AP opened; local zones and mission retained",
+    "test": "ASan/UBSan credentials/form corruption+fuzz+clock wrap; actual-page mock browser scan/select/save, literal hostile SSID,390px no overflow",
+    "build": {
+      "default_flash": 1250226,
+      "default_static_ram": 76668,
+      "synthetic_enabled_flash": 1277182,
+      "synthetic_enabled_static_ram": 78484
+    }
+  }
 }

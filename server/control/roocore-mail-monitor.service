@@ -1,0 +1,33 @@
+[Unit]
+Description=RooCore health alerts through Mailgun
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/roocore/secrets/mailgun_sending_key
+
+[Service]
+Type=oneshot
+User=roocore
+Group=roocore
+WorkingDirectory=/opt/roocore-mail/current
+ExecStart=/opt/roocore-runtime/python/bin/python3 scripts/mail_monitor.py
+Environment=PYTHONDONTWRITEBYTECODE=1
+UMask=0077
+StateDirectory=roocore-mail
+StateDirectoryMode=0700
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+ReadWritePaths=/var/lib/roocore-mail
+MemoryMax=96M
+TasksMax=16
+TimeoutStartSec=60
+

@@ -1,0 +1,13 @@
+Build directory: /var/folders/xf/r61hl8kn28765bg0zt1_wh1w0000gn/T//roocore-xiao.TzcBnI
+arduino-cli  Version: 1.5.1 Commit: Homebrew Date: 2026-06-05T09:39:33Z
+ID          Installed Latest Name
+esp32:esp32 3.3.12    3.3.12 esp32
+
+Sketch uses 289795 bytes (8%) of program storage space. Maximum is 3342336 bytes.
+Global variables use 23724 bytes (7%) of dynamic memory, leaving 303956 bytes for local variables. Maximum is 327680 bytes.
+Sketch uses 291239 bytes (8%) of program storage space. Maximum is 3342336 bytes.
+Global variables use 23740 bytes (7%) of dynamic memory, leaving 303940 bytes for local variables. Maximum is 327680 bytes.
+Sketch uses 878439 bytes (26%) of program storage space. Maximum is 3342336 bytes.
+Global variables use 67092 bytes (20%) of dynamic memory, leaving 260588 bytes for local variables. Maximum is 327680 bytes.
+Sketch uses 910483 bytes (27%) of program storage space. Maximum is 3342336 bytes.
+Global variables use 69012 bytes (21%) of dynamic memory, leaving 258668 bytes for local variables. Maximum is 327680 bytes.

@@ -1,0 +1,11 @@
+[Unit]
+Description=Verified RooCore database backup
+[Service]
+Type=oneshot
+ExecStart=/opt/roocore-runtime/python/bin/python3 /opt/roocore/current/scripts/backup.py
+UMask=0077
+ProtectSystem=strict
+ReadWritePaths=/var/lib/roocore /var/backups/roocore
+PrivateTmp=true
+PrivateDevices=true
+NoNewPrivileges=true

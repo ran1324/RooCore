@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#ffffff" />
+    <title>RooCore · ניהול הרומבה</title>
+    <link rel="stylesheet" href="/assets/style.css" />
+    <script src="/assets/app.js" defer></script>
+    <script src="/assets/workspace.js" defer></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">דילוג לתוכן</a>
+    <header class="app-header">
+      <a class="brand" href="#overview"
+        ><svg viewBox="0 0 28 28" aria-hidden="true">
+          <rect x="3" y="3" width="22" height="22" rx="7" />
+          <path d="M9 19V9h5a3 3 0 0 1 0 6H9m5 0 5 4" /></svg
+        ><b dir="ltr">RooCore</b><span>ניהול הרומבה</span></a
+      >
+      <div class="header-status">
+        <span id="connection" class="status neutral" role="status"
+          >בודק את השרת</span
+        ><span id="signed-user" class="private-label"></span
+        ><button class="button" id="logout">יציאה</button>
+      </div>
+    </header>
+    <div class="app-shell">
+      <nav class="navigation" aria-label="ניווט ראשי">
+        <a href="#overview" data-view="overview" aria-current="page"
+          ><svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="3" width="7" height="7" rx="1" />
+            <rect x="14" y="3" width="7" height="7" rx="1" />
+            <rect x="3" y="14" width="7" height="7" rx="1" />
+            <rect x="14" y="14" width="7" height="7" rx="1" /></svg
+          >סקירה</a
+        >
+        <a href="#events" data-view="events"
+          ><svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 6h13M8 12h13M8 18h13M3 6h1M3 12h1M3 18h1" /></svg
+          >אירועים</a
+        >
+        <a href="#system" data-view="system"
+          ><svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="7" rx="2" />
+            <rect x="3" y="14" width="18" height="7" rx="2" />
+            <path d="M7 6.5h.01M7 17.5h.01M12 6.5h5M12 17.5h5" /></svg
+          >מערכת</a
+        >
+        <a href="#maps" data-view="maps">מפת הבית</a>
+        <a href="#users" data-view="users" id="users-nav" hidden
+          >משתמשים והרשאות</a
+        >
+        <a href="#account" data-view="account">החשבון שלי</a>
+      </nav>
+      <main id="main">
+        <div class="page-heading">
+          <div>
+            <h1 id="page-title">סקירה</h1>
+            <p id="page-description">מצב הרובוט והחיבור לשרת.</p>
+          </div>
+          <div class="page-actions">
+            <label class="auto-refresh"
+              ><input id="auto-refresh" type="checkbox" checked />עדכון
+              אוטומטי</label
+            ><button id="refresh" class="button" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M20 7v5h-5M4 17v-5h5M6 7a7 7 0 0 1 12-2l2 2M4 17l2 2a7 7 0 0 0 12-2"
+                /></svg
+              ><span>רענון</span>
+            </button>
+          </div>
+        </div>
+        <div id="error" class="error" hidden role="alert">
+          <strong>החיבור לשרת אבד.</strong> הנתונים שמופיעים כאן אינם עדכניים.
+          ננסה שוב אוטומטית כל עוד העדכון האוטומטי פעיל.
+        </div>
+        <section
+          id="view-overview"
+          data-panel="overview"
+          aria-labelledby="page-title"
+        >
+          <div class="overview-grid">
+            <article class="panel robot-panel">
+              <div class="panel-heading">
+                <div>
+                  <h2 dir="ltr">Roomba 620</h2>
+                  <p>בקר <bdi>XIAO ESP32S3</bdi></p>
+                </div>
+                <span id="robot-status" class="status neutral">אין חיבור</span>
+              </div>
+              <div id="robot-empty" class="empty-robot">
+                <svg viewBox="0 0 40 40" aria-hidden="true">
+                  <path
+                    d="M9 16a17 17 0 0 1 22 0M13 21a11 11 0 0 1 14 0M17 26a5 5 0 0 1 6 0M20 31h.01M7 7l26 26"
+                  />
+                </svg>
+                <div>
+                  <h3>הרובוט עדיין לא מחובר</h3>
+                  <p>
+                    נתוני הסוללה והפעילות יופיעו כאן לאחר החיבור הראשון של הבקר.
+                  </p>
+                </div>
+              </div>
+              <dl class="robot-metrics">
+                <div>
+                  <dt>סוללה</dt>
+                  <dd>
+                    <b id="battery">—</b
+                    ><span id="battery-note">טרם התקבל דיווח</span>
+                  </dd>
+                </div>
+                <div>
+                  <dt>מצב הרובוט</dt>
+                  <dd>
+                    <b id="robot-state">לא ידוע</b><span>לפי דיווח הבקר</span>
+                  </dd>
+                </div>
+                <div>
+                  <dt>עדכון אחרון</dt>
+                  <dd>
+                    <b id="last-seen">—</b
+                    ><span id="last-seen-note">טרם התקבל דיווח</span>
+                  </dd>
+                </div>
+              </dl>
+              <p id="robot-note" class="robot-note" hidden></p>
+              <div class="control-hold">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="5" y="10" width="14" height="11" rx="2" />
+                  <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                </svg>
+                <div>
+                  <strong>שליטה ברובוט עדיין אינה זמינה</strong>
+                  <p>נדרשת בדיקת התקשורת והעצירה המקומית לפני הפעלת תנועה.</p>
+                </div>
+              </div>
+            </article>
+            <aside class="panel system-summary">
+              <div class="panel-heading">
+                <h2>מצב השירותים</h2>
+                <a class="text-link" href="#system">פרטים</a>
+              </div>
+              <dl class="service-list">
+                <div>
+                  <dt>
+                    <span class="service-icon">API</span
+                    ><span>שרת RooCore<small>ממשק וניהול נתונים</small></span>
+                  </dt>
+                  <dd id="api-state" class="service-state">בודק</dd>
+                </div>
+                <div>
+                  <dt>
+                    <span class="service-icon">MQ</span
+                    ><span>תקשורת שרת<small>MQTT / HTTPS</small></span>
+                  </dt>
+                  <dd id="mqtt-state" class="service-state">בודק</dd>
+                </div>
+                <div>
+                  <dt>
+                    <span class="service-icon">DB</span
+                    ><span>מסד הנתונים<small>SQLite</small></span>
+                  </dt>
+                  <dd id="db-state" class="service-state">בודק</dd>
+                </div>
+              </dl>
+              <p class="summary-note">
+                שירות זמין אינו מעיד שהרובוט מחובר. מצב הרובוט מוצג בנפרד.
+              </p>
+            </aside>
+          </div>
+          <section class="panel setup-panel">
+            <div class="panel-heading">
+              <div>
+                <h2>לפני החיבור הראשון</h2>
+                <p>התשתית מוכנה. אלה הדברים שעדיין דורשים השלמה.</p>
+              </div>
+            </div>
+            <div class="setup-list">
+              <div>
+                <span class="step-mark" aria-hidden="true"></span>
+                <h3>חיבור הבקר</h3>
+                <p>
+                  קוד HTTPS שולב; נדרשים הגדרה פרטית, צריבה ובדיקת שידור מהבקר.
+                </p>
+              </div>
+              <div>
+                <span class="step-mark" aria-hidden="true"></span>
+                <h3>בדיקת הרומבה</h3>
+                <p>אימות SCI/OI בדגם 620 והשלמת בדיקות החיווט.</p>
+              </div>
+              <div>
+                <span class="step-mark" aria-hidden="true"></span>
+                <h3>בדיקת עצירה</h3>
+                <p>וידוא שהבקר מגיב כנדרש כשהרשת או השרת מתנתקים.</p>
+              </div>
+            </div>
+          </section>
+          <section class="panel activity-panel">
+            <div class="panel-heading">
+              <h2>פעילות אחרונה של הרובוט</h2>
+              <a href="#events" class="text-link">כל האירועים</a>
+            </div>
+            <div id="recent-events" class="event-list">
+              <div class="empty-events">
+                <h3>אין עדיין פעילות להצגה</h3>
+                <p>כאן יופיעו הדיווחים שיגיעו מהרומבה.</p>
+              </div>
+            </div>
+          </section>
+        </section>
+        <section
+          id="view-events"
+          data-panel="events"
+          hidden
+          aria-labelledby="page-title"
+        >
+          <div class="panel">
+            <div class="events-toolbar">
+              <div class="filters" role="group" aria-label="מקור האירועים">
+                <button
+                  type="button"
+                  data-source="hardware"
+                  aria-pressed="true"
+                >
+                  הרובוט</button
+                ><button
+                  type="button"
+                  data-source="simulation"
+                  aria-pressed="false"
+                >
+                  בדיקות שרת</button
+                ><button type="button" data-source="all" aria-pressed="false">
+                  הכל
+                </button>
+              </div>
+              <span id="event-count" class="muted"></span>
+            </div>
+            <p id="source-description" class="source-description">
+              דיווחים מהרומבה בלבד.
+            </p>
+            <div id="event-list" class="event-list"></div>
+          </div>
+          <p class="footnote">
+            מוצגים עד 200 האירועים האחרונים. ההיסטוריה נשמרת ל־30 יום.
+          </p>
+        </section>
+        <section
+          id="view-system"
+          data-panel="system"
+          hidden
+          aria-labelledby="page-title"
+        >
+          <div class="system-grid">
+            <section class="panel">
+              <div class="panel-heading"><h2>פרטי השרת</h2></div>
+              <dl class="details-list">
+                <div>
+                  <dt>מערכת הפעלה</dt>
+                  <dd id="os-version">—</dd>
+                </div>
+                <div>
+                  <dt>Python</dt>
+                  <dd id="python-version">—</dd>
+                </div>
+                <div>
+                  <dt>השירות פועל מאז</dt>
+                  <dd id="started-at">—</dd>
+                </div>
+                <div>
+                  <dt>אופן החיבור</dt>
+                  <dd>גישה פרטית דרך SSH</dd>
+                </div>
+                <div>
+                  <dt>שמירת היסטוריה</dt>
+                  <dd>30 יום</dd>
+                </div>
+              </dl>
+            </section>
+            <section class="panel">
+              <div class="panel-heading"><h2>חיבור הרובוט</h2></div>
+              <dl class="details-list">
+                <div>
+                  <dt>זהות הבקר</dt>
+                  <dd><bdi>roomba-620</bdi></dd>
+                </div>
+                <div>
+                  <dt>דיווח HTTPS בקושחה</dt>
+                  <dd>שולב בקוד; טרם נבדק על הבקר</dd>
+                </div>
+                <div>
+                  <dt>אימות SCI/OI ברובוט</dt>
+                  <dd>טרם בוצע</dd>
+                </div>
+                <div>
+                  <dt>הפעלת חומרה</dt>
+                  <dd>חסומה</dd>
+                </div>
+              </dl>
+              <p class="section-note">
+                השרת אינו שולח פקודות תנועה. עצירה בעת ניתוק חייבת להתבצע בבקר
+                עצמו.
+              </p>
+            </section>
+          </div>
+          <section class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2>בדיקות התקשורת</h2>
+                <p>נתוני בדיקה מדומים, שאינם מגיעים מהרומבה.</p>
+              </div>
+              <span id="sim-status" class="status neutral">אין נתונים</span>
+            </div>
+            <dl class="details-list compact">
+              <div>
+                <dt>דיווח בדיקה אחרון</dt>
+                <dd id="sim-last-seen">—</dd>
+              </div>
+              <div>
+                <dt>הודעות שנדחו מאז הפעלת השירות</dt>
+                <dd id="rejected-messages">—</dd>
+              </div>
+            </dl>
+            <a
+              href="#events"
+              id="show-test-events"
+              class="text-link inline-link"
+              >הצגת אירועי הבדיקה</a
+            >
+          </section>
+          <details class="explanation">
+            <summary>איך נקבע מצב החיבור?</summary>
+            <p>
+              הבקר מוצג כמחובר רק לאחר שהתקבל ממנו דיווח תקין ב־15 השניות
+              האחרונות. אחרי ניתוק או הפעלה מחדש נדרש דיווח חדש. חיווי זה אינו
+              בדיקת בטיחות ואינו מוכיח שהרובוט עצר.
+            </p>
+          </details>
+        </section>
+
+        <section data-panel="maps" hidden>
+          <div class="panel workspace-panel">
+            <div class="map-toolbar">
+              <label>רובוט<select id="map-robot"></select></label
+              ><label
+                >מפה שמורה<select id="map-select">
+                  <option value="">בחרו מפה</option>
+                </select></label
+              ><button id="map-new" class="button">מפת תכנון חדשה</button
+              ><label class="button"
+                >ייבוא מפה<input
+                  id="map-import"
+                  type="file"
+                  accept=".json,application/json" /></label
+              ><button id="map-export" class="button">ייצוא</button>
+            </div>
+            <p id="map-notice" role="status">
+              המפות נשמרות בשרת. ההגבלות עדיין לא סונכרנו לבקר ואינן הגנה פעילה
+              לרובוט.
+            </p>
+            <p id="map-empty">
+              עדיין אין מפה שמורה. אפשר לייבא מפה מהמערכת הקיימת או ליצור מפת
+              תכנון.
+            </p>
+            <div id="map-workspace" hidden>
+              <div class="map-toolbar">
+                <label>שם המפה<input id="map-name" maxlength="80" /></label
+                ><span id="map-revision"></span
+                ><button id="map-deploy" class="button" type="button">
+                  שליחת אזורים לבקר</button
+                ><button id="map-refresh" class="button" type="button">
+                  טעינת מפות מהשרת</button
+                ><button id="map-save" class="button primary">
+                  שמירה בענן
+                </button>
+              </div>
+              <div class="map-grid">
+                <div>
+                  <canvas
+                    id="map-canvas"
+                    width="720"
+                    height="540"
+                    tabindex="0"
+                    aria-label="מפת הבית. עריכת אזורים זמינה גם בשדות הקואורדינטות."
+                  ></canvas>
+                  <p>
+                    גררו במפה ליצירת אזור. הקואורדינטות במטרים. בחירת נקודה
+                    זמינה גם בשדות היעד.
+                  </p>
+                </div>
+                <div class="map-editor">
+                  <h2>אזורים בבית</h2>
+                  <label
+                    >שם האזור<input
+                      id="zone-name"
+                      maxlength="80"
+                      value="חדר חדש" /></label
+                  ><label
+                    >סוג<select id="zone-kind">
+                      <option value="room">חדר</option>
+                      <option value="no_go">אזור אסור</option>
+                      <option value="wall">קיר וירטואלי</option>
+                      <option value="carpet">שטיח</option>
+                    </select></label
+                  >
+                  <div class="coordinates">
+                    <label
+                      >X1<input
+                        id="zone-x1"
+                        type="number"
+                        step="0.05"
+                        value="0" /></label
+                    ><label
+                      >Y1<input
+                        id="zone-y1"
+                        type="number"
+                        step="0.05"
+                        value="0" /></label
+                    ><label
+                      >X2<input
+                        id="zone-x2"
+                        type="number"
+                        step="0.05"
+                        value="1" /></label
+                    ><label
+                      >Y2<input
+                        id="zone-y2"
+                        type="number"
+                        step="0.05"
+                        value="1"
+                    /></label>
+                  </div>
+                  <button id="zone-add" class="button">הוספת אזור</button>
+                  <div id="zone-list"></div>
+                  <h2>תכנון משימה</h2>
+                  <label>חדר לניקוי<select id="plan-room"></select></label
+                  ><button id="plan-clean" class="button">
+                    שמירת תכנון ניקוי החדר
+                  </button>
+                  <div class="coordinates">
+                    <label
+                      >יעד X<input
+                        id="target-x"
+                        type="number"
+                        step="0.05"
+                        value="0" /></label
+                    ><label
+                      >יעד Y<input
+                        id="target-y"
+                        type="number"
+                        step="0.05"
+                        value="0"
+                    /></label>
+                  </div>
+                  <button id="plan-goto" class="button">
+                    שמירת תכנון הגעה לנקודה
+                  </button>
+                  <p id="plan-message" role="status"></p>
+                  <div id="plan-list"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section data-panel="users" hidden>
+          <div class="panel workspace-panel">
+            <h2>אנשים והרשאות</h2>
+            <p>
+              לכל חשבון הרשאות משלו. רק מנהל המערכת יכול לצרף משתמשים או לשנות
+              גישה.
+            </p>
+            <div id="user-list"></div>
+            <h2>הוספת משתמש</h2>
+            <form id="user-form">
+              <div class="account-fields">
+                <label
+                  >שם לתצוגה<input
+                    id="member-name"
+                    required
+                    maxlength="80" /></label
+                ><label
+                  >שם משתמש<input
+                    id="member-username"
+                    required
+                    pattern="[a-zA-Z0-9_.-]{3,40}"
+                    dir="ltr"
+                    autocomplete="off" /></label
+                ><label
+                  >דוא״ל<input
+                    id="member-email"
+                    type="email"
+                    required
+                    maxlength="254"
+                    dir="ltr"
+                /></label>
+              </div>
+              <div id="member-grants"></div>
+              <button class="button primary">
+                יצירת חשבון וקישור לקביעת סיסמה
+              </button>
+            </form>
+            <p id="user-message" role="status"></p>
+            <a id="activation-link" hidden></a>
+          </div>
+        </section>
+        <section data-panel="account" hidden>
+          <div class="panel workspace-panel">
+            <h2>החלפת סיסמה</h2>
+            <form id="password-form">
+              <label
+                >סיסמה נוכחית<input
+                  id="current-password"
+                  type="password"
+                  autocomplete="current-password"
+                  required
+                  maxlength="128" /></label
+              ><label
+                >סיסמה חדשה · לפחות 15 תווים<input
+                  id="change-password"
+                  type="password"
+                  autocomplete="new-password"
+                  minlength="15"
+                  maxlength="128"
+                  required /></label
+              ><button class="button primary">
+                עדכון סיסמה ויציאה מכל החיבורים
+              </button>
+            </form>
+            <p id="password-message" role="status"></p>
+          </div>
+        </section>
+        <footer>
+          <span id="updated">ממתין לעדכון</span
+          ><span>Roomba 620 · <bdi>RooCore</bdi></span>
+        </footer>
+      </main>
+    </div>
+  </body>
+</html>
