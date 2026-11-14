@@ -62,6 +62,13 @@ tables, but rolling back to it removes native MFA; restore an external access
 gate before such a rollback. Do not drop account/MFA tables as a routine rollback.
 The original telemetry and command-lock behavior is unchanged by authentication.
 
+Web authentication grants access to the console only. A valid password/email
+session is not device authentication, a physical commissioning result, an
+approval for native fallback, dock-clearance qualification or permission to
+change a hardware cutoff. Controller-local power, battery-learning, map-policy
+and loss-of-network safeguards remain owned by their firmware and assembly
+records. Account recovery must never reset those approvals or calibration flags.
+
 Mailgun sends multipart HTML/plain-text templates with RTL layout and no remote
 images or tracking. Never log OTPs, passwords, reset URLs, cookie values or API
 keys. The service disables Uvicorn access logs. Keys remain outside the checkout;

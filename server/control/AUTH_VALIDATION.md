@@ -78,3 +78,13 @@
 Historical deployment records describe their original releases. This record
 supersedes their Basic-auth/Cloudflare-Access and unimplemented-email-auth claims.
 No hardware was contacted, flashed or operated during this work.
+
+## Concurrent work preservation
+
+This publication contains the server/mail/authentication baseline, repository
+secret-ignore rules and its CI workflow. It does not stage or replace parallel
+firmware, power, battery-learning or assembly-guide changes. The deployed release
+is a dated snapshot; subsequent controller/HTTPS integration is independent work.
+Deploying this authentication release must not copy an older firmware or guide
+over the primary checkout. The canonical Hebrew/English assembly guide and the
+owning power/battery documents retain their separate synchronization workflow.
