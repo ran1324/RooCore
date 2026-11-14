@@ -1,0 +1,13 @@
+user api-reader
+topic read roocore/v1/robots/roomba-620/telemetry
+topic read roocore/v1/robots/roomba-620/availability
+topic read roocore/v1/robots/sim-620/telemetry
+topic read roocore/v1/robots/sim-620/availability
+
+user roomba-620
+topic write roocore/v1/robots/roomba-620/telemetry
+topic write roocore/v1/robots/roomba-620/availability
+
+user sim-620
+topic write roocore/v1/robots/sim-620/telemetry
+topic write roocore/v1/robots/sim-620/availability

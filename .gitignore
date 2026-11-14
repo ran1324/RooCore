@@ -9,6 +9,17 @@ firmware/include/secrets.h
 firmware/include/network_config.h
 .roocore-token
 
+# Runtime auth/mail material belongs outside the checkout.
+**/auth_secret
+**/mailgun_sending_key
+**/admin_password
+**/mqtt_reader_password
+**/*_password
+**/*.sqlite3
+**/*.sqlite3-wal
+**/*.sqlite3-shm
+**/mail.json
+
 # macOS external-volume metadata and local target builds
 ._*
 .roocore-build/

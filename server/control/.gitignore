@@ -1,0 +1,5 @@
+secrets/
+backups/
+.env
+*.tar.gz
+*.dump

@@ -1,0 +1,4 @@
+fastapi==0.162.5
+uvicorn==0.54.0
+paho-mqtt==2.2.0
+SQLAlchemy==2.1.8
