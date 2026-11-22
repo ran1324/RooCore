@@ -18,6 +18,10 @@ The [smart cleaning plan](docs/SMART_CLEANING_PLAN.md) ([Hebrew](docs/SMART_CLEA
 
 The [hardware inventory](HARDWARE_INVENTORY.md) and [purchase record](AMAZON_ORDER.md) list the project parts. Check the [module audit](docs/assembly/en/MODULE_AUDIT.md) and [electrical review](docs/assembly/en/ELECTRICAL_REVIEW.md) for verified connections and the physical checks still needed. The power-cutoff sequence is documented in [English](docs/POWER_SHUTDOWN.md) and [Hebrew](docs/POWER_SHUTDOWN-he.md).
 
+## Roomba 620 voice bank
+
+A read-only capture of the removed U24 flash yielded 341 recordings: 340 clips in 16 language groups and one standalone clip. Listen to three English prompts, download the verified 2 MiB image, or reproduce the extraction. [Bench report and files](docs/research/roomba-620-voice-bank/README.md) · [תיעוד בעברית](docs/research/roomba-620-voice-bank/README-he.md)
+
 ## Roomba Open Interface library
 
 [API guide and protocol review](docs/OPEN_INTERFACE.md) · [Complete command/sensor map](docs/oi-map.json) · [Validation](docs/VALIDATION_XIAO.md) · [Library](lib/RoombaOI/src/RoombaOI.h)
